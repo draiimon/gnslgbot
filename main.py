@@ -3,25 +3,12 @@ import discord
 from discord.ext import commands
 from bot.config import Config
 from bot.cog import ChatCog
-import threading
-from flask import Flask
-
-# Create a Flask app for keep-alive
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return "Bot is running!"
-
-def run_server():
-    port = int(os.getenv('PORT', 8080))  # Use PORT env var for Render compatibility
-    app.run(host='0.0.0.0', port=port)
 
 # Initialize bot with command prefix and remove default help command
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix=Config.COMMAND_PREFIX, 
-                  intents=intents,
-                  help_command=None)  # Removed default help command
+                   intents=intents,
+                   help_command=None)  # Removed default help command
 
 @bot.event
 async def on_ready():
@@ -53,12 +40,6 @@ def main():
     if not Config.GROQ_API_KEY:
         print("Error: Groq API key not found in environment variables")
         return
-
-    # Start keep-alive server in a separate thread
-    server_thread = threading.Thread(target=run_server)
-    server_thread.daemon = True
-    server_thread.start()
-    print(f"Keep-alive server started on port {int(os.getenv('PORT', 8080))}")
 
     try:
         bot.run(Config.DISCORD_TOKEN)
