@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "gnslgbot"
 version = "0.1.0"
-description = "Discord bot project"
+description = "A Discord bot with AI capabilities"
 authors = ["Your Name <your.email@example.com>"]
 readme = "README.md"
 
