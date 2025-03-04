@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "repl-nix-workspace"
+name = "gnslgbot"
 version = "0.1.0"
-description = "Add your description here"
+description = "Discord bot project"
 authors = ["Your Name <your.email@example.com>"]
 readme = "README.md"
 
