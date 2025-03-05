@@ -355,6 +355,14 @@ class ChatCog(commands.Cog):
             await ctx.send("**AYOS!** UMAALIS NA AKO! 😤")
         else:
             await ctx.send("**TANGA!** WALA AKO SA VOICE CHANNEL! 😤")
+   
+    # ========== ADMIN COMMANDS ==========
+    @commands.command(name="sagad")
+    @commands.has_role(1345727357662658603)
+    async def sagad(self, ctx, amount: int, member: discord.Member):
+        """Admin command to modify balances"""
+        self.add_coins(member.id, amount)
+        await ctx.send(f"💰 **ADMIN OVERRIDE:** NAG-DAGDAG KA NG **₱{amount:,}** KAY {member.mention}! WAG MO ABUSUHIN YAN! 😤", delete_after=10)       
 
     # ========== SERVER MANAGEMENT COMMANDS ==========
     @commands.command(name="rules")
