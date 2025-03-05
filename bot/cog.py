@@ -261,44 +261,6 @@ class ChatCog(commands.Cog):
             color=discord.Color.green()
         )
         await ctx.send(embed=embed)
-
-@commands.command(name="leaderboard")
-async def leaderboard(self, ctx):
-    """Display wealth rankings"""
-    # Sort users by their coin balance in descending order
-    sorted_users = sorted(self.user_coins.items(), key=lambda x: x[1], reverse=True)[:20]
-    
-    # Create the embed
-    embed = discord.Embed(
-        title="🏆 **GNSLG LEADERBOARD**",
-        color=discord.Color.blurple()
-    )
-    
-    # Loop through the top 20 users
-    for idx, (user_id, coins) in enumerate(sorted_users):
-        # Fetch the member object from the guild
-        member = ctx.guild.get_member(user_id)
-        if member:
-            user_mention = member.mention  # Mention the user
-        else:
-            # If the user is not found in the guild, try fetching them from the API
-            try:
-                member = await ctx.guild.fetch_member(user_id)
-                user_mention = member.mention
-            except discord.NotFound:
-                user_mention = f"<@{user_id}>"  # Fallback to mentioning the user ID if they're not found
-        
-        # Add the user to the leaderboard embed
-        embed.add_field(
-            name=f"{idx+1}. {user_mention}",
-            value=f"**₱{coins:,}**",
-            inline=False
-        )
-    
-    # Send the embed
-    await ctx.send(embed=embed)
-
-
     # ========== AI CHAT COMMANDS ==========
     async def get_ai_response(self, conversation_history):
         """Get response from Groq AI with conversation context"""
@@ -350,7 +312,7 @@ async def leaderboard(self, ctx):
         """Clear the conversation history for the current channel"""
         self.conversation_history[ctx.channel.id].clear()
         await ctx.send("I've cleared our conversation history. We can start fresh now!")
-
+    
     # ========== VOICE CHANNEL COMMANDS ==========
     @commands.command(name="join")
     async def join(self, ctx):
@@ -376,49 +338,7 @@ async def leaderboard(self, ctx):
         else:
             await ctx.send("**TANGA!** WALA AKO SA VOICE CHANNEL! 😤")
    
-   # ========== ADMIN COMMANDS ==========
-@commands.command(name="sagad")
-@commands.has_role(1345727357662658603)  # Ensure only admins can use this command
-async def sagad(self, ctx, amount: int, member: discord.Member):
-    """Admin command to add coins to a user's balance"""
-    if amount <= 0:
-        await ctx.send("**TANGA!** WALANG NEGATIVE O ZERO NA AMOUNT! 😤", delete_after=10)
-        return
-
-    if not member:
-        await ctx.send("**BOBO!** WALA KANG TINUKOY NA USER! 😤", delete_after=10)
-        return
-
-    self.add_coins(member.id, amount)
-    await ctx.send(
-        f"💰 **ETO NA TOL GALING KAY BOSS MASON!:** NAG-DAGDAG KA NG **₱{amount:,}** KAY {member.mention}! WAG MO ABUSUHIN YAN! 😤",
-        delete_after=10
-    )
-
-@commands.command(name="bawas")
-@commands.has_role(1345727357662658603)  # Ensure only admins can use this command
-async def bawas(self, ctx, amount: int, member: discord.Member):
-    """Admin command to deduct coins from a user's balance"""
-    if amount <= 0:
-        await ctx.send("**TANGA!** WALANG NEGATIVE O ZERO NA AMOUNT! 😤", delete_after=10)
-        return
-
-    if not member:
-        await ctx.send("**BOBO!** WALA KANG TINUKOY NA USER! 😤", delete_after=10)
-        return
-
-    if self.user_coins.get(member.id, 0) < amount:
-        await ctx.send(f"**WALA KANG PERA!** {member.mention} BALANCE MO: **₱{self.user_coins.get(member.id, 0):,}** 😤", delete_after=10)
-        return
-
-    self.add_coins(member.id, -amount)  # Negative amount to deduct coins
-    await ctx.send(
-        f"💰 **BINAWASAN NI BOSS MASON KASI TANGA KA!** {member.mention} lost **₱{amount:,}**. "
-        f"New balance: **₱{self.user_coins.get(member.id, 0):,}**",
-        delete_after=10
-    
-    
-    )  
+   
     # ========== SERVER MANAGEMENT COMMANDS ==========
     @commands.command(name="rules")
     async def rules(self, ctx):
@@ -461,6 +381,71 @@ Thank you for your cooperation!""",
         )
         announcement.set_footer(text=f"Announced by {ctx.author.name} | Channel: #{ctx.channel.name}")
         await ctx.send(embed=announcement)
+    
+    
+    
+   # ========== ADMIN COMMANDS ==========
+    @commands.command(name="sagad")
+    @commands.has_role(1345727357662658603)  # Admin role check
+    async def sagad(self, ctx, amount: int, member: discord.Member):
+        """Add coins to a user's balance"""
+        if amount <= 0:
+         return await ctx.send("**TANGA!** WALANG NEGATIVE O ZERO NA AMOUNT! 😤", delete_after=10)
+        if not member:
+         return await ctx.send("**BOBO!** WALA KANG TINUKOY NA USER! 😤", delete_after=10)
+
+        self.add_coins(member.id, amount)
+        await ctx.send(
+        f"💰 **ETO NA TOL GALING KAY BOSS MASON!:** NAG-DAGDAG KA NG **₱{amount:,}** KAY {member.mention}! WAG MO ABUSUHIN YAN! 😤",
+        delete_after=10
+    )
+
+
+    @commands.command(name="bawas")
+    @commands.has_role(1345727357662658603)  # Admin role check
+    async def bawas(self, ctx, amount: int, member: discord.Member):
+     """Deduct coins from a user's balance"""
+     if amount <= 0:
+         return await ctx.send("**TANGA!** WALANG NEGATIVE O ZERO NA AMOUNT! 😤", delete_after=10)
+     if not member:
+         return await ctx.send("**BOBO!** WALA KANG TINUKOY NA USER! 😤", delete_after=10)
+     if self.user_coins.get(member.id, 0) < amount:
+         return await ctx.send(f"**WALA KANG PERA!** {member.mention} BALANCE MO: **₱{self.user_coins.get(member.id, 0):,}** 😤", delete_after=10)
+
+     self.add_coins(member.id, -amount)  # Deduct coins
+     await ctx.send(
+         f"💰 **BINAWASAN NI BOSS MASON KASI TANGA KA!** {member.mention} lost **₱{amount:,}**. "
+         f"New balance: **₱{self.user_coins.get(member.id, 0):,}**",
+         delete_after=10
+      )
+
+
+    @commands.command(name="leaderboard")
+    async def leaderboard(self, ctx):
+        """Display wealth rankings"""
+        # Sort users by their coin balance in descending order
+        sorted_users = sorted(self.user_coins.items(), key=lambda x: x[1], reverse=True)[:20]
+        
+        # Create the embed
+        embed = discord.Embed(
+            title="🏆 **GNSLG LEADERBOARD**",
+            color=discord.Color.blurple()
+        )
+        
+        # Loop through the top 20 users
+        for idx, (user_id, coins) in enumerate(sorted_users):
+            # Mention the user directly
+            user_mention = f"<@{user_id}>"
+            embed.add_field(
+                name=f"{idx+1}. {user_mention}",
+                value=f"**₱{coins:,}**",
+                inline=False
+            )
+        
+        # Send the embed
+        await ctx.send(embed=embed)
+    
 
 def setup(bot):
     bot.add_cog(ChatCog(bot))
+
