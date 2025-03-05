@@ -226,7 +226,7 @@ class ChatCog(commands.Cog):
                 "g!daily": "Claim daily ₱10,000",
                 "g!balance": "Check your balance",
                 "g!give <@user> <amount>": "Transfer money",
-                "g!leaderboard": "Top 10 richest players"
+                "g!leaderboard": "Top 20 gagong players"
             },
             "🎮 GAMES": {
                 "g!toss <h/t> <bet>": "Coin flip game",
