@@ -3,36 +3,38 @@ import discord
 from discord.ext import commands
 from bot.config import Config
 from bot.cog import ChatCog
+from flask import Flask
+import threading
 
-# Initialize bot with command prefix and remove default help command
+# Initialize Flask app
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Bot is running!"
+
+# Start Flask in a separate thread
+def run_web():
+    port = int(os.environ.get("PORT", 8080))  # Default to 8080
+    app.run(host="0.0.0.0", port=port)
+
+threading.Thread(target=run_web).start()  # Start the Flask server
+
+# Initialize bot
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix=Config.COMMAND_PREFIX, 
                    intents=intents,
-                   help_command=None)  # Removed default help command
+                   help_command=None)
 
 @bot.event
 async def on_ready():
-    """Called when the bot is ready"""
     print(f'Logged in as {bot.user.name}')
     print(f'Bot ID: {bot.user.id}')
     print('------')
 
-    # Add the chat cog
     await bot.add_cog(ChatCog(bot))
 
-@bot.event
-async def on_command_error(ctx, error):
-    """Global error handler"""
-    if isinstance(error, commands.CommandNotFound):
-        await ctx.send("TANGINA MO! WALANG GANYANG COMMAND! BASA BASA DIN PAG MAY TIME! 🤬\nTANGA KA BA? TRY MO `g!tulong` PARA DI KA KAKUPALKUPAL! 😤")
-    elif isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send("BOBO! KULANG YUNG COMMAND MO! TYPE MO `g!tulong` PARA MALAMAN MO PAANO GAMITIN! 🤬")
-    else:
-        await ctx.send(f"PUTANGINA MAY ERROR! TAWAG KA NALANG ULIT MAMAYA! 😫")
-        print(f"Error: {error}")
-
 def main():
-    """Main function to run the bot"""
     if not Config.DISCORD_TOKEN:
         print("Error: Discord token not found in environment variables")
         return
