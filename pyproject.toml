@@ -4,13 +4,15 @@ version = "0.1.0"
 description = "A Discord bot with AI capabilities"
 authors = ["Your Name <your.email@example.com>"]
 readme = "README.md"
+packages = [{include = "bot"}]  # Ensure the bot package is included
 
 [tool.poetry.dependencies]
 python = "^3.11"
-discord-py = "^2.5.1"
+discord-py = "^2.5.2"
 groq = "^0.18.0"
 pynacl = "^1.5.0"
 python-dotenv = "^1.0.1"
+flask = "^3.0.0"  # Added Flask to prevent errors
 
 [build-system]
 requires = ["poetry-core"]
