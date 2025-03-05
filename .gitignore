@@ -29,8 +29,16 @@ wheels/
 venv/
 ENV/
 env/
+.poetry/  # Ignore Poetry cache
+poetry.lock  # Avoid committing lock file in teams
 
-# IDE
+# Flask (Render Deployment Fix)
+instance/
+*.log
+logs/
+flask_session/  # Ignore Flask session files
+
+# IDE & Editors
 .idea/
 .vscode/
 *.swp
@@ -47,3 +55,6 @@ replit.nix
 # Operating System
 .DS_Store
 Thumbs.db
+
+# Render Specific
+render.yaml  # If using a custom render config
