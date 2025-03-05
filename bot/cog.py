@@ -226,7 +226,7 @@ class ChatCog(commands.Cog):
                 "g!daily": "Claim daily ₱10,000",
                 "g!balance": "Check your balance",
                 "g!give <@user> <amount>": "Transfer money",
-                "g!leaderboard": "Top 10 richest players"
+                "g!leaderboard": "Top 20 richest players"
             },
             "🎮 GAMES": {
                 "g!toss <h/t> <bet>": "Coin flip game",
@@ -420,8 +420,8 @@ Thank you for your cooperation!""",
       )
 
 
-     @commands.command(name="leaderboard")
-     async def leaderboard(self, ctx):
+    @commands.command(name="leaderboard")
+    async def leaderboard(self, ctx):
         """Display wealth rankings"""
         # Sort users by their coin balance in descending order
         sorted_users = sorted(self.user_coins.items(), key=lambda x: x[1], reverse=True)[:20]
