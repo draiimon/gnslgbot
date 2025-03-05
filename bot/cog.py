@@ -435,7 +435,7 @@ Thank you for your cooperation!""",
         # Loop through the top 20 users
         for idx, (user_id, coins) in enumerate(sorted_users):
             # Mention the user directly
-            user_mention = f"<@{user_id}>"
+            user_mention = f"@{user_id}"
             embed.add_field(
                 name=f"{idx+1}. {user_mention}",
                 value=f"**₱{coins:,}**",
