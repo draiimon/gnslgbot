@@ -395,3 +395,4 @@ Thank you for your cooperation!""",
 def setup(bot):
     """Add the cog to the bot"""
     bot.add_cog(ChatCog(bot))
+    
