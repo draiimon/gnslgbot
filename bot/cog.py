@@ -21,8 +21,8 @@ class ChatCog(commands.Cog):
         self.blackjack_games = {}
         self.ADMIN_ROLE_ID = 1345727357662658603
         self.bot = bot
+        self.user_coins = {}  # Example: {user_id: coin_balance}
         print("ChatCog initialized")
-        
 
     # ========== HELPER FUNCTIONS ==========
     def get_user_balance(self, user_id):
@@ -264,32 +264,15 @@ class ChatCog(commands.Cog):
         )
         await ctx.send(embed=embed)
 
-    @commands.command(name="leaderboard")
-    async def leaderboard(self, ctx):
-        """Display wealth rankings"""
-        sorted_users = sorted(self.user_coins.items(), key=lambda x: x[1], reverse=True)[:20]
-        embed = discord.Embed(
-            title="🏆 **GNSLG LEADERBOARD**",
-            color=discord.Color.blurple()
-        )
-        for idx, (user_id, coins) in enumerate(sorted_users):
-            # Fetch the member object from the guild
-            member = ctx.guild.get_member(user_id)
-            if member:
-                user_mention = member.mention  # Get the user's mention
-            else:
-                user_mention = "Unknown User"  # Fallback if the user is not found
-            embed.add_field(
-                name=f"{idx+1}. {user_mention}",
-                value=f"**₱{coins:,}**",
-                inline=False
-            )
-        await ctx.send(embed=embed)  # Send the embed after the loop
-      
 @commands.command(name="leaderboard")
 async def leaderboard(self, ctx):
     """Display wealth rankings"""
     sorted_users = sorted(self.user_coins.items(), key=lambda x: x[1], reverse=True)[:20]
+    
+    embed = discord.Embed(
+        title="🏆 **GNSLG LEADERBOARD**",
+        color=discord.Color.blurple()
+    )
     
     for idx, (user_id, coins) in enumerate(sorted_users):
         # Fetch the member object from the guild
@@ -297,19 +280,20 @@ async def leaderboard(self, ctx):
         if member:
             user_mention = member.mention  # Get the user's mention
         else:
-            user_mention = "Unknown User"  # Fallback if the user is not found
+            # If the user is not found, try fetching from the API (if permissions allow)
+            try:
+                member = await ctx.guild.fetch_member(user_id)
+                user_mention = member.mention
+            except discord.NotFound:
+                user_mention = "Unknown User"  # Fallback if the user is not found
         
-        embed = discord.Embed(
-            title="🏆 **GNSLG LEADERBOARD**",
-            color=discord.Color.blurple()
-        )
         embed.add_field(
             name=f"{idx+1}. {user_mention}",
             value=f"**₱{coins:,}**",
             inline=False
         )
-        
-        await ctx.send(embed=embed)  # Inside the loop
+    
+    await ctx.send(embed=embed)  # Send the embed once after the loop
 
 
 
@@ -459,3 +443,4 @@ Thank you for your cooperation!""",
 
 def setup(bot):
     bot.add_cog(ChatCog(bot))
+    
