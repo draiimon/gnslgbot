@@ -20,7 +20,9 @@ class ChatCog(commands.Cog):
         self.daily_cooldown = defaultdict(int)
         self.blackjack_games = {}
         self.ADMIN_ROLE_ID = 1345727357662658603
+        self.bot = bot
         print("ChatCog initialized")
+        
 
     # ========== HELPER FUNCTIONS ==========
     def get_user_balance(self, user_id):
@@ -265,23 +267,24 @@ class ChatCog(commands.Cog):
     @commands.command(name="leaderboard")
     async def leaderboard(self, ctx):
         """Display wealth rankings"""
-    sorted_users = sorted(self.user_coins.items(), key=lambda x: x[1], reverse=True)[:20]
-    embed = discord.Embed(
-        title="🏆 **GNSLG LEADERBOARD**",
-        color=discord.Color.blurple()
-    )
-    for idx, (user_id, coins) in enumerate(sorted_users):
-        # Fetch the member object from the guild
-        member = ctx.guild.get_member(user_id)
-        if member:
-            user_mention = member.mention  # Get the user's mention
-        else:
-            user_mention = "Unknown User"  # Fallback if the user is not found
-        embed.add_field(
-            name=f"{idx+1}. {user_mention}",
-            value=f"**₱{coins:,}**",
-            inline=False
+        sorted_users = sorted(self.user_coins.items(), key=lambda x: x[1], reverse=True)[:20]
+        embed = discord.Embed(
+            title="🏆 **GNSLG LEADERBOARD**",
+            color=discord.Color.blurple()
         )
+        for idx, (user_id, coins) in enumerate(sorted_users):
+            # Fetch the member object from the guild
+            member = ctx.guild.get_member(user_id)
+            if member:
+                user_mention = member.mention  # Get the user's mention
+            else:
+                user_mention = "Unknown User"  # Fallback if the user is not found
+            embed.add_field(
+                name=f"{idx+1}. {user_mention}",
+                value=f"**₱{coins:,}**",
+                inline=False
+            )
+        await ctx.send(embed=embed)  # Send the embed after the loop
       
 @commands.command(name="leaderboard")
 async def leaderboard(self, ctx):
@@ -387,26 +390,30 @@ async def leaderboard(self, ctx):
         else:
             await ctx.send("**TANGA!** WALA AKO SA VOICE CHANNEL! 😤")
    
-    # ========== ADMIN COMMANDS ==========
-    @commands.command(name="sagad")
-    @commands.has_role(1345727357662658603)
-    async def sagad(self, ctx, amount: int, member: discord.Member):
-        """Admin command to modify balances"""
-        self.add_coins(member.id, amount)
-        await ctx.send(f"💰 **ETO NA TOL GALING KAY BOSS MASON!:** NAG-DAGDAG KA NG **₱{amount:,}** KAY {member.mention}! WAG MO ABUSUHIN YAN! 😤", delete_after=10)       
-    
-    @commands.command(name="bawas")
-    @commands.has_role(1345727357662658603)  # Ensure only admins can use this command
-    async def bawas(self, ctx, amount: int, member: discord.Member):
-        """Admin command to modify balances"""
+   # ========== ADMIN COMMANDS ==========
+@commands.command(name="sagad")
+@commands.has_role(1345727357662658603)  # Ensure only admins can use this command
+async def sagad(self, ctx, amount: int, member: discord.Member):
+    """Admin command to modify balances"""
+    self.add_coins(member.id, amount)
+    await ctx.send(
+        f"💰 **ETO NA TOL GALING KAY BOSS MASON!:** NAG-DAGDAG KA NG **₱{amount:,}** KAY {member.mention}! WAG MO ABUSUHIN YAN! 😤",
+        delete_after=10
+    )
+
+@commands.command(name="bawas")
+@commands.has_role(1345727357662658603)  # Ensure only admins can use this command
+async def bawas(self, ctx, amount: int, member: discord.Member):
+    """Admin command to modify balances"""
     # Deduct the specified amount from the user's balance
     self.add_coins(member.id, -amount)  # Negative amount to deduct coins
     await ctx.send(
         f"💰 **BINAWASAN NI BOSS MASON KASI TANGA KA!** {member.mention} lost **₱{amount:,}**. "
         f"New balance: **₱{self.user_coins.get(member.id, 0):,}**",
         delete_after=10
+    )
     
-    )  
+     
     # ========== SERVER MANAGEMENT COMMANDS ==========
     @commands.command(name="rules")
     async def rules(self, ctx):
