@@ -17,14 +17,14 @@ app = Flask(__name__)
 
 @app.route("/")
 def home():
-    return "Bot is running, mga putangina niyo!"
+    return "🔥 BOT IS ONLINE, MGA PUTANGINA NYO! 🔥"
 
 def run_web():
     port = int(os.environ.get("PORT", 8080))  # Render uses dynamic ports
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=False)
 
 # Start Flask in a separate thread
-threading.Thread(target=run_web).start()
+threading.Thread(target=run_web, daemon=True).start()
 
 # Initialize Discord bot
 intents = discord.Intents.all()
@@ -33,24 +33,18 @@ bot = commands.Bot(command_prefix=COMMAND_PREFIX,
                    help_command=None)
 
 # User bank system (keeps track of money)
-user_bank = {}
+user_bank = defaultdict(lambda: 1_000_000)
 last_claim = {}
 
 @bot.event
 async def on_ready():
-    print(f'Logged in as {bot.user.name}')
-    print(f'Bot ID: {bot.user.id}')
+    print(f'🔥 LOGGED IN AS {bot.user.name}! 🔥')
+    print(f'BOT ID: {bot.user.id}')
     print('------')
-
-# Function to get or create user balance
-def get_balance(user_id):
-    if user_id not in user_bank:
-        user_bank[user_id] = 1_000_000  # Start with 1M
-    return user_bank[user_id]
 
 # Function to update user balance
 def update_balance(user_id, amount):
-    user_bank[user_id] = get_balance(user_id) + amount
+    user_bank[user_id] += amount
 
 # Game: Daily Bonus
 @bot.command(name="daily")
@@ -72,7 +66,7 @@ async def daily(ctx):
 async def toss(ctx, bet: int, choice: str):
     """Toss a coin, bet on 'heads' or 'tails'"""
     user_id = ctx.author.id
-    balance = get_balance(user_id)
+    balance = user_bank[user_id]
     
     if bet > balance:
         await ctx.send(f"Tanga! Wala kang ganyang pera! Balance mo: ₱{balance}")
@@ -95,7 +89,7 @@ async def toss(ctx, bet: int, choice: str):
 async def blackjack(ctx, bet: int):
     """Play Blackjack against the bot"""
     user_id = ctx.author.id
-    balance = get_balance(user_id)
+    balance = user_bank[user_id]
     
     if bet > balance:
         await ctx.send(f"Hoy gago ka, wala kang ₱{bet}! Balance mo lang ₱{balance}!")
@@ -133,7 +127,7 @@ async def blackjack(ctx, bet: int):
 async def balance(ctx):
     """Check your balance"""
     user_id = ctx.author.id
-    bal = get_balance(user_id)
+    bal = user_bank[user_id]
     await ctx.send(f"{ctx.author.mention}, pera mo ngayon: ₱{bal}. Sana di mo lang ipang-libre yan sa crush mo!")
 
 def main():
