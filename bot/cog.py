@@ -226,7 +226,7 @@ class ChatCog(commands.Cog):
                 "g!daily": "Claim daily ₱10,000",
                 "g!balance": "Check your balance",
                 "g!give <@user> <amount>": "Transfer money",
-                "g!leaderboard": "Top 20 gagong players"
+                "g!leaderboard": "Top 10 richest players"
             },
             "🎮 GAMES": {
                 "g!toss <h/t> <bet>": "Coin flip game",
@@ -420,8 +420,8 @@ Thank you for your cooperation!""",
       )
 
 
-    @commands.command(name="leaderboard")
-    async def leaderboard(self, ctx):
+     @commands.command(name="leaderboard")
+     async def leaderboard(self, ctx):
         """Display wealth rankings"""
         # Sort users by their coin balance in descending order
         sorted_users = sorted(self.user_coins.items(), key=lambda x: x[1], reverse=True)[:20]
@@ -434,17 +434,24 @@ Thank you for your cooperation!""",
         
         # Loop through the top 20 users
         for idx, (user_id, coins) in enumerate(sorted_users):
-            # Mention the user directly
-            user_mention = f"@{user_id}"
+            # Fetch the member object
+            member = ctx.guild.get_member(user_id)
+            if member:
+                # Use the member's display name
+                user_name = member.display_name
+            else:
+                # Fallback to "Unknown User" if the member is not found
+                user_name = "Unknown User"
+            
+            # Add the user to the leaderboard embed
             embed.add_field(
-                name=f"{idx+1}. {user_mention}",
+                name=f"{idx+1}. {user_name}",
                 value=f"**₱{coins:,}**",
                 inline=False
             )
         
         # Send the embed
         await ctx.send(embed=embed)
-    
 
 def setup(bot):
     bot.add_cog(ChatCog(bot))
