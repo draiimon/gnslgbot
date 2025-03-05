@@ -8,7 +8,7 @@ import random
 from .config import Config
 
 class ChatCog(commands.Cog):
-    """Cog for handling chat interactions with the Groq AI model"""
+    """Cog for handling chat interactions with the Groq AI model and games"""
 
     def __init__(self, bot):
         """Initialize the ChatCog with necessary attributes"""
@@ -17,7 +17,27 @@ class ChatCog(commands.Cog):
         self.conversation_history = defaultdict(lambda: deque(maxlen=Config.MAX_CONTEXT_MESSAGES))
         self.user_message_timestamps = defaultdict(list)
         self.creator = Config.BOT_CREATOR
+        self.user_coins = defaultdict(lambda: 1_000_000)  # Default bank balance: 1M coins
+        self.daily_cooldown = defaultdict(int)  # Track daily cooldowns
+        self.blackjack_games = {}  # Store active Blackjack games
         print("ChatCog initialized")
+
+    # Helper functions
+    def get_user_balance(self, user_id):
+        """Get user's coin balance"""
+        return self.user_coins.get(user_id, 1_000_000)  # Default 1M for new players
+
+    def add_coins(self, user_id, amount):
+        """Add coins to user's balance"""
+        self.user_coins[user_id] += amount
+        return self.user_coins[user_id]
+
+    def deduct_coins(self, user_id, amount):
+        """Deduct coins from user's balance"""
+        if self.user_coins[user_id] >= amount:
+            self.user_coins[user_id] -= amount
+            return True
+        return False
 
     async def get_ai_response(self, conversation_history):
         """Get response from Groq AI with conversation context"""
@@ -281,3 +301,143 @@ Thank you for your cooperation!""",
                 await ctx.send("Please enter a valid number next time!")
         except asyncio.TimeoutError:
             await ctx.send("Time's up! You didn't respond in time.")
+
+    # Daily money system
+    @commands.command(name="daily")
+    async def daily(self, ctx):
+        """Claim 10k coins daily"""
+        current_time = time.time()
+        last_claim = self.daily_cooldown.get(ctx.author.id, 0)
+
+        if current_time - last_claim < 86400:  # 24-hour cooldown
+            await ctx.send(f"Ulol {ctx.author.mention}, kaka-claim mo lang ng daily mo! Balik ka bukas.")
+            return
+
+        self.daily_cooldown[ctx.author.id] = current_time
+        self.add_coins(ctx.author.id, 10_000)
+        await ctx.send(f"🎉 {ctx.author.mention}, you claimed your daily **10,000 coins**! New balance: {self.get_user_balance(ctx.author.id)}")
+
+    # Games
+    @commands.command(name="toss")
+    async def toss_coin(self, ctx, bet: int = 0):
+        """Toss a coin and bet on heads or tails"""
+        if bet < 0:
+            await ctx.send("Tangina mo, wag kang negative! Positive bets lang!")
+            return
+
+        if bet > 0 and not self.deduct_coins(ctx.author.id, bet):
+            await ctx.send(f"Ulol {ctx.author.mention}, wala kang pera! Balance mo: {self.get_user_balance(ctx.author.id)} coins.")
+            return
+
+        result = random.choice(["Heads", "Tails"])
+        await ctx.send(f"🎲 {ctx.author.mention} tossed a coin... It's **{result}**!")
+
+        if bet > 0:
+            if random.random() < 0.5:  # 50% chance to win
+                winnings = bet * 2
+                self.add_coins(ctx.author.id, winnings)
+                await ctx.send(f"Congratulations! You won **{winnings} coins**! New balance: {self.get_user_balance(ctx.author.id)}")
+            else:
+                await ctx.send(f"Bad luck! You lost your bet. Balance: {self.get_user_balance(ctx.author.id)}")
+
+    @commands.command(name="blackjack")
+    async def blackjack(self, ctx, bet: int):
+        """Play a simplified Blackjack game"""
+        if bet < 0:
+            await ctx.send("Gago, wag kang negative! Positive bets lang!")
+            return
+
+        if not self.deduct_coins(ctx.author.id, bet):
+            await ctx.send(f"Ulol {ctx.author.mention}, wala kang pera! Balance mo: {self.get_user_balance(ctx.author.id)} coins.")
+            return
+
+        # Initialize game
+        deck = [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 11] * 4
+        random.shuffle(deck)
+        player_hand = [deck.pop(), deck.pop()]
+        dealer_hand = [deck.pop(), deck.pop()]
+
+        self.blackjack_games[ctx.author.id] = {
+            "deck": deck,
+            "player_hand": player_hand,
+            "dealer_hand": dealer_hand,
+            "bet": bet
+        }
+
+        await ctx.send(f"🎴 {ctx.author.mention}, your hand: {player_hand} (Total: {sum(player_hand)})\n"
+                       f"Dealer's hand: [{dealer_hand[0]}, ?]\n"
+                       f"Type `g!hit` to draw a card or `g!stand` to end your turn.")
+
+    @commands.command(name="hit")
+    async def hit(self, ctx):
+        """Draw a card in Blackjack"""
+        if ctx.author.id not in self.blackjack_games:
+            await ctx.send("Ulol, wala kang ongoing na Blackjack game! Use `g!blackjack <bet>` to start.")
+            return
+
+        game = self.blackjack_games[ctx.author.id]
+        game["player_hand"].append(game["deck"].pop())
+        player_total = sum(game["player_hand"])
+
+        if player_total > 21:
+            await ctx.send(f"Bust! Your hand: {game['player_hand']} (Total: {player_total})\n"
+                           f"Dealer's hand: {game['dealer_hand']} (Total: {sum(game['dealer_hand'])})\n"
+                           f"You lost your bet of {game['bet']} coins.")
+            del self.blackjack_games[ctx.author.id]
+            return
+
+        await ctx.send(f"🎴 {ctx.author.mention}, your hand: {game['player_hand']} (Total: {player_total})\n"
+                       f"Type `g!hit` to draw another card or `g!stand` to end your turn.")
+
+    @commands.command(name="stand")
+    async def stand(self, ctx):
+        """End your turn in Blackjack"""
+        if ctx.author.id not in self.blackjack_games:
+            await ctx.send("Ulol, wala kang ongoing na Blackjack game! Use `g!blackjack <bet>` to start.")
+            return
+
+        game = self.blackjack_games[ctx.author.id]
+        dealer_total = sum(game["dealer_hand"])
+        player_total = sum(game["player_hand"])
+
+        # Dealer draws until total >= 17
+        while dealer_total < 17:
+            game["dealer_hand"].append(game["deck"].pop())
+            dealer_total = sum(game["dealer_hand"])
+
+        # Determine winner
+        if dealer_total > 21 or player_total > dealer_total:
+            winnings = game["bet"] * 2
+            self.add_coins(ctx.author.id, winnings)
+            await ctx.send(f"🎴 You win! Your hand: {game['player_hand']} (Total: {player_total})\n"
+                           f"Dealer's hand: {game['dealer_hand']} (Total: {dealer_total})\n"
+                           f"You won **{winnings} coins**! New balance: {self.get_user_balance(ctx.author.id)}")
+        elif player_total == dealer_total:
+            self.add_coins(ctx.author.id, game["bet"])
+            await ctx.send(f"🎴 It's a tie! Your hand: {game['player_hand']} (Total: {player_total})\n"
+                           f"Dealer's hand: {game['dealer_hand']} (Total: {dealer_total})\n"
+                           f"Your bet of {game['bet']} coins was returned.")
+        else:
+            await ctx.send(f"🎴 You lose! Your hand: {game['player_hand']} (Total: {player_total})\n"
+                           f"Dealer's hand: {game['dealer_hand']} (Total: {dealer_total})\n"
+                           f"You lost your bet of {game['bet']} coins.")
+
+        del self.blackjack_games[ctx.author.id]
+
+    # Bank commands
+    @commands.command(name="balance")
+    async def balance(self, ctx):
+        """Check your coin balance"""
+        balance = self.get_user_balance(ctx.author.id)
+        await ctx.send(f"{ctx.author.mention}, you have **{balance} coins**!")
+
+    @commands.command(name="leaderboard")
+    async def leaderboard(self, ctx):
+        """Show the top 10 users with the most coins"""
+        sorted_users = sorted(self.user_coins.items(), key=lambda x: x[1], reverse=True)[:10]
+        leaderboard = "\n".join([f"{i+1}. <@{user}>: {coins} coins" for i, (user, coins) in enumerate(sorted_users)])
+        await ctx.send(f"🏆 **Top 10 Richest Users** 🏆\n{leaderboard}")
+
+def setup(bot):
+    """Add the cog to the bot"""
+    bot.add_cog(ChatCog(bot))
