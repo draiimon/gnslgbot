@@ -281,7 +281,13 @@ class ChatCog(commands.Cog):
                 "g!join/leave": "Voice channel management",
                 "g!rules": "Server rules",
                 "g!announcement": "Make an announcement"
-            }
+            },
+            "🔑 ADMIN COMMANDS": {
+                "g!sagad <amount> <@user>": "Add coins to a user",
+                "g!bawas <amount> <@user>": "Remove coins from a user",
+                "g!goodmorning": "Send good morning message",
+                "g!goodnight": "Send good night message"
+            } # The g!test command is intentionally hidden from help menu
         }
 
         for category, commands in categories.items():
@@ -508,6 +514,84 @@ Thank you for your cooperation!""",
       )
 
 
+    @commands.command(name="goodmorning")
+    @commands.has_role(1345727357662658603)  # Admin role check
+    async def goodmorning(self, ctx):
+        """Manually trigger a good morning greeting"""
+        # Get the greetings channel
+        channel = self.bot.get_channel(Config.GREETINGS_CHANNEL_ID)
+        if not channel:
+            await ctx.send("**ERROR:** Hindi mahanap ang greetings channel!")
+            return
+            
+        # Get all online members
+        online_members = [member for member in channel.guild.members 
+                         if member.status == discord.Status.online and not member.bot]
+        
+        # If there are online members, mention them
+        if online_members:
+            mentions = " ".join([member.mention for member in online_members])
+            morning_messages = [
+                f"**MAGANDANG UMAGA MGA GAGO!** {mentions} GISING NA KAYO! DALI DALI TRABAHO NA!",
+                f"**RISE AND SHINE MGA BOBO!** {mentions} TANGINA NIYO GISING NA! PRODUCTIVITY TIME!",
+                f"**GOOD MORNING MOTHERFUCKERS!** {mentions} WELCOME TO ANOTHER DAY OF YOUR PATHETIC LIVES!",
+                f"**HOY GISING NA!** {mentions} TANGHALI NA GAGO! DALI DALI MAG-TRABAHO KA NA!",
+                f"**AYAN! UMAGA NA!** {mentions} BILISAN MO NA! SIBAT NA SA TRABAHO!"
+            ]
+            await channel.send(random.choice(morning_messages))
+            await ctx.send("**NAPA-GOODMORNING MO ANG MGA TANGA!**")
+        else:
+            await ctx.send("**WALANG ONLINE NA TANGA!** Walang imemention!")
+            
+    @commands.command(name="test")
+    @commands.has_role(1345727357662658603)  # Admin role check
+    async def test(self, ctx):
+        """Admin test command to curse at all online users"""
+        # Get all online, idle, and DND users
+        all_active_users = [member for member in ctx.guild.members 
+                     if (member.status == discord.Status.online or 
+                         member.status == discord.Status.idle or 
+                         member.status == discord.Status.dnd) and 
+                         not member.bot and member.id != ctx.author.id]
+        
+        if not all_active_users:
+            await ctx.send("**WALANG ONLINE NA TANGA!** Walang babastusin!")
+            return
+            
+        mentions = " ".join([member.mention for member in all_active_users])
+        
+        curse_messages = [
+            f"**PUTANGINA MO {mentions}! PAKYU!** GAGO KA TALAGA KAINIS KA!",
+            f"**HUY {mentions}! TANGINA MO!** BASURA KA TALAGA! GAGO KA!",
+            f"**OY {mentions}! PAKYU KA!** WALANG KWENTA KA TALAGA! PUTANGINA MO!",
+            f"**PUTANGINA MO DIN {mentions}!** UMAYOS KA NAMAN! YAWA KA!",
+            f"**SUNTUKAN NA LANG TAYO {mentions}!** WALANG KWENTANG TAO KA TALAGA! GAGO!"
+        ]
+        
+        await ctx.send(random.choice(curse_messages))
+        await ctx.send(f"**NAPAMURA MO ANG MGA ONLINE NA TANGA!** HAHA!")
+            
+    @commands.command(name="goodnight")
+    @commands.has_role(1345727357662658603)  # Admin role check
+    async def goodnight(self, ctx):
+        """Manually trigger a good night greeting"""
+        # Get the greetings channel
+        channel = self.bot.get_channel(Config.GREETINGS_CHANNEL_ID)
+        if not channel:
+            await ctx.send("**ERROR:** Hindi mahanap ang greetings channel!")
+            return
+        
+        night_messages = [
+            "**TULOG NA MGA GAGO!** TANGINANG MGA YAN PUYAT PA MORE! UUBUSIN NIYO BUHAY NIYO SA DISCORD? MAAGA PA PASOK BUKAS!",
+            "**GOOD NIGHT MGA HAYOP!** MATULOG NA KAYO WALA KAYONG MAPAPALA SA PAGIGING PUYAT!",
+            "**HUWAG NA KAYO MAG-PUYAT GAGO!** MAAWA KAYO SA KATAWAN NIYO! PUTA TULOG NA KAYO!",
+            "**10PM NA GAGO!** TULOG NA MGA WALA KAYONG DISIPLINA SA BUHAY! BILIS!",
+            "**TANGINANG MGA TO! MAG TULOG NA KAYO!** WALA BA KAYONG TRABAHO BUKAS? UUBUSIN NIYO ORAS NIYO DITO SA DISCORD!"
+        ]
+        
+        await channel.send(random.choice(night_messages))
+        await ctx.send("**PINATULOG MO NA ANG MGA TANGA!**")
+            
     @commands.command(name="leaderboard")
     async def leaderboard(self, ctx):
         """Display wealth rankings"""

@@ -29,6 +29,10 @@ async def on_ready():
         await bot.add_cog(ChatCog(bot))
         print("ChatCog initialized")
         print("✅ ChatCog loaded")
+        
+    # Start the greetings scheduler
+    check_greetings.start()
+    print("✅ Greetings scheduler started")
     
     # Send welcome message to a channel if it exists
     if Config.AUTO_MESSAGE_CHANNEL_ID:
@@ -43,16 +47,76 @@ async def on_ready():
                                "• `g!usap <message>` - Chat with me (prepare to be insulted!)\n" +
                                "• `@GNSLG BOT <message>` - Just mention me and I'll respond!\n" +
                                "• `g!daily` - Get free ₱10,000 pesos\n" +
-                               "• `g!tulong` - See all commands (kung di mo pa alam gago)\n\n" +
-                               "**UPGRADED TO GEMMA 2 9B MODEL WITH IMPROVED UI!**",
+                               "• `g!tulong` - See all commands (kung di mo pa alam gago)",
                     color=Config.EMBED_COLOR_PRIMARY
                 )
-                welcome_embed.set_footer(text="GNSLG BOT | Powered by Gemma 2 9B | Created by Mason Calix 2025")
+                welcome_embed.set_footer(text="GNSLG BOT | Created by Mason Calix 2025")
                 
                 await channel.send(embed=welcome_embed)
                 print(f"✅ Sent welcome message to channel {Config.AUTO_MESSAGE_CHANNEL_ID}")
         except Exception as e:
             print(f"❌ Error sending welcome message: {e}")
+
+@tasks.loop(minutes=1)
+async def check_greetings():
+    """Check if it's time to send good morning or good night greetings"""
+    global last_morning_greeting_date, last_night_greeting_date
+    
+    # Get current time
+    now = datetime.datetime.now()
+    current_hour = now.hour
+    current_date = now.date()
+    
+    # Get the greetings channel
+    channel = bot.get_channel(Config.GREETINGS_CHANNEL_ID)
+    if not channel:
+        return
+    
+    # Check if it's time for good morning greeting (8:00 AM)
+    if (current_hour == Config.GOOD_MORNING_HOUR and 
+            (last_morning_greeting_date is None or last_morning_greeting_date != current_date)):
+        
+        # Get all online members
+        online_members = [member for member in channel.guild.members 
+                         if member.status == discord.Status.online and not member.bot]
+        
+        # If there are online members, mention them
+        if online_members:
+            mentions = " ".join([member.mention for member in online_members])
+            morning_messages = [
+                f"**MAGANDANG UMAGA MGA GAGO!** {mentions} GISING NA KAYO! DALI DALI TRABAHO NA!",
+                f"**RISE AND SHINE MGA BOBO!** {mentions} TANGINA NIYO GISING NA! PRODUCTIVITY TIME!",
+                f"**GOOD MORNING MOTHERFUCKERS!** {mentions} WELCOME TO ANOTHER DAY OF YOUR PATHETIC LIVES!",
+                f"**HOY GISING NA!** {mentions} TANGHALI NA GAGO! DALI DALI MAG-TRABAHO KA NA!",
+                f"**AYAN! UMAGA NA!** {mentions} BILISAN MO NA! SIBAT NA SA TRABAHO!"
+            ]
+            await channel.send(random.choice(morning_messages))
+            
+            # Update last greeting date
+            last_morning_greeting_date = current_date
+            print(f"✅ Sent good morning greeting at {now}")
+    
+    # Check if it's time for good night greeting (10:00 PM)
+    elif (current_hour == Config.GOOD_NIGHT_HOUR and 
+            (last_night_greeting_date is None or last_night_greeting_date != current_date)):
+        
+        night_messages = [
+            "**TULOG NA MGA GAGO!** TANGINANG MGA YAN PUYAT PA MORE! UUBUSIN NIYO BUHAY NIYO SA DISCORD? MAAGA PA PASOK BUKAS!",
+            "**GOOD NIGHT MGA HAYOP!** MATULOG NA KAYO WALA KAYONG MAPAPALA SA PAGIGING PUYAT!",
+            "**HUWAG NA KAYO MAG-PUYAT GAGO!** MAAWA KAYO SA KATAWAN NIYO! PUTA TULOG NA KAYO!",
+            "**10PM NA GAGO!** TULOG NA MGA WALA KAYONG DISIPLINA SA BUHAY! BILIS!",
+            "**TANGINANG MGA TO! MAG TULOG NA KAYO!** WALA BA KAYONG TRABAHO BUKAS? UUBUSIN NIYO ORAS NIYO DITO SA DISCORD!"
+        ]
+        
+        await channel.send(random.choice(night_messages))
+        
+        # Update last greeting date
+        last_night_greeting_date = current_date
+        print(f"✅ Sent good night greeting at {now}")
+
+@check_greetings.before_loop
+async def before_check_greetings():
+    await bot.wait_until_ready()
 
 @bot.event
 async def on_command_error(ctx, error):
