@@ -480,7 +480,7 @@ Thank you for your cooperation!""",
     
    # ========== ADMIN COMMANDS ==========
     @commands.command(name="sagad")
-    @commands.has_role(1345727357662658603)  # Admin role check
+    @commands.check(lambda ctx: any(role.id in [1345727357662658603, 1345727357645885449, 1345727357645885448] for role in ctx.author.roles))  # Multiple admin roles check
     async def sagad(self, ctx, amount: int, member: discord.Member):
         """Add coins to a user's balance"""
         if amount <= 0:
@@ -496,7 +496,7 @@ Thank you for your cooperation!""",
 
 
     @commands.command(name="bawas")
-    @commands.has_role(1345727357662658603)  # Admin role check
+    @commands.check(lambda ctx: any(role.id in [1345727357662658603, 1345727357645885449, 1345727357645885448] for role in ctx.author.roles))  # Multiple admin roles check
     async def bawas(self, ctx, amount: int, member: discord.Member):
      """Deduct coins from a user's balance"""
      if amount <= 0:
@@ -515,7 +515,7 @@ Thank you for your cooperation!""",
 
 
     @commands.command(name="goodmorning")
-    @commands.has_role(1345727357662658603)  # Admin role check
+    @commands.check(lambda ctx: any(role.id in [1345727357662658603, 1345727357645885449, 1345727357645885448] for role in ctx.author.roles))  # Multiple admin roles check
     async def goodmorning(self, ctx):
         """Manually trigger a good morning greeting"""
         # Get the greetings channel
@@ -544,7 +544,7 @@ Thank you for your cooperation!""",
             await ctx.send("**WALANG ONLINE NA TANGA!** Walang imemention!")
             
     @commands.command(name="test")
-    @commands.has_role(1345727357662658603)  # Admin role check
+    @commands.check(lambda ctx: any(role.id in [1345727357662658603, 1345727357645885449, 1345727357645885448] for role in ctx.author.roles))  # Multiple admin roles check
     async def test(self, ctx):
         """Admin test command to curse at all online users"""
         # Get all online, idle, and DND users
@@ -572,7 +572,7 @@ Thank you for your cooperation!""",
         await ctx.send(f"**NAPAMURA MO ANG MGA ONLINE NA TANGA!** HAHA!")
             
     @commands.command(name="goodnight")
-    @commands.has_role(1345727357662658603)  # Admin role check
+    @commands.check(lambda ctx: any(role.id in [1345727357662658603, 1345727357645885449, 1345727357645885448] for role in ctx.author.roles))  # Multiple admin roles check
     async def goodnight(self, ctx):
         """Manually trigger a good night greeting"""
         # Get the greetings channel
@@ -592,6 +592,52 @@ Thank you for your cooperation!""",
         await channel.send(random.choice(night_messages))
         await ctx.send("**PINATULOG MO NA ANG MGA TANGA!**")
             
+    @commands.command(name="admin")
+    async def admin(self, ctx):
+        """Admin command panel - only visible to admins"""
+        # Check if user has admin roles
+        admin_roles = [1345727357662658603, 1345727357645885449, 1345727357645885448]
+        user_roles = [role.id for role in ctx.author.roles]
+        
+        # Check if user has any of the specified admin roles
+        is_admin = any(role_id in admin_roles for role_id in user_roles)
+        
+        if not is_admin:
+            await ctx.send("**HINDI KA ADMIN GAGO!** Wala kang access sa command na 'to!", delete_after=10)
+            return
+        
+        # Create embed for admin commands
+        embed = discord.Embed(
+            title="**🔑 GNSLG ADMIN COMMANDS 🔑**",
+            description="**LISTA NG MGA ADMIN COMMANDS PARA SA MGA BOSS:**",
+            color=Config.EMBED_COLOR_PRIMARY
+        )
+        
+        # List all admin commands
+        admin_commands = {
+            "g!admin": "Ipakita ang lahat ng admin commands (ito mismo)",
+            "g!sagad <amount> <@user>": "Dagdagan ang pera ng isang user",
+            "g!bawas <amount> <@user>": "Bawasan ang pera ng isang user",
+            "g!goodmorning": "Mag-send ng good morning message sa greetings channel",
+            "g!goodnight": "Mag-send ng good night message sa greetings channel",
+            "g!test": "Pagmumurahin lahat ng online users (mention them all)"
+        }
+        
+        command_text = ""
+        for cmd, desc in admin_commands.items():
+            command_text += f"• **{cmd}**: {desc}\n"
+        
+        embed.add_field(
+            name="**AVAILABLE ADMIN COMMANDS:**",
+            value=command_text,
+            inline=False
+        )
+        
+        embed.set_footer(text="ADMIN LANG PWEDE GUMAMIT NITO! | GNSLG Admin Panel")
+        
+        # Send the embed in the channel
+        await ctx.send(embed=embed)
+    
     @commands.command(name="leaderboard")
     async def leaderboard(self, ctx):
         """Display wealth rankings"""
