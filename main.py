@@ -29,9 +29,9 @@ async def on_ready():
         try:
             channel = bot.get_channel(Config.AUTO_MESSAGE_CHANNEL_ID)
             if channel:
-                # Create fancy animated welcome embed
+                # Create cleaner welcome embed without images
                 welcome_embed = discord.Embed(
-                    title="🔥 **GNSLG BOT IS NOW ONLINE!** 🔥",
+                    title="**GNSLG BOT IS NOW ONLINE!**",
                     description="**GISING NA ANG PINAKA-KUPAL NA BOT SA DISCORD! PUTANGINA NIYO MGA GAGO! READY NA AKONG MANG-INSULTO!**\n\n" +
                                "**Try these commands:**\n" +
                                "• `g!usap <message>` - Chat with me (prepare to be insulted!)\n" +
@@ -40,7 +40,6 @@ async def on_ready():
                                "**UPGRADED TO GEMMA 2 9B MODEL WITH IMPROVED UI!**",
                     color=Config.EMBED_COLOR_PRIMARY
                 )
-                welcome_embed.set_image(url="https://i.imgur.com/D2zSFDk.png")  # Animated welcome image
                 welcome_embed.set_footer(text="GNSLG BOT | Powered by Gemma 2 9B | Created by Mason Calix 2025")
                 
                 await channel.send(embed=welcome_embed)
@@ -52,12 +51,12 @@ async def on_ready():
 async def on_command_error(ctx, error):
     """Global error handler"""
     if isinstance(error, commands.CommandNotFound):
-        await ctx.send("❌ WALANG GANYANG COMMAND! BASA BASA DIN PAG MAY TIME! 🤬\nTRY MO `g!tulong` PARA DI KA KAKUPALKUPAL! 😤")
+        await ctx.send("**WALANG GANYANG COMMAND!** BASA BASA DIN PAG MAY TIME!\nTRY MO `g!tulong` PARA DI KA KAKUPALKUPAL!")
     elif isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send("⚠️ BOBO! KULANG YUNG COMMAND MO! TYPE MO `g!tulong` PARA MALAMAN MO PAANO GAMITIN! 🤬")
+        await ctx.send("**BOBO! KULANG YUNG COMMAND MO!** TYPE MO `g!tulong` PARA MALAMAN MO PAANO GAMITIN!")
     else:
-        await ctx.send(f"⚠️ PUTANGINA MAY ERROR! TAWAG KA NALANG ULIT MAMAYA! 😫")
-        print(f"⚠️ Error: {error}")
+        await ctx.send(f"**PUTANGINA MAY ERROR!** TAWAG KA NALANG ULIT MAMAYA!")
+        print(f"Error: {error}")
 
 def run_flask():
     """Runs a dummy Flask server to keep Render active"""

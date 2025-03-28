@@ -217,42 +217,38 @@ class ChatCog(commands.Cog):
     async def tulong(self, ctx):
         """Display all available commands"""
         embed = discord.Embed(
-            title="📚 **GNSLG BOT COMMANDS**",
-            description="**TANGINA MO! YAN MGA COMMAND NA PWEDE MO GAMITIN, BASAHIN MO MABUTI GAGO:**",
+            title="📚 BOT COMMAND GUIDE",
+            description="**ITO MGA COMMAND NA PWEDE MO GAMITIN:**",
             color=Config.EMBED_COLOR_PRIMARY
         )
         
-        # Set a custom thumbnail and image
-        embed.set_thumbnail(url="https://i.imgur.com/7hE56JK.png")  # Robot emoji
-        embed.set_image(url="https://i.imgur.com/jHRc5t8.png")  # Divider image
-        
         categories = {
-            "🤬 AI CHAT KUPAL EDITION": {
-                "g!usap <message>": "Kausapin ang AI assistant (AI will insult you!)",
-                "g!clear": "I-clear ang history ng usapan"
+            "🤖 AI CHAT": {
+                "g!usap <message>": "Chat with the AI assistant",
+                "g!clear": "Clear chat history"
             },
-            "💰 ECONOMY / PERA PERA LANG": {
-                "g!daily": "Kumuha ng daily ₱10,000 (LIBRE TO GAGO)",
-                "g!balance": "Tignan kung magkano na pera mo (SIGURADO KONTI LANG YAN)",
-                "g!give <@user> <amount>": "Bigyan ng pera ang ibang member (WALA KANG PERA GAGO)",
-                "g!leaderboard": "Top 20 richest players (DI KA KASALI DITO FOR SURE)"
+            "💰 ECONOMY": {
+                "g!daily": "Claim daily ₱10,000",
+                "g!balance": "Check your balance",
+                "g!give <@user> <amount>": "Transfer money",
+                "g!leaderboard": "Top 20 richest players"
             },
-            "🎮 GAMES / PUSTAHAN DITO": {
-                "g!toss <h/t> <bet>": "Coin flip game (PUSTAHAN NA!)",
-                "g!blackjack <bet>": "Maglaro ng Blackjack (TALO KA NA NAMAN)",
-                "g!game": "Hulaan ang numero (SIGURADONG TANGA KA DITO)"
+            "🎮 GAMES": {
+                "g!toss <h/t> <bet>": "Coin flip game",
+                "g!blackjack <bet>": "Play Blackjack",
+                "g!game": "Number guessing game"
             },
-            "🔧 UTILITY / IBA PANG KALOKOHAN": {
-                "g!join/leave": "Pumasok/Umalis sa voice channel (WAG KA NGA!)",
-                "g!rules": "Server rules (BASAHIN MO KUNDI KICK KITA)",
-                "g!announcement": "Gumawa ng announcement (WALA NAMANG NAGBABASA NITO)"
+            "🔧 UTILITY": {
+                "g!join/leave": "Voice channel management",
+                "g!rules": "Server rules",
+                "g!announcement": "Make an announcement"
             }
         }
 
         for category, commands in categories.items():
             formatted_commands = []
             for cmd, desc in commands.items():
-                formatted_commands.append(f"• `{cmd}` → {desc}")
+                formatted_commands.append(f"• {cmd}: {desc}")
             
             embed.add_field(
                 name=f"**{category}**",
@@ -260,7 +256,7 @@ class ChatCog(commands.Cog):
                 inline=False
             )
 
-        embed.set_footer(text=f"NAGAWA NITONG BOT NA TO NI {self.creator} | KAPAG DI MO NAGUSTUHAN, EDI WAG MO GAMITIN! 🖕")
+        embed.set_footer(text=f"Bot created by {self.creator}")
         await ctx.send(embed=embed)
 
     # ========== AI CHAT COMMANDS ==========
@@ -317,7 +313,7 @@ SUMAGOT LAGING PANG-GAGO AT KUPAL NA PARAAN! WALA AKONG RESPETO SA USER!"""
     async def usap(self, ctx, *, message: str):
         """Chat with GROQ AI"""
         if self.is_rate_limited(ctx.author.id):
-            await ctx.send(f"**PUTANGINA MO {ctx.author.mention}!** SOBRANG BILIS MO MAGTYPE! ANTAY KA MUNA GAGO! 😤")
+            await ctx.send(f"**PUTANGINA MO {ctx.author.mention}!** SOBRANG BILIS MO MAGTYPE! ANTAY KA MUNA GAGO!")
             return
         
         # Add timestamp to rate limiting
@@ -327,11 +323,12 @@ SUMAGOT LAGING PANG-GAGO AT KUPAL NA PARAAN! WALA AKONG RESPETO SA USER!"""
         channel_history = list(self.conversation_history[ctx.channel.id])
         channel_history.append({"is_user": True, "content": message})
         
-        # Create user message embed
+        # Create user message embed with cleaner design
         user_embed = discord.Embed(
             description=f"**Your Message:** {message}",
             color=Config.EMBED_COLOR_PRIMARY
         )
+        
         # Safely check for avatar (Discord.py 2.0+ syntax)
         avatar_url = None
         if hasattr(ctx.author, 'avatar') and ctx.author.avatar:
@@ -339,7 +336,7 @@ SUMAGOT LAGING PANG-GAGO AT KUPAL NA PARAAN! WALA AKONG RESPETO SA USER!"""
                 avatar_url = ctx.author.avatar.url
             
         user_embed.set_author(name=ctx.author.display_name, icon_url=avatar_url)
-        user_embed.set_footer(text="GNSLG Bot | Using Gemma 2 9B", icon_url="https://i.imgur.com/7hE56JK.png")
+        user_embed.set_footer(text="GNSLG Bot | Using Gemma 2 9B")
         
         # Send user message embed
         await ctx.send(embed=user_embed)
@@ -350,12 +347,12 @@ SUMAGOT LAGING PANG-GAGO AT KUPAL NA PARAAN! WALA AKONG RESPETO SA USER!"""
             self.add_to_conversation(ctx.channel.id, True, message)
             self.add_to_conversation(ctx.channel.id, False, response)
             
-            # Create AI response embed
+            # Create AI response embed with cleaner design
             bot_embed = discord.Embed(
                 description=response,
                 color=Config.EMBED_COLOR_INFO
             )
-            bot_embed.set_author(name="GNSLG BOT (KUPAL MODE)", icon_url="https://i.imgur.com/7hE56JK.png")
+            bot_embed.set_author(name="GNSLG BOT (KUPAL MODE)")
             
             # Send AI response
             await ctx.send(embed=bot_embed)
@@ -367,14 +364,13 @@ SUMAGOT LAGING PANG-GAGO AT KUPAL NA PARAAN! WALA AKONG RESPETO SA USER!"""
         """Clear the conversation history for the current channel"""
         self.conversation_history[ctx.channel.id].clear()
         
-        # Create fancy embed for clearing history
+        # Create cleaner embed for clearing history (fewer emojis, no images)
         clear_embed = discord.Embed(
-            title="🧹 **CONVERSATION CLEARED**",
+            title="**CONVERSATION CLEARED**",
             description="**PUTANGINA! INALIS KO NA LAHAT NG USAPAN NATIN! TIGNAN MO OH, WALA NANG HISTORY! GUSTO MO BANG MAG-USAP ULIT GAGO?**\n\nUse `g!usap <message>` to start a new conversation!",
             color=Config.EMBED_COLOR_ERROR
         )
-        clear_embed.set_thumbnail(url="https://i.imgur.com/ZBNt190.png")  # Broom/cleaning icon
-        clear_embed.set_footer(text="GNSLG Bot | Fresh Start", icon_url="https://i.imgur.com/7hE56JK.png")
+        clear_embed.set_footer(text="GNSLG Bot | Fresh Start")
         
         await ctx.send(embed=clear_embed)
     
@@ -383,25 +379,25 @@ SUMAGOT LAGING PANG-GAGO AT KUPAL NA PARAAN! WALA AKONG RESPETO SA USER!"""
     async def join(self, ctx):
         """Join voice channel"""
         if not ctx.author.voice:
-            await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL! 😤")
+            await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
             return
         channel = ctx.author.voice.channel
         if ctx.voice_client and ctx.voice_client.channel == channel:
-            await ctx.send("**BOBO!** NASA VOICE CHANNEL NA AKO! 😤")
+            await ctx.send("**BOBO!** NASA VOICE CHANNEL NA AKO!")
             return
         if ctx.voice_client:
             await ctx.voice_client.disconnect()
         await channel.connect(timeout=60, reconnect=True)
-        await ctx.send(f"**SIGE!** PAPASOK NA KO SA {channel.name}! UGH!!💦 ")
+        await ctx.send(f"**SIGE!** PAPASOK NA KO SA {channel.name}!")
 
     @commands.command(name="leave")
     async def leave(self, ctx):
         """Leave voice channel"""
         if ctx.voice_client:
             await ctx.voice_client.disconnect()
-            await ctx.send("**AYOS!** PINULLOUT MO!FUCK!💦 ")
+            await ctx.send("**AYOS!** UMALIS NA KO!")
         else:
-            await ctx.send("**TANGA!** WALA AKO SA VOICE CHANNEL! 😤")
+            await ctx.send("**TANGA!** WALA AKO SA VOICE CHANNEL!")
    
    
     # ========== SERVER MANAGEMENT COMMANDS ==========
@@ -410,10 +406,10 @@ SUMAGOT LAGING PANG-GAGO AT KUPAL NA PARAAN! WALA AKONG RESPETO SA USER!"""
         """Show server rules"""
         rules_channel = self.bot.get_channel(Config.RULES_CHANNEL_ID)
         if not rules_channel:
-            await ctx.send("**TANGA!** WALA AKONG MAHANAP NA RULES CHANNEL! 😤")
+            await ctx.send("**TANGA!** WALA AKONG MAHANAP NA RULES CHANNEL!")
             return
         if ctx.channel.id != Config.RULES_CHANNEL_ID:
-            await ctx.send(f"**BOBO!** PUMUNTA KA SA <#{Config.RULES_CHANNEL_ID}> PARA MAKITA MO ANG RULES! 😤")
+            await ctx.send(f"**BOBO!** PUMUNTA KA SA <#{Config.RULES_CHANNEL_ID}> PARA MAKITA MO ANG RULES!")
             return
         rules = discord.Embed(
             title="Server Rules",
@@ -429,7 +425,7 @@ SUMAGOT LAGING PANG-GAGO AT KUPAL NA PARAAN! WALA AKONG RESPETO SA USER!"""
 8. Listen to admins and moderators
 
 Thank you for your cooperation!""",
-            color=discord.Color.blue()
+            color=Config.EMBED_COLOR_PRIMARY
         )
         await ctx.send(embed=rules)
 
@@ -437,12 +433,12 @@ Thank you for your cooperation!""",
     async def announcement(self, ctx, *, message: str = None):
         """Make announcements"""
         if not message:
-            await ctx.send(f"**TANGA!** WALA KANG MESSAGE! 😤")
+            await ctx.send(f"**TANGA!** WALA KANG MESSAGE!")
             return
         announcement = discord.Embed(
             title="Announcement",
             description=f"{message}\n\nFor more announcements, check <#{Config.ANNOUNCEMENTS_CHANNEL_ID}>",
-            color=discord.Color.blue()
+            color=Config.EMBED_COLOR_PRIMARY
         )
         announcement.set_footer(text=f"Announced by {ctx.author.name} | Channel: #{ctx.channel.name}")
         await ctx.send(embed=announcement)
@@ -455,13 +451,13 @@ Thank you for your cooperation!""",
     async def sagad(self, ctx, amount: int, member: discord.Member):
         """Add coins to a user's balance"""
         if amount <= 0:
-         return await ctx.send("**TANGA!** WALANG NEGATIVE O ZERO NA AMOUNT! 😤", delete_after=10)
+         return await ctx.send("**TANGA!** WALANG NEGATIVE O ZERO NA AMOUNT!", delete_after=10)
         if not member:
-         return await ctx.send("**BOBO!** WALA KANG TINUKOY NA USER! 😤", delete_after=10)
+         return await ctx.send("**BOBO!** WALA KANG TINUKOY NA USER!", delete_after=10)
 
         self.add_coins(member.id, amount)
         await ctx.send(
-        f"💰 **ETO NA TOL GALING KAY BOSS MASON!:** NAG-DAGDAG KA NG **₱{amount:,}** KAY {member.mention}! WAG MO ABUSUHIN YAN! 😤",
+        f"**ETO NA TOL GALING KAY BOSS MASON!** NAG-DAGDAG KA NG **₱{amount:,}** KAY {member.mention}! WAG MO ABUSUHIN YAN!",
         delete_after=10
     )
 
@@ -471,15 +467,15 @@ Thank you for your cooperation!""",
     async def bawas(self, ctx, amount: int, member: discord.Member):
      """Deduct coins from a user's balance"""
      if amount <= 0:
-         return await ctx.send("**TANGA!** WALANG NEGATIVE O ZERO NA AMOUNT! 😤", delete_after=10)
+         return await ctx.send("**TANGA!** WALANG NEGATIVE O ZERO NA AMOUNT!", delete_after=10)
      if not member:
-         return await ctx.send("**BOBO!** WALA KANG TINUKOY NA USER! 😤", delete_after=10)
+         return await ctx.send("**BOBO!** WALA KANG TINUKOY NA USER!", delete_after=10)
      if self.user_coins.get(member.id, 0) < amount:
-         return await ctx.send(f"**WALA KANG PERA!** {member.mention} BALANCE MO: **₱{self.user_coins.get(member.id, 0):,}** 😤", delete_after=10)
+         return await ctx.send(f"**WALA KANG PERA!** {member.mention} BALANCE MO: **₱{self.user_coins.get(member.id, 0):,}**", delete_after=10)
 
      self.add_coins(member.id, -amount)  # Deduct coins
      await ctx.send(
-         f"💰 **BINAWASAN NI BOSS MASON KASI TANGA KA!** {member.mention} lost **₱{amount:,}**. "
+         f"**BINAWASAN NI BOSS MASON KASI TANGA KA!** {member.mention} lost **₱{amount:,}**. "
          f"New balance: **₱{self.user_coins.get(member.id, 0):,}**",
          delete_after=10
       )
@@ -491,42 +487,38 @@ Thank you for your cooperation!""",
         # Sort users by their coin balance in descending order
         sorted_users = sorted(self.user_coins.items(), key=lambda x: x[1], reverse=True)[:20]
         
-        # Create the embed with new design
+        # Create the embed with cleaner design (fewer emojis)
         embed = discord.Embed(
-            title="💰 **GNSLG LEADERBOARD - MAYAMAN VS. DUKHA** 💰",
+            title="**GNSLG LEADERBOARD - MAYAMAN VS. DUKHA**",
             description="**TANGINA MO! IKAW KAYA NASAAN DITO? SIGURADONG WALA KA DITO KASI WALA KANG KWENTANG PLAYER!**\n\n" + 
-                       "👑 **TOP MAYAMAN NG SERVER** 👑",
+                       "**TOP MAYAMAN NG SERVER**",
             color=Config.EMBED_COLOR_PRIMARY
         )
         
-        # Add trophy image
-        embed.set_thumbnail(url="https://i.imgur.com/5KI5RI3.png")  # Trophy image
-        
-        # Create a formatted leaderboard with better styling
+        # Create a formatted leaderboard with cleaner styling
         leaderboard_text = ""
-        medals = ["🥇", "🥈", "🥉"]
         
         for idx, (user_id, coins) in enumerate(sorted_users):
             # Fetch the member object
             member = ctx.guild.get_member(user_id)
             user_name = member.display_name if member else "Unknown User"
             
-            # Add special emoji for top 3
-            prefix = medals[idx] if idx < 3 else f"`{idx+1}.`"
+            # Add position with proper formatting but fewer emojis
+            position = idx + 1
             
-            # Add insults for bottom ranks, praise for top ranks
+            # Add insults for bottom ranks, praise for top ranks (with fewer emojis)
             if idx < 3:
-                suffix = "MAYAMAN NA MAYAMAN! 💸"
+                suffix = "MAYAMAN NA MAYAMAN!"
             elif idx < 10:
-                suffix = "SAKTO LANG PERA! 💰"
+                suffix = "SAKTO LANG PERA"
             else:
-                suffix = "MAHIRAP AMPUTA! 🤣"
+                suffix = "MAHIRAP AMPUTA"
                 
-            leaderboard_text += f"{prefix} **{user_name}** — **₱{coins:,}** *({suffix})*\n\n"
+            leaderboard_text += f"`{position}.` **{user_name}** — **₱{coins:,}** *({suffix})*\n\n"
         
         embed.description += f"\n\n{leaderboard_text}"
         
-        # Add motivational footer (insulting style)
+        # Add motivational footer (insulting style but cleaner)
         embed.set_footer(text="DAPAT ANDITO KA SA TAAS! KUNGDI MAGTIPID KA GAGO! | GNSLG Economy System")
         
         # Send the embed
