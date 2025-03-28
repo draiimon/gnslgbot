@@ -47,7 +47,6 @@ python main.py
 ## Commands
 
 - `g!usap <message>` - Chat with the AI assistant
-- `g!ask <question>` - Ask a one-off question
 - `g!clear` - Clear conversation history
 - `g!join` - Join voice channel
 - `g!leave` - Leave voice channel

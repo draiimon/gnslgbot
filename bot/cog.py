@@ -219,7 +219,6 @@ class ChatCog(commands.Cog):
         categories = {
             "🤖 AI CHAT": {
                 "g!usap <message>": "Chat with the AI assistant",
-                "g!ask <question>": "One-time question session",
                 "g!clear": "Clear chat history"
             },
             "💰 ECONOMY": {
@@ -300,12 +299,7 @@ class ChatCog(commands.Cog):
             self.add_to_conversation(ctx.channel.id, False, response)
             await ctx.send(f"{ctx.author.mention} {response}")
 
-    @commands.command(name="ask")
-    async def ask(self, ctx, *, question):
-        """Ask the AI a one-off question without storing conversation"""
-        async with ctx.typing():
-            response = await self.get_ai_response([{"is_user": True, "content": question}])
-            await ctx.send(f"{ctx.author.mention} {response}")
+# Removed g!ask command as requested, g!usap is now the only AI chat command
 
     @commands.command(name="clear")
     async def clear_history(self, ctx):
