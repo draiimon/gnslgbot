@@ -13,8 +13,13 @@ class Config:
     # Channel IDs
     RULES_CHANNEL_ID = 1345727358015115385
     ANNOUNCEMENTS_CHANNEL_ID = 1345727358015115389
-    AUTO_MESSAGE_CHANNEL_ID = 1345727363341746194  
+    AUTO_MESSAGE_CHANNEL_ID = 1345727358015115389  # Updated to use the announcements channel
+    GREETINGS_CHANNEL_ID = 1345727358149328952  # Channel for morning/night greetings
     JOCKIE_MUSIC_USER_ID = 411916947773587456  
+    
+    # Greetings settings
+    GOOD_MORNING_HOUR = 8  # 8:00 AM
+    GOOD_NIGHT_HOUR = 22   # 10:00 PM
 
     # Rate limiting settings
     RATE_LIMIT_MESSAGES = 5  

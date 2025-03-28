@@ -1,16 +1,22 @@
 import os
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from bot.config import Config
 from bot.cog import ChatCog
 from flask import Flask
 import threading
+import datetime
+import random
 
 # Initialize bot with command prefix and remove default help command
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix=Config.COMMAND_PREFIX, 
                    intents=intents,
                    help_command=None)  # Removed default help command
+
+# Global variables for tracking greetings
+last_morning_greeting_date = None
+last_night_greeting_date = None
 
 @bot.event
 async def on_ready():
@@ -35,6 +41,7 @@ async def on_ready():
                     description="**GISING NA ANG PINAKA-KUPAL NA BOT SA DISCORD! PUTANGINA NIYO MGA GAGO! READY NA AKONG MANG-INSULTO!**\n\n" +
                                "**Try these commands:**\n" +
                                "• `g!usap <message>` - Chat with me (prepare to be insulted!)\n" +
+                               "• `@GNSLG BOT <message>` - Just mention me and I'll respond!\n" +
                                "• `g!daily` - Get free ₱10,000 pesos\n" +
                                "• `g!tulong` - See all commands (kung di mo pa alam gago)\n\n" +
                                "**UPGRADED TO GEMMA 2 9B MODEL WITH IMPROVED UI!**",

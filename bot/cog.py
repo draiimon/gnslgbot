@@ -25,6 +25,44 @@ class ChatCog(commands.Cog):
         self.blackjack_games = {}
         self.ADMIN_ROLE_ID = 1345727357662658603
         print("ChatCog initialized")
+        
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        """Listen for messages that mention the bot and respond to them"""
+        # Ignore messages from the bot itself
+        if message.author.bot:
+            return
+            
+        # Check if the bot is mentioned in the message
+        if self.bot.user in message.mentions:
+            # Extract the content without the mention
+            content = message.content.replace(f'<@{self.bot.user.id}>', '').strip()
+            
+            # Skip if there's no actual content after removing the mention
+            if not content:
+                await message.channel.send("Oy, bakit mo ako tinatawag? May gusto ka bang sabihin?")
+                return
+                
+            # Check for rate limiting
+            if self.is_rate_limited(message.author.id):
+                await message.channel.send(f"**Huy {message.author.mention}!** Ang bilis mo naman magtype! Sandali lang muna, naglo-load pa ako. Parang text blast ka eh! 😅")
+                return
+                
+            # Add timestamp for rate limiting
+            self.user_message_timestamps[message.author.id].append(time.time())
+            
+            # Prepare conversation history for the channel
+            channel_history = list(self.conversation_history[message.channel.id])
+            channel_history.append({"is_user": True, "content": content})
+            
+            # Get AI response with typing indicator
+            async with message.channel.typing():
+                response = await self.get_ai_response(channel_history)
+                self.add_to_conversation(message.channel.id, True, content)
+                self.add_to_conversation(message.channel.id, False, response)
+                
+                # Send AI response as plain text
+                await message.channel.send(response)
 
     # ========== HELPER FUNCTIONS ==========
     def get_user_balance(self, user_id):
@@ -225,6 +263,7 @@ class ChatCog(commands.Cog):
         categories = {
             "🤖 AI CHAT": {
                 "g!usap <message>": "Chat with the AI assistant",
+                "@GNSLG BOT <message>": "Mention the bot to chat",
                 "g!clear": "Clear chat history"
             },
             "💰 ECONOMY": {
@@ -352,11 +391,11 @@ MAGING SIMSIMI-LIKE NA CHATBOT NA MAY KONTING PINOY ATTITUDE!"""
         """Clear the conversation history for the current channel"""
         self.conversation_history[ctx.channel.id].clear()
         
-        # Create friendlier embed for clearing history (SimSimi style)
+        # Create cleaner embed for clearing history (fewer emojis, no images)
         clear_embed = discord.Embed(
-            title="**Conversation Cleared**",
-            description="**Ayun oh, inalis ko na lahat ng usapan natin!** Parang bagong kakilala ulit tayo. Wala na akong maalala sa mga dati nating pinag-usapan. 😊\n\nUse `g!usap <message>` to start a new conversation!",
-            color=Config.EMBED_COLOR_INFO
+            title="**CONVERSATION CLEARED**",
+            description="**PUTANGINA! INALIS KO NA LAHAT NG USAPAN NATIN! TIGNAN MO OH, WALA NANG HISTORY! GUSTO MO BANG MAG-USAP ULIT GAGO?**\n\nUse `g!usap <message>` or mention me to start a new conversation!",
+            color=Config.EMBED_COLOR_ERROR
         )
         clear_embed.set_footer(text="GNSLG Bot | Fresh Start")
         
@@ -367,25 +406,25 @@ MAGING SIMSIMI-LIKE NA CHATBOT NA MAY KONTING PINOY ATTITUDE!"""
     async def join(self, ctx):
         """Join voice channel"""
         if not ctx.author.voice:
-            await ctx.send("**Huy!** Di kita makita sa voice channel. Pano ako sasali? 😅")
+            await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
             return
         channel = ctx.author.voice.channel
         if ctx.voice_client and ctx.voice_client.channel == channel:
-            await ctx.send("**Luh!** Kasama mo na ako sa voice channel. Tingnan mo mabuti!")
+            await ctx.send("**BOBO!** NASA VOICE CHANNEL NA AKO!")
             return
         if ctx.voice_client:
             await ctx.voice_client.disconnect()
         await channel.connect(timeout=60, reconnect=True)
-        await ctx.send(f"**Sige! Papasok na ko sa** {channel.name}! Ano plano natin dito?")
+        await ctx.send(f"**SIGE!** PAPASOK NA KO SA {channel.name}!")
 
     @commands.command(name="leave")
     async def leave(self, ctx):
         """Leave voice channel"""
         if ctx.voice_client:
             await ctx.voice_client.disconnect()
-            await ctx.send("**Oks!** Aalis na muna ako. Babalik din ako mamaya!")
+            await ctx.send("**AYOS!** UMALIS NA KO!")
         else:
-            await ctx.send("**Hala?** Hindi naman ako nasa voice channel eh!")
+            await ctx.send("**TANGA!** WALA AKO SA VOICE CHANNEL!")
    
    
     # ========== SERVER MANAGEMENT COMMANDS ==========
@@ -394,10 +433,10 @@ MAGING SIMSIMI-LIKE NA CHATBOT NA MAY KONTING PINOY ATTITUDE!"""
         """Show server rules"""
         rules_channel = self.bot.get_channel(Config.RULES_CHANNEL_ID)
         if not rules_channel:
-            await ctx.send("**Oops!** Parang wala akong makitang rules channel. Baka hindi pa na-setup?")
+            await ctx.send("**TANGA!** WALA AKONG MAHANAP NA RULES CHANNEL!")
             return
         if ctx.channel.id != Config.RULES_CHANNEL_ID:
-            await ctx.send(f"**Pssst!** Punta ka muna sa <#{Config.RULES_CHANNEL_ID}> para makita ang rules!")
+            await ctx.send(f"**BOBO!** PUMUNTA KA SA <#{Config.RULES_CHANNEL_ID}> PARA MAKITA MO ANG RULES!")
             return
         rules = discord.Embed(
             title="Server Rules",
@@ -421,7 +460,7 @@ Thank you for your cooperation!""",
     async def announcement(self, ctx, *, message: str = None):
         """Make announcements"""
         if not message:
-            await ctx.send(f"**Hala!** Wala kang message! Anong ia-announce ko?")
+            await ctx.send(f"**TANGA!** WALA KANG MESSAGE!")
             return
         announcement = discord.Embed(
             title="Announcement",
