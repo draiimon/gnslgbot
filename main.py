@@ -21,7 +21,32 @@ async def on_ready():
     # Ensure cog is loaded
     if not bot.get_cog("ChatCog"):
         await bot.add_cog(ChatCog(bot))
+        print("ChatCog initialized")
         print("✅ ChatCog loaded")
+    
+    # Send welcome message to a channel if it exists
+    if Config.AUTO_MESSAGE_CHANNEL_ID:
+        try:
+            channel = bot.get_channel(Config.AUTO_MESSAGE_CHANNEL_ID)
+            if channel:
+                # Create fancy animated welcome embed
+                welcome_embed = discord.Embed(
+                    title="🔥 **GNSLG BOT IS NOW ONLINE!** 🔥",
+                    description="**GISING NA ANG PINAKA-KUPAL NA BOT SA DISCORD! PUTANGINA NIYO MGA GAGO! READY NA AKONG MANG-INSULTO!**\n\n" +
+                               "**Try these commands:**\n" +
+                               "• `g!usap <message>` - Chat with me (prepare to be insulted!)\n" +
+                               "• `g!daily` - Get free ₱10,000 pesos\n" +
+                               "• `g!tulong` - See all commands (kung di mo pa alam gago)\n\n" +
+                               "**UPGRADED TO GEMMA 2 9B MODEL WITH IMPROVED UI!**",
+                    color=Config.EMBED_COLOR_PRIMARY
+                )
+                welcome_embed.set_image(url="https://i.imgur.com/D2zSFDk.png")  # Animated welcome image
+                welcome_embed.set_footer(text="GNSLG BOT | Powered by Gemma 2 9B | Created by Mason Calix 2025")
+                
+                await channel.send(embed=welcome_embed)
+                print(f"✅ Sent welcome message to channel {Config.AUTO_MESSAGE_CHANNEL_ID}")
+        except Exception as e:
+            print(f"❌ Error sending welcome message: {e}")
 
 @bot.event
 async def on_command_error(ctx, error):

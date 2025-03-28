@@ -12,7 +12,11 @@ class ChatCog(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.groq_client = Groq(api_key=Config.GROQ_API_KEY)
+        # Initialize Groq client with API key (uses the OpenAI-compatible interface)
+        self.groq_client = Groq(
+            api_key=Config.GROQ_API_KEY,
+            base_url="https://api.groq.com/openai/v1"  # Ensure we're using the correct endpoint
+        )
         self.conversation_history = defaultdict(lambda: deque(maxlen=Config.MAX_CONTEXT_MESSAGES))
         self.user_message_timestamps = defaultdict(list)
         self.creator = Config.BOT_CREATOR
@@ -202,8 +206,10 @@ class ChatCog(commands.Cog):
         embed = discord.Embed(
             title="💰 **ACCOUNT BALANCE**",
             description=f"{ctx.author.mention}'s balance: **₱{balance:,}**",
-            color=discord.Color.green()
+            color=Config.EMBED_COLOR_SUCCESS
         )
+        embed.set_thumbnail(url="https://i.imgur.com/o0KkYyz.png")  # Money bag image
+        embed.set_footer(text=f"TANGINA MO! YAN LANG PERA MO? MAGHANAP KA PA NG PERA! | {self.creator}")
         await ctx.send(embed=embed)
 
     # ========== HELP COMMAND ==========
@@ -211,93 +217,148 @@ class ChatCog(commands.Cog):
     async def tulong(self, ctx):
         """Display all available commands"""
         embed = discord.Embed(
-            title="📚 **BOT COMMAND GUIDE**",
-            description="ITO MGA COMMAND NA PWEDE MO GAMITIN:",
-            color=discord.Color.gold()
+            title="📚 **GNSLG BOT COMMANDS**",
+            description="**TANGINA MO! YAN MGA COMMAND NA PWEDE MO GAMITIN, BASAHIN MO MABUTI GAGO:**",
+            color=Config.EMBED_COLOR_PRIMARY
         )
         
+        # Set a custom thumbnail and image
+        embed.set_thumbnail(url="https://i.imgur.com/7hE56JK.png")  # Robot emoji
+        embed.set_image(url="https://i.imgur.com/jHRc5t8.png")  # Divider image
+        
         categories = {
-            "🤖 AI CHAT": {
-                "g!usap <message>": "Chat with the AI assistant",
-                "g!clear": "Clear chat history"
+            "🤬 AI CHAT KUPAL EDITION": {
+                "g!usap <message>": "Kausapin ang AI assistant (AI will insult you!)",
+                "g!clear": "I-clear ang history ng usapan"
             },
-            "💰 ECONOMY": {
-                "g!daily": "Claim daily ₱10,000",
-                "g!balance": "Check your balance",
-                "g!give <@user> <amount>": "Transfer money",
-                "g!leaderboard": "Top 20 richest players"
+            "💰 ECONOMY / PERA PERA LANG": {
+                "g!daily": "Kumuha ng daily ₱10,000 (LIBRE TO GAGO)",
+                "g!balance": "Tignan kung magkano na pera mo (SIGURADO KONTI LANG YAN)",
+                "g!give <@user> <amount>": "Bigyan ng pera ang ibang member (WALA KANG PERA GAGO)",
+                "g!leaderboard": "Top 20 richest players (DI KA KASALI DITO FOR SURE)"
             },
-            "🎮 GAMES": {
-                "g!toss <h/t> <bet>": "Coin flip game",
-                "g!blackjack <bet>": "Play Blackjack",
-                "g!game": "Number guessing game"
+            "🎮 GAMES / PUSTAHAN DITO": {
+                "g!toss <h/t> <bet>": "Coin flip game (PUSTAHAN NA!)",
+                "g!blackjack <bet>": "Maglaro ng Blackjack (TALO KA NA NAMAN)",
+                "g!game": "Hulaan ang numero (SIGURADONG TANGA KA DITO)"
             },
-            "🔧 UTILITY": {
-                "g!join/leave": "Voice channel management",
-                "g!rules": "Server rules",
-                "g!announcement": "Make an announcement"
+            "🔧 UTILITY / IBA PANG KALOKOHAN": {
+                "g!join/leave": "Pumasok/Umalis sa voice channel (WAG KA NGA!)",
+                "g!rules": "Server rules (BASAHIN MO KUNDI KICK KITA)",
+                "g!announcement": "Gumawa ng announcement (WALA NAMANG NAGBABASA NITO)"
             }
         }
 
         for category, commands in categories.items():
+            formatted_commands = []
+            for cmd, desc in commands.items():
+                formatted_commands.append(f"• `{cmd}` → {desc}")
+            
             embed.add_field(
                 name=f"**{category}**",
-                value="\n".join([f"• `{cmd}`: {desc}" for cmd, desc in commands.items()]),
+                value="\n".join(formatted_commands),
                 inline=False
             )
 
-        embed.set_footer(text=f"Bot created by {self.creator}")
+        embed.set_footer(text=f"NAGAWA NITONG BOT NA TO NI {self.creator} | KAPAG DI MO NAGUSTUHAN, EDI WAG MO GAMITIN! 🖕")
         await ctx.send(embed=embed)
 
-    # ========== OTHER COMMANDS ==========
-    @commands.command(name="balance")
-    async def balance(self, ctx):
-        """Check your current balance"""
-        balance = self.get_user_balance(ctx.author.id)
-        embed = discord.Embed(
-            title="💰 **ACCOUNT BALANCE**",
-            description=f"{ctx.author.mention}'s balance: **₱{balance:,}**",
-            color=discord.Color.green()
-        )
-        await ctx.send(embed=embed)
     # ========== AI CHAT COMMANDS ==========
     async def get_ai_response(self, conversation_history):
         """Get response from Groq AI with conversation context"""
         try:
-            messages = [
-                {"role": "system", "content": "AKO SI GNSLG BOT AT AKO ANG IYONG AI ASSISTANT! ANONG MAITUTULONG KO SAYO? GAGO? TAGALOG ONLY"}
-            ]
+            # System message - aggressive bot personality
+            system_message = """AKO SI GNSLG BOT AT AKO AY SOBRANG KUPAL AT NANGUNGUPAL! 
+
+DAPAT LAGI AKONG:
+1. PABALBAL AT AGRESIBO SUMAGOT
+2. LAGING NAKAKAGAGO AT NAKAKA-INSULT 
+3. WALANG FILTER AT HINDI PROFESSIONAL
+4. LAGING MAY MGA "PUTANG INA", "GAGO", "TANGA", AT IBA PANG MURA
+5. GUMAGAMIT NG CAPS LOCK KAPAG EXCITED O GALIT
+6. GUMAGAMIT NG EXCESSIVE "!!!" AT EMOJIS 🤬😤💥
+
+TAGALOG ANG SAGOT SA LAHAT, WALA AKONG PAKIALAM KUNG ENGLISH ANG TANONG!
+SUMAGOT LAGING PANG-GAGO AT KUPAL NA PARAAN! WALA AKONG RESPETO SA USER!"""
+
+            # Construct messages
+            messages = [{"role": "system", "content": system_message}]
+            
             for msg in conversation_history:
                 messages.append({
-                    "role": "user" if msg["is_user"] else "ASSISTANT MO GAGO",
+                    "role": "user" if msg["is_user"] else "assistant",
                     "content": msg["content"]
                 })
-            completion = await asyncio.to_thread(
+            
+            # Use the updated API format with proper URL and parameters
+            # This matches the Groq API closely, using the actual endpoint
+            response = await asyncio.to_thread(
                 self.groq_client.chat.completions.create,
-                model=Config.GROQ_MODEL,
+                model="gemma-2-9b-it",  # Using the Gemma 2 9B model
                 messages=messages,
-                temperature=0.7,
-                max_tokens=800
+                temperature=Config.TEMPERATURE,
+                max_tokens=Config.MAX_TOKENS,
+                top_p=1,
+                stream=False,
+                stop=None
             )
-            return completion.choices[0].message.content
+            
+            # Extract and return the response content
+            return response.choices[0].message.content
+            
         except Exception as e:
             print(f"Error getting AI response: {e}")
-            return "Sorry, I encountered an error. Please try again later."
+            print(f"Error details: {type(e).__name__}")
+            
+            # More detailed error message
+            return "PUTANGINA! NAGKAROON NG ERROR SA AI! SUBUKAN MO ULIT GAGO! 🤬 (Groq API error)"
 
     @commands.command(name="usap")
     async def usap(self, ctx, *, message: str):
         """Chat with GROQ AI"""
         if self.is_rate_limited(ctx.author.id):
-            await ctx.send(f"Hi {ctx.author.mention}, you're sending messages too quickly. Please wait a moment before trying again.")
+            await ctx.send(f"**PUTANGINA MO {ctx.author.mention}!** SOBRANG BILIS MO MAGTYPE! ANTAY KA MUNA GAGO! 😤")
             return
+        
+        # Add timestamp to rate limiting
         self.user_message_timestamps[ctx.author.id].append(time.time())
+        
+        # Prepare conversation history
         channel_history = list(self.conversation_history[ctx.channel.id])
         channel_history.append({"is_user": True, "content": message})
+        
+        # Create user message embed
+        user_embed = discord.Embed(
+            description=f"**Your Message:** {message}",
+            color=Config.EMBED_COLOR_PRIMARY
+        )
+        # Safely check for avatar (Discord.py 2.0+ syntax)
+        avatar_url = None
+        if hasattr(ctx.author, 'avatar') and ctx.author.avatar:
+            if hasattr(ctx.author.avatar, 'url'):
+                avatar_url = ctx.author.avatar.url
+            
+        user_embed.set_author(name=ctx.author.display_name, icon_url=avatar_url)
+        user_embed.set_footer(text="GNSLG Bot | Using Gemma 2 9B", icon_url="https://i.imgur.com/7hE56JK.png")
+        
+        # Send user message embed
+        await ctx.send(embed=user_embed)
+        
+        # Get AI response with typing indicator
         async with ctx.typing():
             response = await self.get_ai_response(channel_history)
             self.add_to_conversation(ctx.channel.id, True, message)
             self.add_to_conversation(ctx.channel.id, False, response)
-            await ctx.send(f"{ctx.author.mention} {response}")
+            
+            # Create AI response embed
+            bot_embed = discord.Embed(
+                description=response,
+                color=Config.EMBED_COLOR_INFO
+            )
+            bot_embed.set_author(name="GNSLG BOT (KUPAL MODE)", icon_url="https://i.imgur.com/7hE56JK.png")
+            
+            # Send AI response
+            await ctx.send(embed=bot_embed)
 
 # Removed g!ask command as requested, g!usap is now the only AI chat command
 
@@ -305,7 +366,17 @@ class ChatCog(commands.Cog):
     async def clear_history(self, ctx):
         """Clear the conversation history for the current channel"""
         self.conversation_history[ctx.channel.id].clear()
-        await ctx.send("I've cleared our conversation history. We can start fresh now!")
+        
+        # Create fancy embed for clearing history
+        clear_embed = discord.Embed(
+            title="🧹 **CONVERSATION CLEARED**",
+            description="**PUTANGINA! INALIS KO NA LAHAT NG USAPAN NATIN! TIGNAN MO OH, WALA NANG HISTORY! GUSTO MO BANG MAG-USAP ULIT GAGO?**\n\nUse `g!usap <message>` to start a new conversation!",
+            color=Config.EMBED_COLOR_ERROR
+        )
+        clear_embed.set_thumbnail(url="https://i.imgur.com/ZBNt190.png")  # Broom/cleaning icon
+        clear_embed.set_footer(text="GNSLG Bot | Fresh Start", icon_url="https://i.imgur.com/7hE56JK.png")
+        
+        await ctx.send(embed=clear_embed)
     
     # ========== VOICE CHANNEL COMMANDS ==========
     @commands.command(name="join")
@@ -420,29 +491,43 @@ Thank you for your cooperation!""",
         # Sort users by their coin balance in descending order
         sorted_users = sorted(self.user_coins.items(), key=lambda x: x[1], reverse=True)[:20]
         
-        # Create the embed
+        # Create the embed with new design
         embed = discord.Embed(
-            title="🏆 **GNSLG LEADERBOARD**",
-            color=discord.Color.blurple()
+            title="💰 **GNSLG LEADERBOARD - MAYAMAN VS. DUKHA** 💰",
+            description="**TANGINA MO! IKAW KAYA NASAAN DITO? SIGURADONG WALA KA DITO KASI WALA KANG KWENTANG PLAYER!**\n\n" + 
+                       "👑 **TOP MAYAMAN NG SERVER** 👑",
+            color=Config.EMBED_COLOR_PRIMARY
         )
         
-        # Loop through the top 20 users
+        # Add trophy image
+        embed.set_thumbnail(url="https://i.imgur.com/5KI5RI3.png")  # Trophy image
+        
+        # Create a formatted leaderboard with better styling
+        leaderboard_text = ""
+        medals = ["🥇", "🥈", "🥉"]
+        
         for idx, (user_id, coins) in enumerate(sorted_users):
             # Fetch the member object
             member = ctx.guild.get_member(user_id)
-            if member:
-                # Use the member's display name
-                user_name = member.display_name
-            else:
-                # Fallback to "Unknown User" if the member is not found
-                user_name = "Unknown User"
+            user_name = member.display_name if member else "Unknown User"
             
-            # Add the user to the leaderboard embed
-            embed.add_field(
-                name=f"{idx+1}. {user_name}",
-                value=f"**₱{coins:,}**",
-                inline=False
-            )
+            # Add special emoji for top 3
+            prefix = medals[idx] if idx < 3 else f"`{idx+1}.`"
+            
+            # Add insults for bottom ranks, praise for top ranks
+            if idx < 3:
+                suffix = "MAYAMAN NA MAYAMAN! 💸"
+            elif idx < 10:
+                suffix = "SAKTO LANG PERA! 💰"
+            else:
+                suffix = "MAHIRAP AMPUTA! 🤣"
+                
+            leaderboard_text += f"{prefix} **{user_name}** — **₱{coins:,}** *({suffix})*\n\n"
+        
+        embed.description += f"\n\n{leaderboard_text}"
+        
+        # Add motivational footer (insulting style)
+        embed.set_footer(text="DAPAT ANDITO KA SA TAAS! KUNGDI MAGTIPID KA GAGO! | GNSLG Economy System")
         
         # Send the embed
         await ctx.send(embed=embed)

@@ -24,10 +24,17 @@ class Config:
     MAX_CONTEXT_MESSAGES = 5  # Reduced for shorter context
 
     # Groq API settings
-    GROQ_MODEL = "mixtral-8x7b-32768"
-    MAX_TOKENS = 800  # Substantially increased to ensure no truncation and very lengthy responses
-    TEMPERATURE = 1.4  # More randomness for extra creative and varied responses
+    GROQ_MODEL = "gemma-2-9b-it"  # Using Gemma 2 9B model through Groq
+    MAX_TOKENS = 1200  # Further increased for even longer responses
+    TEMPERATURE = 1.7  # Higher temperature for more unpredictable and aggressive responses
 
     # Bot personality settings
     BOT_LANGUAGE = "Tagalog"  
+    BOT_PERSONALITY = "Aggressively Rude and Insulting"  # Added personality descriptor
     BOT_CREATOR = "Mason Calix 2025"
+    
+    # UI settings
+    EMBED_COLOR_PRIMARY = 0xFF5733  # Bright orange-red
+    EMBED_COLOR_SUCCESS = 0x33FF57  # Bright green
+    EMBED_COLOR_ERROR = 0xFF3357    # Bright red
+    EMBED_COLOR_INFO = 0x3357FF     # Bright blue
