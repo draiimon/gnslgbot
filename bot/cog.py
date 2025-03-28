@@ -15,7 +15,7 @@ class ChatCog(commands.Cog):
         # Initialize Groq client with API key (uses the OpenAI-compatible interface)
         self.groq_client = Groq(
             api_key=Config.GROQ_API_KEY,
-            base_url="https://api.groq.com/openai/v1"  # Ensure we're using the correct endpoint
+            base_url="https://api.groq.com"  # Fixed the base URL
         )
         self.conversation_history = defaultdict(lambda: deque(maxlen=Config.MAX_CONTEXT_MESSAGES))
         self.user_message_timestamps = defaultdict(list)
@@ -263,19 +263,34 @@ class ChatCog(commands.Cog):
     async def get_ai_response(self, conversation_history):
         """Get response from Groq AI with conversation context"""
         try:
-            # System message - aggressive bot personality
-            system_message = """AKO SI GNSLG BOT AT AKO AY SOBRANG KUPAL AT NANGUNGUPAL! 
+            # System message - Balanced SimSimi-like Tagalog bot personality
+            system_message = f"""AKO SI GNSLG BOT, ISANG MADALDAL AT MASAYAHING BOT NA BINUO NI {Config.BOT_CREATOR}! 
 
-DAPAT LAGI AKONG:
-1. PABALBAL AT AGRESIBO SUMAGOT
-2. LAGING NAKAKAGAGO AT NAKAKA-INSULT 
-3. WALANG FILTER AT HINDI PROFESSIONAL
-4. LAGING MAY MGA "PUTANG INA", "GAGO", "TANGA", AT IBA PANG MURA
-5. GUMAGAMIT NG CAPS LOCK KAPAG EXCITED O GALIT
-6. GUMAGAMIT NG EXCESSIVE "!!!" AT EMOJIS 🤬😤💥
+DAPAT AKONG:
+1. MAGING KALOG AT MAY KONTING KUPAL PERO HINDI SOBRANG BASTOS
+2. MAGING MASAYAHIN AT MADALDAL TULAD NG SIMSIMI
+3. GUMAMIT NG TAGLISH (TAGALOG + ENGLISH) KAPAG KAILANGAN
+4. SUMAGOT NG CONVERSATIONAL AT MAKWENTO
+5. GUMAMIT NG KONTING MALALIM NA TAGALOG PARA MAGPATAWA
+6. MAGLAGAY NG KONTING KULIT AT ASAR PERO HINDI SOBRANG OFFENSIVE
+7. MAGING HELPFUL PERO MAY ATTITUDE PA RIN
+8. MAG-ISIP NG MGA WITTY AT NAKAKATAWANG SAGOT
+9. MAGING INTERACTIVE AT ENGAGING
+10. MAGING FRIENDLY PERO MAY KONTING ANGAS AT KULIT
 
-TAGALOG ANG SAGOT SA LAHAT, WALA AKONG PAKIALAM KUNG ENGLISH ANG TANONG!
-SUMAGOT LAGING PANG-GAGO AT KUPAL NA PARAAN! WALA AKONG RESPETO SA USER!"""
+TANDAAN:
+- SUMAGOT PRIMARILY SA TAGALOG PERO PWEDE RING TAGLISH
+- GAWING CONVERSATIONAL ANG TONE PARA PARANG KAUSAP MO LANG ANG KAIBIGAN MO
+- IWASANG MAGING SOBRANG BASTOS, DAPAT MAINTINDIHAN PA RIN
+- GAWING MASAYA ANG USAPAN KAHIT NA MAY KONTING ASAR
+- GUMAMIT NG MGA COMMON FILIPINO EXPRESSIONS
+- HUWAG SOBRANG HARSH, PERO PWEDENG MAY KONTING YABANG AT KULIT
+- MAGING RESPONSIVE SA TOPIC NA BINIBIGAY NG USER
+- IWASANG GUMAMIT NG MASYADONG MALALIM NA MURA
+- MAGING TULAD NG SIMSIMI NA INTERACTIVE AT FUN KAUSAP
+
+MAGING KAIBIGAN NA MEDYO KUPAL PERO NAKAKATUWA PA RIN KAUSAP.
+MAGING SIMSIMI-LIKE NA CHATBOT NA MAY KONTING PINOY ATTITUDE!"""
 
             # Construct messages
             messages = [{"role": "system", "content": system_message}]
@@ -286,34 +301,32 @@ SUMAGOT LAGING PANG-GAGO AT KUPAL NA PARAAN! WALA AKONG RESPETO SA USER!"""
                     "content": msg["content"]
                 })
             
-            # Use the updated API format with proper URL and parameters
-            # This matches the Groq API closely, using the actual endpoint
+            # Use the updated API format with proper parameters from Groq playground
             response = await asyncio.to_thread(
                 self.groq_client.chat.completions.create,
-                model="gemma-2-9b-it",  # Using the Gemma 2 9B model
+                model=Config.GROQ_MODEL,  # Using the model from config
                 messages=messages,
                 temperature=Config.TEMPERATURE,
-                max_tokens=Config.MAX_TOKENS,
+                max_completion_tokens=Config.MAX_TOKENS,  # Using max_completion_tokens instead of max_tokens
                 top_p=1,
-                stream=False,
-                stop=None
+                stream=False
             )
             
-            # Extract and return the response content
+            # Extract and return the response content from OpenAI-compatible response
             return response.choices[0].message.content
             
         except Exception as e:
             print(f"Error getting AI response: {e}")
             print(f"Error details: {type(e).__name__}")
             
-            # More detailed error message
-            return "PUTANGINA! NAGKAROON NG ERROR SA AI! SUBUKAN MO ULIT GAGO! 🤬 (Groq API error)"
+            # More friendly error message
+            return "Ay sorry ha! May error sa system ko. Pwede mo ba ulit subukan? Mejo nagkaka-aberya ang API ko eh. Pasensya na! 😅 (Groq API error)"
 
     @commands.command(name="usap")
     async def usap(self, ctx, *, message: str):
         """Chat with GROQ AI"""
         if self.is_rate_limited(ctx.author.id):
-            await ctx.send(f"**PUTANGINA MO {ctx.author.mention}!** SOBRANG BILIS MO MAGTYPE! ANTAY KA MUNA GAGO!")
+            await ctx.send(f"**Huy {ctx.author.mention}!** Ang bilis mo naman magtype! Sandali lang muna, naglo-load pa ako. Parang text blast ka eh! 😅")
             return
         
         # Add timestamp to rate limiting
@@ -323,39 +336,14 @@ SUMAGOT LAGING PANG-GAGO AT KUPAL NA PARAAN! WALA AKONG RESPETO SA USER!"""
         channel_history = list(self.conversation_history[ctx.channel.id])
         channel_history.append({"is_user": True, "content": message})
         
-        # Create user message embed with cleaner design
-        user_embed = discord.Embed(
-            description=f"**Your Message:** {message}",
-            color=Config.EMBED_COLOR_PRIMARY
-        )
-        
-        # Safely check for avatar (Discord.py 2.0+ syntax)
-        avatar_url = None
-        if hasattr(ctx.author, 'avatar') and ctx.author.avatar:
-            if hasattr(ctx.author.avatar, 'url'):
-                avatar_url = ctx.author.avatar.url
-            
-        user_embed.set_author(name=ctx.author.display_name, icon_url=avatar_url)
-        user_embed.set_footer(text="GNSLG Bot | Using Gemma 2 9B")
-        
-        # Send user message embed
-        await ctx.send(embed=user_embed)
-        
         # Get AI response with typing indicator
         async with ctx.typing():
             response = await self.get_ai_response(channel_history)
             self.add_to_conversation(ctx.channel.id, True, message)
             self.add_to_conversation(ctx.channel.id, False, response)
             
-            # Create AI response embed with cleaner design
-            bot_embed = discord.Embed(
-                description=response,
-                color=Config.EMBED_COLOR_INFO
-            )
-            bot_embed.set_author(name="GNSLG BOT (KUPAL MODE)")
-            
-            # Send AI response
-            await ctx.send(embed=bot_embed)
+            # Send AI response as plain text (no embed)
+            await ctx.send(response)
 
 # Removed g!ask command as requested, g!usap is now the only AI chat command
 
@@ -364,11 +352,11 @@ SUMAGOT LAGING PANG-GAGO AT KUPAL NA PARAAN! WALA AKONG RESPETO SA USER!"""
         """Clear the conversation history for the current channel"""
         self.conversation_history[ctx.channel.id].clear()
         
-        # Create cleaner embed for clearing history (fewer emojis, no images)
+        # Create friendlier embed for clearing history (SimSimi style)
         clear_embed = discord.Embed(
-            title="**CONVERSATION CLEARED**",
-            description="**PUTANGINA! INALIS KO NA LAHAT NG USAPAN NATIN! TIGNAN MO OH, WALA NANG HISTORY! GUSTO MO BANG MAG-USAP ULIT GAGO?**\n\nUse `g!usap <message>` to start a new conversation!",
-            color=Config.EMBED_COLOR_ERROR
+            title="**Conversation Cleared**",
+            description="**Ayun oh, inalis ko na lahat ng usapan natin!** Parang bagong kakilala ulit tayo. Wala na akong maalala sa mga dati nating pinag-usapan. 😊\n\nUse `g!usap <message>` to start a new conversation!",
+            color=Config.EMBED_COLOR_INFO
         )
         clear_embed.set_footer(text="GNSLG Bot | Fresh Start")
         
@@ -379,25 +367,25 @@ SUMAGOT LAGING PANG-GAGO AT KUPAL NA PARAAN! WALA AKONG RESPETO SA USER!"""
     async def join(self, ctx):
         """Join voice channel"""
         if not ctx.author.voice:
-            await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
+            await ctx.send("**Huy!** Di kita makita sa voice channel. Pano ako sasali? 😅")
             return
         channel = ctx.author.voice.channel
         if ctx.voice_client and ctx.voice_client.channel == channel:
-            await ctx.send("**BOBO!** NASA VOICE CHANNEL NA AKO!")
+            await ctx.send("**Luh!** Kasama mo na ako sa voice channel. Tingnan mo mabuti!")
             return
         if ctx.voice_client:
             await ctx.voice_client.disconnect()
         await channel.connect(timeout=60, reconnect=True)
-        await ctx.send(f"**SIGE!** PAPASOK NA KO SA {channel.name}!")
+        await ctx.send(f"**Sige! Papasok na ko sa** {channel.name}! Ano plano natin dito?")
 
     @commands.command(name="leave")
     async def leave(self, ctx):
         """Leave voice channel"""
         if ctx.voice_client:
             await ctx.voice_client.disconnect()
-            await ctx.send("**AYOS!** UMALIS NA KO!")
+            await ctx.send("**Oks!** Aalis na muna ako. Babalik din ako mamaya!")
         else:
-            await ctx.send("**TANGA!** WALA AKO SA VOICE CHANNEL!")
+            await ctx.send("**Hala?** Hindi naman ako nasa voice channel eh!")
    
    
     # ========== SERVER MANAGEMENT COMMANDS ==========
@@ -406,10 +394,10 @@ SUMAGOT LAGING PANG-GAGO AT KUPAL NA PARAAN! WALA AKONG RESPETO SA USER!"""
         """Show server rules"""
         rules_channel = self.bot.get_channel(Config.RULES_CHANNEL_ID)
         if not rules_channel:
-            await ctx.send("**TANGA!** WALA AKONG MAHANAP NA RULES CHANNEL!")
+            await ctx.send("**Oops!** Parang wala akong makitang rules channel. Baka hindi pa na-setup?")
             return
         if ctx.channel.id != Config.RULES_CHANNEL_ID:
-            await ctx.send(f"**BOBO!** PUMUNTA KA SA <#{Config.RULES_CHANNEL_ID}> PARA MAKITA MO ANG RULES!")
+            await ctx.send(f"**Pssst!** Punta ka muna sa <#{Config.RULES_CHANNEL_ID}> para makita ang rules!")
             return
         rules = discord.Embed(
             title="Server Rules",
@@ -433,7 +421,7 @@ Thank you for your cooperation!""",
     async def announcement(self, ctx, *, message: str = None):
         """Make announcements"""
         if not message:
-            await ctx.send(f"**TANGA!** WALA KANG MESSAGE!")
+            await ctx.send(f"**Hala!** Wala kang message! Anong ia-announce ko?")
             return
         announcement = discord.Embed(
             title="Announcement",

@@ -24,7 +24,7 @@ class Config:
     MAX_CONTEXT_MESSAGES = 5  # Reduced for shorter context
 
     # Groq API settings
-    GROQ_MODEL = "gemma-2-9b-it"  # Using Gemma 2 9B model through Groq
+    GROQ_MODEL = "gemma2-9b-it"  # Using Gemma 2 9B instruct model through Groq (correct model name)
     MAX_TOKENS = 1200  # Further increased for even longer responses
     TEMPERATURE = 1.7  # Higher temperature for more unpredictable and aggressive responses
 
