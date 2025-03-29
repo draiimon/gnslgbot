@@ -6,6 +6,7 @@ from collections import deque, defaultdict
 import time
 import random
 import datetime
+import pytz  # For Philippines timezone
 from .config import Config
 
 class ChatCog(commands.Cog):
@@ -567,8 +568,10 @@ Thank you for your cooperation!""",
             await ctx.send("**WALANG ONLINE NA TANGA!** Walang babastusin!")
             return
             
-        # Get current hour to determine greeting
-        current_hour = datetime.datetime.now().hour
+        # Get current hour in Philippines timezone to determine greeting
+        ph_timezone = pytz.timezone('Asia/Manila')
+        now = datetime.datetime.now(ph_timezone)
+        current_hour = now.hour
         greeting = ""
         if 5 <= current_hour < 12:
             greeting = "GOOD MORNING"

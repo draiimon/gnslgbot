@@ -7,6 +7,7 @@ from flask import Flask
 import threading
 import datetime
 import random
+import pytz  # For timezone support
 
 # Initialize bot with command prefix and remove default help command
 intents = discord.Intents.all()
@@ -62,8 +63,9 @@ async def check_greetings():
     """Check if it's time to send good morning or good night greetings"""
     global last_morning_greeting_date, last_night_greeting_date
     
-    # Get current time
-    now = datetime.datetime.now()
+    # Get current time in Philippines timezone (UTC+8)
+    ph_timezone = pytz.timezone('Asia/Manila')
+    now = datetime.datetime.now(ph_timezone)
     current_hour = now.hour
     current_date = now.date()
     
