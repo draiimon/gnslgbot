@@ -46,32 +46,31 @@ class Config:
     EMBED_COLOR_ERROR = 0xFF3357    # Bright red
     EMBED_COLOR_INFO = 0x3357FF     # Bright blue
     
-    # Lavalink settings - using a lava.link as primary (more reliable)
-    LAVALINK_HOST = os.getenv('LAVALINK_HOST', 'lava.link')
-    LAVALINK_PORT = int(os.getenv('LAVALINK_PORT', '80'))
-    LAVALINK_PASSWORD = os.getenv('LAVALINK_PASSWORD', 'anything as a password')
-    LAVALINK_SECURE = False  # No SSL for this server
+    # Lavalink settings - using a known reliable Lavalink server (March 2025)
+    LAVALINK_HOST = os.getenv('LAVALINK_HOST', 'lavalink.devamop.in')
+    LAVALINK_PORT = int(os.getenv('LAVALINK_PORT', '443'))
+    LAVALINK_PASSWORD = os.getenv('LAVALINK_PASSWORD', 'DevamOP')
+    LAVALINK_SECURE = True  # Use SSL for this server
     
     # Alternative Lavalink servers (fallbacks)
     ALT_LAVALINK_SERVERS = [
-        # Updated servers (March 2025)
+        # March 2025 - Updated and tested server list
         {
-            'host': 'losingmyself.xyz',
-            'port': 2333,
-            'password': 'SleepingOnTrains',
+            'host': 'lavalink4u.herokuapp.com',
+            'port': 443,
+            'password': 'passwords',
+            'secure': True
+        },
+        {
+            'host': 'lavalink.oops.wtf',
+            'port': 2000,
+            'password': 'www.freelavalink.herokuapp.com',
             'secure': False
         },
         {
-            'host': 'lavalink.api.noaxa.tw',
-            'port': 443,
-            'password': 'noaxaiscool',
-            'secure': True
-        },
-        # International servers as last resorts
-        {
-            'host': 'lavalink.devamop.in',
-            'port': 443,
-            'password': 'DevamOP',
-            'secure': True
+            'host': 'lavalinkau.xtremebot.xyz',
+            'port': 10232,
+            'password': 'alivecapital12',
+            'secure': False
         }
     ]

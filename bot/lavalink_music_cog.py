@@ -130,26 +130,26 @@ class LavalinkMusicCog(commands.Cog):
             print(f"❌ Failed to connect to primary Asia region Lavalink server: {e}")
             print("⚠️ Trying other servers...")
         
-        # Simple direct attempt to the other servers (updated with more reliable servers)
+        # March 2025 - Updated more reliable servers
         all_servers = [
-            # Try additional servers - some are known to be reliable
+            # Don't try lavalink.devamop.in again as it's the primary
             {
-                'host': 'losingmyself.xyz',
-                'port': 2333,
-                'password': 'SleepingOnTrains',
+                'host': 'lavalink4u.herokuapp.com',
+                'port': 443,
+                'password': 'passwords',
+                'secure': True
+            },
+            {
+                'host': 'lavalink.oops.wtf',
+                'port': 2000,
+                'password': 'www.freelavalink.herokuapp.com',
                 'secure': False
             },
             {
-                'host': 'lavalink.api.noaxa.tw',
-                'port': 443,
-                'password': 'noaxaiscool',
-                'secure': True
-            },
-            {
-                'host': 'lavalink.devamop.in',
-                'port': 443,
-                'password': 'DevamOP',
-                'secure': True
+                'host': 'lavalinkau.xtremebot.xyz',
+                'port': 10232,
+                'password': 'alivecapital12',
+                'secure': False
             }
         ]
             

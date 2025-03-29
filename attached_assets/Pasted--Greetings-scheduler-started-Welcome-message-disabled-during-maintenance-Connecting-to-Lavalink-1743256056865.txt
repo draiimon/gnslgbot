@@ -1,0 +1,14 @@
+✅ Greetings scheduler started
+Welcome message disabled during maintenance
+✓ Connecting to Lavalink server in Asian region at lava.link:80 (Secure: False)
+Automated greetings disabled during maintenance
+An unexpected error occurred while connecting Node(identifier=Kwk7q9zadHiBJsJr, uri=http://lava.link:80, status=NodeStatus.CONNECTING, players=0) to Lavalink: "200, message='Invalid response status', url='http://lava.link/v4/websocket'"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=Kwk7q9zadHiBJsJr, uri=http://lava.link:80, status=NodeStatus.CONNECTING, players=0) to Lavalink: "200, message='Invalid response status', url='http://lava.link/v4/websocket'"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=Kwk7q9zadHiBJsJr, uri=http://lava.link:80, status=NodeStatus.CONNECTING, players=0) to Lavalink: "200, message='Invalid response status', url='http://lava.link/v4/websocket'"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=Kwk7q9zadHiBJsJr, uri=http://lava.link:80, status=NodeStatus.CONNECTING, players=0) to Lavalink: "200, message='Invalid response status', url='http://lava.link/v4/websocket'"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=Kwk7q9zadHiBJsJr, uri=http://lava.link:80, status=NodeStatus.CONNECTING, players=0) to Lavalink: "200, message='Invalid response status', url='http://lava.link/v4/websocket'"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
