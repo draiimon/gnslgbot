@@ -172,33 +172,32 @@ class ChatCog(commands.Cog):
         from bot.database import get_daily_cooldown, update_daily_cooldown
         from datetime import datetime, timedelta
         import pytz
-        
+
         # Get Philippines timezone for proper cooldown calculation
         ph_timezone = pytz.timezone('Asia/Manila')
         current_time = datetime.now(ph_timezone)
-        
+
         # Get last daily claim time from database
         last_claim = get_daily_cooldown(ctx.author.id)
-        
+
         # Check if enough time has passed (24 hours)
         if last_claim and current_time - last_claim < timedelta(days=1):
             # Calculate remaining time
             remaining_time = timedelta(days=1) - (current_time - last_claim)
             hours, remainder = divmod(remaining_time.seconds, 3600)
             minutes, seconds = divmod(remainder, 60)
-            
+
             await ctx.send(
                 f"**BOBO KA BA?!** {ctx.author.mention} KAKA-CLAIM MO LANG NG DAILY MO! KINANGINA MO! BALIK KA BUKAS!\n"
-                f"⏰ REMAINING TIME: **{hours}h {minutes}m {seconds}s** 😤"
-            )
+                f"⏰ REMAINING TIME: **{hours}h {minutes}m {seconds}s** 😤")
             return
 
         # Update cooldown in the database
         update_daily_cooldown(ctx.author.id)
-        
+
         # Add coins
         self.add_coins(ctx.author.id, 10_000)
-        
+
         await ctx.send(
             f"🎉 {ctx.author.mention} NAKA-CLAIM KA NA NG DAILY MO NA **₱10,000**! BALANCE MO NGAYON: **₱{self.get_user_balance(ctx.author.id):,}**"
         )
@@ -392,88 +391,91 @@ class ChatCog(commands.Cog):
                 owner_avatar = None
 
             # Multiple embeds in a single message with different containers
-            
+
             # Header container with red left border (Discohook style)
             header_embed = discord.Embed(
-                title="**TANGINA MO! GUSTO MO MALAMAN MGA COMMANDS?**                    ",
-                description="**ETO NA LISTAHAN:**                    ",
+                title="**TANGINA MO! GUSTO MO MALAMAN MGA COMMANDS?**",
+                description="**ETO NA LISTAHAN:**",
                 color=discord.Color.from_rgb(255, 59, 59)  # Bright red
             )
-            
+
             # Set a nice thumbnail - use bot's avatar
             if self.bot.user and self.bot.user.avatar:
                 header_embed.set_thumbnail(url=self.bot.user.avatar.url)
-            
+
             # AI CHAT COMMANDS CONTAINER with blue left border (Discohook style)
             ai_embed = discord.Embed(
-                title="**🤖 AI CHAT COMMANDS 🤖**                    ",
-                description="**KAUSAPIN MO SI GINSILOG BOT:**                    ",
+                title="**🤖 AI CHAT COMMANDS 🤖**                                                         ",
+                description=
+                "**KAUSAPIN MO SI GINSILOG BOT:**                                                         ",
                 color=discord.Color.blue()  # Blue for AI/chat
             )
-            
+
             ai_commands = {
                 "g!usap <message>": "Kausapin ang Ginsilog AI assistant",
                 "g!ask <message>": "Voice-only AI response (walang text log)",
-                "@Ginsilog BOT <message>": "I-mention lang ang bot para mag-chat",
+                "@Ginsilog BOT <message>":
+                "I-mention lang ang bot para mag-chat",
                 "g!clear": "I-clear ang chat history ng channel"
             }
-            
+
             # Add AI commands to description
             ai_text = ""
             for cmd, desc in ai_commands.items():
                 ai_text += f"• **{cmd}** - {desc}\n"
-            
+
             ai_embed.description += f"\n\n{ai_text}"
-            
+
             # ECONOMY COMMANDS CONTAINER with gold left border (Discohook style)
             economy_embed = discord.Embed(
-                title="**💰 ECONOMY COMMANDS 💰**                    ",
-                description="**YUMAMAN KA DITO GAGO:**                    ",
+                title="**💰 ECONOMY COMMANDS 💰**                                                         ",
+                description="**YUMAMAN KA DITO GAGO:**                                                         ",
                 color=discord.Color.gold()  # Gold for economy
             )
-            
+
             economy_commands = {
                 "g!daily": "Kunin ang daily ₱10,000 mo",
                 "g!balance": "Check ang pera mo",
                 "g!give <@user> <amount>": "Bigyan ng pera ang ibang tao",
                 "g!leaderboard": "Top 20 pinakamayayaman sa server"
             }
-            
+
             # Add economy commands to description
             economy_text = ""
             for cmd, desc in economy_commands.items():
                 economy_text += f"• **{cmd}** - {desc}\n"
-            
+
             economy_embed.description += f"\n\n{economy_text}"
-            
+
             # GAMES COMMANDS CONTAINER with purple left border (Discohook style)
             games_embed = discord.Embed(
-                title="**🎮 GAMES COMMANDS 🎮**                    ",
-                description="**SUGAL SUGAL DIN PAMINSAN-MINSAN:**                    ",
+                title="**🎮 GAMES COMMANDS 🎮**                                                                                                                                                                   ",
+                description=
+                "**SUGAL SUGAL DIN PAMINSAN-MINSAN:**                                                                                                                                                                   ",
                 color=discord.Color.purple()  # Purple for games
             )
-            
+
             games_commands = {
                 "g!toss <h/t> <bet>": "Coin flip game (heads/tails)",
                 "g!blackjack <bet>": "Maglaro ng Blackjack (21)",
                 "g!hit": "Draw card sa Blackjack game",
                 "g!stand": "End turn sa Blackjack game"
             }
-            
+
             # Add games commands to description
             games_text = ""
             for cmd, desc in games_commands.items():
                 games_text += f"• **{cmd}** - {desc}\n"
-            
+
             games_embed.description += f"\n\n{games_text}"
-            
+
             # UTILITY COMMANDS CONTAINER with green left border (Discohook style)
             utility_embed = discord.Embed(
-                title="**🔧 UTILITY COMMANDS 🔧**                    ",
-                description="**IBANG FEATURES NG BOT:**                    ",
+                title="**🔧 UTILITY COMMANDS 🔧**                                                                                                                                                                   ",
+                description="**IBANG FEATURES NG BOT:**                                                                                                                                                                   ",
                 color=discord.Color.green()  # Green for utility
             )
-            
+
             utility_commands = {
                 "g!joinvc": "Sumali sa voice channel mo",
                 "g!leavevc": "Umalis sa voice channel",
@@ -484,26 +486,29 @@ class ChatCog(commands.Cog):
                 "g!resetvc": "Ayusin ang voice connection issues",
                 "g!rules": "Tignan ang server rules"
             }
-            
+
             # Add utility commands to description
             utility_text = ""
             for cmd, desc in utility_commands.items():
                 utility_text += f"• **{cmd}** - {desc}\n"
-            
+
             utility_embed.description += f"\n\n{utility_text}"
-            
+
             # Only add footer to the last embed
             utility_embed.set_footer(
                 text="⚡ GINSILOG BOT 2025 EDITION ⚡ | Gawa ni Mason Calix",
-                icon_url=owner_avatar
-            )
-            
+                icon_url=owner_avatar)
+
             # Send all embeds in ONE message
-            await ctx.send(embeds=[header_embed, ai_embed, economy_embed, games_embed, utility_embed])
-            
+            await ctx.send(embeds=[
+                header_embed, ai_embed, economy_embed, games_embed,
+                utility_embed
+            ])
+
         except Exception as e:
             print(f"Error in tulong command: {e}")
-            await ctx.send(f"**ERROR:** May problema sa pagpapakita ng commands: {e}")
+            await ctx.send(
+                f"**ERROR:** May problema sa pagpapakita ng commands: {e}")
 
     # ========== AI CHAT COMMANDS ==========
     async def get_ai_response(self, conversation_history):
@@ -529,7 +534,8 @@ class ChatCog(commands.Cog):
                 model=Config.GROQ_MODEL,  # Using the model from config
                 messages=messages,
                 temperature=Config.TEMPERATURE,
-                max_tokens=Config.MAX_TOKENS,  # Using standard max_tokens parameter
+                max_tokens=Config.
+                MAX_TOKENS,  # Using standard max_tokens parameter
                 top_p=1,
                 stream=False)
 
@@ -592,11 +598,13 @@ class ChatCog(commands.Cog):
 
             # Send AI response to the current channel
             await ctx.send(response)
-            
+
             # Log the conversation to the designated channel ID
             log_channel = self.bot.get_channel(1345733998357512215)
             if log_channel:
-                await log_channel.send(f"**User {ctx.author.name}**: {message}\n**Bot**: {response}")
+                await log_channel.send(
+                    f"**User {ctx.author.name}**: {message}\n**Bot**: {response}"
+                )
 
     @commands.command(name="clear")
     async def clear_history(self, ctx):
@@ -605,11 +613,12 @@ class ChatCog(commands.Cog):
 
         # Create polite embed for clearing history with blue left border (Discohook style)
         clear_embed = discord.Embed(
-            title="**Conversation Cleared**                    ",
+            title="**Conversation Cleared**                                                                                                                                                                   ",
             description=
-            "Ang conversation history ay na-clear na. Pwede na tayong mag-usap muli.\n\nGamit ang `g!usap <message>`, `g!asklog <message>`, `g!ask <message>` o i-mention mo ako para magsimula ng bagong conversation.                    ",
+            "Ang conversation history ay na-clear na. Pwede na tayong mag-usap muli.\n\nGamit ang `g!usap <message>`, `g!asklog <message>`, `g!ask <message>` o i-mention mo ako para magsimula ng bagong conversation.                                                                                                                                                                   ",
             color=Config.EMBED_COLOR_INFO)
-        clear_embed.set_footer(text="Ginsilog Bot | Fresh Start | Gawa ni Mason Calix")
+        clear_embed.set_footer(
+            text="Ginsilog Bot | Fresh Start | Gawa ni Mason Calix")
 
         await ctx.send(embed=clear_embed)
 
@@ -646,7 +655,9 @@ class ChatCog(commands.Cog):
         #     """Text-to-speech in voice channel (For everyone)"""
         # Check if user is in a voice channel
         if not ctx.author.voice:
-            return await ctx.send("**Note:** Kailangan mo muna sumali sa isang voice channel para magamit ang command na ito.")
+            return await ctx.send(
+                "**Note:** Kailangan mo muna sumali sa isang voice channel para magamit ang command na ito."
+            )
 
         # Import modules here to avoid loading issues
         from gtts import gTTS
@@ -771,7 +782,8 @@ class ChatCog(commands.Cog):
             voice_client.play(audio_source, after=after_playing)
 
             # Send confirmation message
-            await ctx.send(f"🔊 **Sinabi ko na ang mensahe:** {message}", delete_after=10)
+            await ctx.send(f"🔊 **Sinabi ko na ang mensahe:** {message}",
+                           delete_after=10)
 
             # THIS IS CRITICAL: We don't try to disconnect after playback
             # The audio callback will handle cleanup, and we'll let the auto-join
@@ -815,8 +827,9 @@ class ChatCog(commands.Cog):
                     "**ERROR:** Hindi supported ang language. Try mo mag-English.",
                     delete_after=15)
             else:
-                await ctx.send(f"**Error:** May problema sa pagge-generate ng audio: {error_msg}",
-                               delete_after=15)
+                await ctx.send(
+                    f"**Error:** May problema sa pagge-generate ng audio: {error_msg}",
+                    delete_after=15)
 
     # ========== SERVER MANAGEMENT COMMANDS ==========
     @commands.command(name="rules")
@@ -826,10 +839,12 @@ class ChatCog(commands.Cog):
         if not rules_channel:
             await ctx.send("**TANGA!** WALA AKONG MAHANAP NA RULES CHANNEL!")
             return
-            
+
         # Show rules in any channel with colored left border (Discohook style)
-        rules = discord.Embed(title="**SERVER RULES**                    ",
-                             description="""**BASAHIN MO MABUTI ANG MGA RULES NA ITO!**                    
+        rules = discord.Embed(
+            title="**SERVER RULES**                                                                                                                                                                   ",
+            description=
+            """**BASAHIN MO MABUTI ANG MGA RULES NA ITO!**                                                                                                                                                                   
 
 1. Be respectful to all members
 2. No illegal content
@@ -842,13 +857,13 @@ class ChatCog(commands.Cog):
 
 **Kung may tanong ka, pumunta ka sa <#{}> channel!**
 
-[**CLICK HERE TO GO TO RULES CHANNEL**](https://discord.com/channels/{}/{})""".format(
-                                Config.RULES_CHANNEL_ID, 
-                                ctx.guild.id, 
-                                Config.RULES_CHANNEL_ID),
-                             color=Config.EMBED_COLOR_PRIMARY)
-        
-        rules.set_footer(text="Ginsilog Bot | Rules Command | Gawa ni Mason Calix")
+[**CLICK HERE TO GO TO RULES CHANNEL**](https://discord.com/channels/{}/{})""".
+            format(Config.RULES_CHANNEL_ID, ctx.guild.id,
+                   Config.RULES_CHANNEL_ID),
+            color=Config.EMBED_COLOR_PRIMARY)
+
+        rules.set_footer(
+            text="Ginsilog Bot | Rules Command | Gawa ni Mason Calix")
         await ctx.send(embed=rules)
 
     @commands.command(name="announcement")
@@ -858,9 +873,9 @@ class ChatCog(commands.Cog):
             await ctx.send(f"**TANGA!** WALA KANG MESSAGE!")
             return
         announcement = discord.Embed(
-            title="Announcement                    ",
+            title="Announcement                                                                                                                                                                   ",
             description=
-            f"{message}\n\nFor more announcements, check <#{Config.ANNOUNCEMENTS_CHANNEL_ID}>                    ",
+            f"{message}\n\nFor more announcements, check <#{Config.ANNOUNCEMENTS_CHANNEL_ID}>                                                                                                                                                                   ",
             color=Config.EMBED_COLOR_PRIMARY)
         announcement.set_footer(
             text=
@@ -1072,27 +1087,31 @@ class ChatCog(commands.Cog):
             except Exception as e:
                 print(f"Error fetching owner avatar: {e}")
                 owner_avatar = None
-            
+
             # Multiple embeds in a single message with different containers
-            
+
             # Header container - Added spaces for consistent width
             header_embed = discord.Embed(
-                title="**🌟 GINSILOG BOT MASTER COMMAND LIST 🌟**                                   ",
-                description="**KUMPLETO AT MAGANDANG LISTA NG LAHAT NG COMMANDS PARA SA MGA MODERATOR!**                                   ",
+                title=
+                "**🌟 GINSILOG BOT MASTER COMMAND LIST 🌟**                                   ",
+                description=
+                "**KUMPLETO AT MAGANDANG LISTA NG LAHAT NG COMMANDS PARA SA MGA MODERATOR!**                                   ",
                 color=discord.Color.from_rgb(255, 59, 59)  # Bright red
             )
-            
+
             # Set a nice thumbnail - use bot's avatar
             if self.bot.user and self.bot.user.avatar:
                 header_embed.set_thumbnail(url=self.bot.user.avatar.url)
-            
+
             # ADMIN COMMANDS CONTAINER - Added spaces for consistent width
             admin_embed = discord.Embed(
-                title="**🛡️ ADMIN COMMANDS 🛡️**                                   ",
-                description="**EXCLUSIVE COMMANDS PARA SA MGA MODERATORS LANG:**                                   ",
+                title=
+                "**🛡️ ADMIN COMMANDS 🛡️**                                   ",
+                description=
+                "**EXCLUSIVE COMMANDS PARA SA MGA MODERATORS LANG:**                                   ",
                 color=discord.Color.red()  # Red for admin commands
             )
-            
+
             admin_commands = {
                 "g!admin":
                 "Ipakita ang basic admin commands",
@@ -1119,63 +1138,69 @@ class ChatCog(commands.Cog):
                 "g!clear_messages [channel_id]":
                 "Burahin lahat ng messages ng bot sa isang channel"
             }
-            
+
             # Add admin commands to description
             admin_text = ""
             for cmd, desc in admin_commands.items():
                 admin_text += f"• **{cmd}** - {desc}\n"
-            
+
             admin_embed.description += f"\n\n{admin_text}"
-            
+
             # ECONOMY COMMANDS CONTAINER - Added spaces for consistent width
             economy_embed = discord.Embed(
-                title="**💰 ECONOMY COMMANDS 💰**                                   ",
-                description="**PERA AT ECONOMY SYSTEM:**                                   ",
+                title=
+                "**💰 ECONOMY COMMANDS 💰**                                   ",
+                description=
+                "**PERA AT ECONOMY SYSTEM:**                                   ",
                 color=discord.Color.gold()  # Gold for economy
             )
-            
+
             economy_commands = {
                 "g!daily": "Claim daily ₱10,000",
                 "g!balance": "Check your balance",
                 "g!give <@user> <amount>": "Transfer money",
                 "g!leaderboard": "Top 20 richest players"
             }
-            
+
             # Add economy commands to description
             economy_text = ""
             for cmd, desc in economy_commands.items():
                 economy_text += f"• **{cmd}** - {desc}\n"
-            
+
             economy_embed.description += f"\n\n{economy_text}"
-            
+
             # GAME COMMANDS CONTAINER - Added spaces for consistent width
             game_embed = discord.Embed(
-                title="**🎮 GAME COMMANDS 🎮**                                   ",
-                description="**LARO AT GAMES NA PWEDE PANG-PATAY ORAS:**                                   ",
+                title=
+                "**🎮 GAME COMMANDS 🎮**                                   ",
+                description=
+                "**LARO AT GAMES NA PWEDE PANG-PATAY ORAS:**                                   ",
                 color=discord.Color.purple()  # Purple for games
             )
-            
+
             game_commands = {
                 "g!toss <h/t> <bet>": "Coin flip game",
                 "g!blackjack <bet> (or g!bj)": "Play Blackjack",
                 "g!hit": "Draw a card in Blackjack",
                 "g!stand": "End your turn in Blackjack"
             }
-            
+
             # Add game commands to description
             game_text = ""
             for cmd, desc in game_commands.items():
                 game_text += f"• **{cmd}** - {desc}\n"
-            
+
             game_embed.description += f"\n\n{game_text}"
-            
+
             # AI CHAT COMMANDS CONTAINER - Added spaces for consistent width
             chat_embed = discord.Embed(
-                title="**🤖 AI CHAT COMMANDS 🤖**                                   ",
-                description="**KAUSAPIN MO SI GINSILOG BOT:**                                   ",
+                title=
+                "**🤖 AI CHAT COMMANDS 🤖**                                   ",
+                description=
+                "**KAUSAPIN MO SI GINSILOG BOT:**                                   ",
                 color=discord.Color.blue()  # Blue for AI/chat
             )
-            
+
             chat_commands = {
                 "g!usap <message>": "Chat with the AI assistant",
                 "g!ask <message>": "Voice-only AI response (console log only)",
@@ -1183,47 +1208,53 @@ class ChatCog(commands.Cog):
                 "@Ginsilog BOT <message>": "Mention the bot to chat",
                 "g!clear": "Clear chat history"
             }
-            
+
             # Add AI chat commands to description
             chat_text = ""
             for cmd, desc in chat_commands.items():
                 chat_text += f"• **{cmd}** - {desc}\n"
-            
+
             chat_embed.description += f"\n\n{chat_text}"
-            
+
             # UTILITY COMMANDS CONTAINER - Added spaces for consistent width
             utility_embed = discord.Embed(
-                title="**🔧 UTILITY COMMANDS 🔧**                                   ",
-                description="**MISCELLANEOUS AT IBA PANG HELPFUL COMMANDS:**                                   ",
+                title=
+                "**🔧 UTILITY COMMANDS 🔧**                                   ",
+                description=
+                "**MISCELLANEOUS AT IBA PANG HELPFUL COMMANDS:**                                   ",
                 color=discord.Color.green()  # Green for utility
             )
-            
+
             utility_commands = {
                 "g!join/leave": "Voice channel management",
                 "g!rules": "Server rules (may clickable link)",
                 "g!announcement <message>": "Make an announcement",
                 "g!tulong": "Show help for regular users"
             }
-            
+
             # Add utility commands to description
             utility_text = ""
             for cmd, desc in utility_commands.items():
                 utility_text += f"• **{cmd}** - {desc}\n"
-            
+
             utility_embed.description += f"\n\n{utility_text}"
-            
+
             # Only add footer to the last embed
             utility_embed.set_footer(
-                text="⚡ GINSILOG BOT 2025 MASTER COMMAND LIST ⚡ | Gawa ni Mason Calix",
-                icon_url=owner_avatar
-            )
-            
+                text=
+                "⚡ GINSILOG BOT 2025 MASTER COMMAND LIST ⚡ | Gawa ni Mason Calix",
+                icon_url=owner_avatar)
+
             # Send all embeds in ONE message
-            await ctx.send(embeds=[header_embed, admin_embed, economy_embed, game_embed, chat_embed, utility_embed])
-            
+            await ctx.send(embeds=[
+                header_embed, admin_embed, economy_embed, game_embed,
+                chat_embed, utility_embed
+            ])
+
         except Exception as e:
             print(f"Error in commandslist: {e}")
-            await ctx.send(f"**ERROR:** May problema sa pagpapakita ng commands: {e}")
+            await ctx.send(
+                f"**ERROR:** May problema sa pagpapakita ng commands: {e}")
 
     @commands.command(name="admin")
     async def admin(self, ctx):
@@ -1242,25 +1273,29 @@ class ChatCog(commands.Cog):
                 "**HINDI KA ADMIN GAGO!** Wala kang access sa command na 'to!",
                 delete_after=10)
             return
-            
+
         # Get owner's avatar for the footer
         owner = ctx.guild.get_member(705770837399306332)  # Mason's ID
         owner_avatar = owner.avatar.url if owner and owner.avatar else None if owner else None
 
         # Create a beautiful styled admin panel embed with consistent width
         admin_embed = discord.Embed(
-            title="**🛡️ GINSILOG ADMIN DASHBOARD 🛡️**                                   ",
-            description="**EXCLUSIVE COMMANDS FOR MODERATORS & ADMINS ONLY**\n\n" + 
-                       "**👑 WELCOME BOSS! MGA COMMANDS MO DITO 👑**                                   ",
+            title=
+            "**🛡️ GINSILOG ADMIN DASHBOARD 🛡️**                                   ",
+            description=
+            "**EXCLUSIVE COMMANDS FOR MODERATORS & ADMINS ONLY**\n\n" +
+            "**👑 WELCOME BOSS! MGA COMMANDS MO DITO 👑**                                   ",
             color=discord.Color.red())  # Red color for admin panel
-            
+
         # Set thumbnail image with bot's avatar
-        admin_embed.set_thumbnail(url=self.bot.user.avatar.url if self.bot.user and self.bot.user.avatar else None)
-        
+        admin_embed.set_thumbnail(url=self.bot.user.avatar.url if self.bot.user
+                                  and self.bot.user.avatar else None)
+
         # Set author information
         admin_embed.set_author(
-            name="Admin Control Panel", 
-            icon_url=ctx.author.avatar.url if ctx.author and ctx.author.avatar else None  # Use the admin's avatar here
+            name="Admin Control Panel",
+            icon_url=ctx.author.avatar.url if ctx.author and ctx.author.avatar
+            else None  # Use the admin's avatar here
         )
 
         # List all admin commands with improved formatting
@@ -1293,69 +1328,67 @@ class ChatCog(commands.Cog):
 
         # Group commands by type for better organization
         mod_tools = ["g!sagad", "g!bawas", "g!clear_messages"]
-        message_tools = ["g!g", "g!goodmorning", "g!goodnight", "g!test", "g!announcement"]
+        message_tools = [
+            "g!g", "g!goodmorning", "g!goodnight", "g!test", "g!announcement"
+        ]
         ai_tools = ["g!ask", "g!asklog"]
-        
+
         # Moderator Actions Section
         mod_text = ""
         for cmd, desc in admin_commands.items():
             if any(cmd.startswith(tool) for tool in mod_tools):
                 mod_text += f"• **{cmd}** - {desc}\n"
-                
-        admin_embed.add_field(
-            name="🔧 MODERATOR ACTIONS:",
-            value=mod_text or "No moderator commands available.",
-            inline=False
-        )
-        
+
+        admin_embed.add_field(name="🔧 MODERATOR ACTIONS:",
+                              value=mod_text
+                              or "No moderator commands available.",
+                              inline=False)
+
         # Messaging Tools Section
         msg_text = ""
         for cmd, desc in admin_commands.items():
             if any(cmd.startswith(tool) for tool in message_tools):
                 msg_text += f"• **{cmd}** - {desc}\n"
-                
-        admin_embed.add_field(
-            name="📢 MESSAGING TOOLS:",
-            value=msg_text or "No messaging commands available.",
-            inline=False
-        )
-        
+
+        admin_embed.add_field(name="📢 MESSAGING TOOLS:",
+                              value=msg_text
+                              or "No messaging commands available.",
+                              inline=False)
+
         # AI Tools Section
         ai_text = ""
         for cmd, desc in admin_commands.items():
             if any(cmd.startswith(tool) for tool in ai_tools):
                 ai_text += f"• **{cmd}** - {desc}\n"
-                
-        admin_embed.add_field(
-            name="🤖 AI TOOLS:",
-            value=ai_text or "No AI commands available.",
-            inline=False
-        )
-        
+
+        admin_embed.add_field(name="🤖 AI TOOLS:",
+                              value=ai_text or "No AI commands available.",
+                              inline=False)
+
         # Other Admin Commands Section
         other_text = ""
         for cmd, desc in admin_commands.items():
-            if not any(cmd.startswith(tool) for tool in mod_tools + message_tools + ai_tools):
+            if not any(
+                    cmd.startswith(tool)
+                    for tool in mod_tools + message_tools + ai_tools):
                 other_text += f"• **{cmd}** - {desc}\n"
-                
-        admin_embed.add_field(
-            name="🔑 OTHER ADMIN COMMANDS:",
-            value=other_text or "No other commands available.",
-            inline=False
-        )
-            
+
+        admin_embed.add_field(name="🔑 OTHER ADMIN COMMANDS:",
+                              value=other_text
+                              or "No other commands available.",
+                              inline=False)
+
         # Add a role check note
         admin_embed.add_field(
             name="⚠️ NOTE:",
             value="All these commands require Admin or Moderator roles to use.",
-            inline=False
-        )
+            inline=False)
 
         # Set footer with owner's avatar
         admin_embed.set_footer(
-            text="AUTHORIZED ACCESS ONLY | Ginsilog Admin Panel | Gawa ni Mason Calix",
-            icon_url=owner_avatar
-        )
+            text=
+            "AUTHORIZED ACCESS ONLY | Ginsilog Admin Panel | Gawa ni Mason Calix",
+            icon_url=owner_avatar)
 
         # Send the embed in the channel
         await ctx.send(embed=admin_embed)
@@ -1371,45 +1404,56 @@ class ChatCog(commands.Cog):
             channel = ctx.channel
         else:
             channel = self.bot.get_channel(channel_id)
-        
+
         if not channel:
-            await ctx.send(f"**Error:** Hindi mahanap ang channel na may ID {channel_id}.")
+            await ctx.send(
+                f"**Error:** Hindi mahanap ang channel na may ID {channel_id}."
+            )
             return
-            
+
         # Send initial feedback
-        status_message = await ctx.send(f"**Processing:** Checking messages in channel {channel.name}...")
-        
+        status_message = await ctx.send(
+            f"**Processing:** Checking messages in channel {channel.name}...")
+
         # Delete messages
         deleted_count = 0
-        async for message in channel.history(limit=500):  # Check last 500 messages
+        async for message in channel.history(
+                limit=500):  # Check last 500 messages
             if message.author.id == self.bot.user.id:  # Only delete bot's own messages
                 try:
                     await message.delete()
                     deleted_count += 1
                     # Update status message every 10 deletions
                     if deleted_count % 10 == 0:
-                        await status_message.edit(content=f"**Processing:** Deleted {deleted_count} messages so far...")
+                        await status_message.edit(
+                            content=
+                            f"**Processing:** Deleted {deleted_count} messages so far..."
+                        )
                 except Exception as e:
                     print(f"Error deleting message: {e}")
-                
+
                 # Add a small delay to avoid rate limits
                 await asyncio.sleep(0.7)
-        
+
         # Final confirmation
-        await status_message.edit(content=f"**Completed:** Successfully deleted {deleted_count} messages from {channel.name}.")
+        await status_message.edit(
+            content=
+            f"**Completed:** Successfully deleted {deleted_count} messages from {channel.name}."
+        )
 
     @commands.command(name="leaderboard")
     async def leaderboard(self, ctx):
         """Display wealth rankings"""
         # Import the database function
         from bot.database import get_leaderboard
-        
+
         # Get top 20 users by balance from the database
         sorted_users = get_leaderboard(20)
 
         # Create the embed with cleaner design and consistent width (fewer emojis)
         embed = discord.Embed(
-            title="**GINSILOG LEADERBOARD - MAYAMAN VS. DUKHA**                                   ",
+            title=
+            "**GINSILOG LEADERBOARD - MAYAMAN VS. DUKHA**                                   ",
             description=
             "**TANGINA MO! IKAW KAYA NASAAN DITO? SIGURADONG WALA KA DITO KASI WALA KANG KWENTANG PLAYER!**\n\n"
             + "**TOP MAYAMAN NG SERVER**                                   ",
@@ -1443,18 +1487,20 @@ class ChatCog(commands.Cog):
             owner = await self.bot.fetch_user(705770837399306332)
             if owner and owner.avatar:
                 embed.set_footer(
-                    text="DAPAT ANDITO KA SA TAAS! KUNGDI MAGTIPID KA GAGO! | Ginsilog Economy System",
-                    icon_url=owner.avatar.url
-                )
+                    text=
+                    "DAPAT ANDITO KA SA TAAS! KUNGDI MAGTIPID KA GAGO! | Ginsilog Economy System",
+                    icon_url=owner.avatar.url)
             else:
                 embed.set_footer(
-                    text="DAPAT ANDITO KA SA TAAS! KUNGDI MAGTIPID KA GAGO! | Ginsilog Economy System"
+                    text=
+                    "DAPAT ANDITO KA SA TAAS! KUNGDI MAGTIPID KA GAGO! | Ginsilog Economy System"
                 )
         except Exception as e:
             print(f"Error fetching owner avatar: {e}")
             # Fallback if there's any error
             embed.set_footer(
-                text="DAPAT ANDITO KA SA TAAS! KUNGDI MAGTIPID KA GAGO! | Ginsilog Economy System"
+                text=
+                "DAPAT ANDITO KA SA TAAS! KUNGDI MAGTIPID KA GAGO! | Ginsilog Economy System"
             )
 
         # Send the embed
