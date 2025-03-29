@@ -2011,6 +2011,24 @@ class ChatCog(commands.Cog):
                             # This might cause errors but we'll try anyway since the owner requested it
                             print(f"[HighRole] FORCE EDITING high-role user {member.name} as requested by server owner")
                             
+                            # Special handling for server owner
+                            if member.id == member.guild.owner_id:
+                                print(f"[OwnerDetected] User {member.name} is the server owner. Sending special DM.")
+                                owner_role_key = f"owner_reminder_{member.id}"
+                                if owner_role_key not in self.user_message_timestamps or time.time() - self.user_message_timestamps.get(owner_role_key, 0) > 86400:  # Once per day max
+                                    try:
+                                        # Special message to the server owner
+                                        owner_embed = discord.Embed(
+                                            title="👑 Server Owner Nickname Format",
+                                            description=f"Hello Server Owner!\n\nI noticed you have a custom role that would give you the 👑 emoji. However, due to Discord's permissions, I can't change your nickname automatically.\n\nIf you'd like to match the server format, please consider updating your nickname to:\n\n**{suggested_name}**\n\nThis matches your Owner role status.",
+                                            color=0xFFD700  # Gold color for owner
+                                        )
+                                        await member.send(embed=owner_embed)
+                                        self.user_message_timestamps[owner_role_key] = time.time()
+                                        print(f"[OwnerDM] Sent special reminder to server owner {member.name}")
+                                    except Exception as e:
+                                        print(f"[OwnerDM] Couldn't send DM to server owner: {e}")
+                            
                             # We'll continue with the normal process instead of skipping
                         
                         # Get member's roles sorted by position (highest first)
@@ -2208,6 +2226,32 @@ class ChatCog(commands.Cog):
                 
             # Update the name
             try:
+                # Special handling for server owner in setupnn command
+                if member.id == member.guild.owner_id:
+                    print(f"[SetupNN-Owner] Detected server owner: {member.name}")
+                    owner_embed = discord.Embed(
+                        title="👑 Server Owner Nickname Format",
+                        description=f"Hello Server Owner!\n\nI noticed you have the **Owner** role that would give you the 👑 emoji. However, due to Discord's permissions, I can't change your nickname automatically.\n\nIf you'd like to match the server format, please consider updating your nickname to:\n\n**{new_name}**\n\nThis matches your Owner role status.",
+                        color=0xFFD700  # Gold color for owner
+                    )
+                    try:
+                        await member.send(embed=owner_embed)
+                        print(f"[SetupNN-Owner] Sent DM to server owner {member.name}")
+                        
+                        # Also notify in the channel
+                        owner_notify = discord.Embed(
+                            title="👑 Server Owner Notification",
+                            description=f"I can't update the server owner's nickname due to Discord permissions. I've sent a DM with the suggested format.",
+                            color=0xFFD700
+                        )
+                        await ctx.send(embed=owner_notify)
+                    except Exception as dm_error:
+                        print(f"[SetupNN-Owner] Couldn't DM server owner: {dm_error}")
+                        
+                    skipped_count += 1  # Count this as skipped since we can't edit it
+                    continue
+                
+                # For regular members
                 await member.edit(nick=new_name)
                 updated_count += 1
                 # Update status every 5 members
