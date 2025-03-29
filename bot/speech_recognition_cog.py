@@ -3,10 +3,10 @@ import discord
 import os
 import io
 import time
-import pyaudio
-import wave
+import json
+import threading
+import subprocess
 import speech_recognition as sr
-from pocketsphinx import pocketsphinx
 from discord.ext import commands
 import edge_tts
 from pydub import AudioSegment
@@ -20,6 +20,11 @@ class SpeechRecognitionCog(commands.Cog):
         self.recognizer = sr.Recognizer()
         self.voice_clients = {}  # guild_id: voice_client
         self.tts_queue = {}  # guild_id: list of messages to speak
+        self.listening_tasks = {}  # guild_id: asyncio task
+        self.temp_dir = "temp_audio"
+        
+        # Make sure temp directory exists
+        os.makedirs(self.temp_dir, exist_ok=True)
         
         # Default voice settings
         self.default_voice = "en-US-GuyNeural"
@@ -28,20 +33,7 @@ class SpeechRecognitionCog(commands.Cog):
         # Get Groq client from the bot (assuming it's stored there)
         self.get_ai_response = None  # This will be set when the cog is loaded
         
-        # Sphinx config
-        try:
-            # Initialize PocketSphinx for offline speech recognition
-            self.sphinx_config = pocketsphinx.Config()
-            self.sphinx_config.set_string('-hmm', os.path.join(pocketsphinx.get_model_path(), 'en-us'))
-            self.sphinx_config.set_string('-lm', os.path.join(pocketsphinx.get_model_path(), 'en-us.lm.bin'))
-            self.sphinx_config.set_string('-dict', os.path.join(pocketsphinx.get_model_path(), 'cmudict-en-us.dict'))
-            self.sphinx_decoder = pocketsphinx.Decoder(self.sphinx_config)
-            print("✅ Initialized Sphinx speech recognition")
-        except Exception as e:
-            print(f"⚠️ Failed to initialize Sphinx: {e}")
-            self.sphinx_decoder = None
-        
-        print("✅ Speech Recognition Cog initialized")
+        print("✅ Speech Recognition Cog initialized with voice command support")
     
     @commands.Cog.listener()
     async def on_ready(self):
@@ -82,8 +74,44 @@ class SpeechRecognitionCog(commands.Cog):
         # Inform user
         await ctx.send(f"🎤 **GAME NA!** I'm now in **{voice_channel.name}**! Say \"Ginslog Bot\" followed by your question.")
         
+        # Start listening for audio (in a separate task)
+        if ctx.guild.id in self.listening_tasks and not self.listening_tasks[ctx.guild.id].done():
+            self.listening_tasks[ctx.guild.id].cancel()
+        
+        # Create a new listening task for this guild
+        self.listening_tasks[ctx.guild.id] = asyncio.create_task(self.start_listening_for_speech(ctx))
+        
         # Speak a welcome message
         await self.speak_message(ctx.guild.id, "Ginslog Bot is now listening! Say my name followed by your question.")
+    
+    async def start_listening_for_speech(self, ctx):
+        """Listen for voice commands using a Discord-compatible approach"""
+        guild_id = ctx.guild.id
+        
+        # Set up the voice channel
+        voice_channel = ctx.author.voice.channel if ctx.author.voice else None
+        if not voice_channel:
+            return
+            
+        # Log that we're starting to listen
+        print(f"🎧 Starting voice listening in {voice_channel.name} for guild {guild_id}")
+        
+        # Inform channel we're ready for voice commands
+        await ctx.send("🎤 **READY TO RECEIVE VOICE COMMANDS!** I can't listen directly to the voice channel due to Discord limitations in this environment.")
+        await ctx.send("💡 **Use the `!listen transcript <your text>` command** to simulate what you would say with your voice.")
+        await ctx.send("📝 **Example:** `!listen transcript Ginslog Bot what is the weather today?`")
+        
+        # Wait for user to use the text command to simulate voice
+        while guild_id in self.listening_guilds:
+            try:
+                # Every 60 seconds, remind users how to use the voice command simulation
+                await ctx.send("🔄 **REMINDER:** Since I can't hear your voice directly in this environment, use `!listen transcript Ginslog Bot <your question>` to simulate voice commands.", delete_after=20)
+                await asyncio.sleep(60)
+            except Exception as e:
+                print(f"⚠️ Error in speech recognition: {e}")
+                await asyncio.sleep(10)
+        
+        print(f"🛑 Stopped listening in guild {guild_id}")
     
     @commands.command()
     async def stoplisten(self, ctx):
@@ -92,6 +120,15 @@ class SpeechRecognitionCog(commands.Cog):
             # Clean up resources
             self.listening_guilds.discard(ctx.guild.id)
             
+            # Cancel the listening task
+            if ctx.guild.id in self.listening_tasks:
+                try:
+                    self.listening_tasks[ctx.guild.id].cancel()
+                    print(f"🛑 Cancelled listening task for guild {ctx.guild.id}")
+                except:
+                    pass
+            
+            # Disconnect from voice
             if ctx.guild.id in self.voice_clients:
                 await self.voice_clients[ctx.guild.id].disconnect()
                 del self.voice_clients[ctx.guild.id]

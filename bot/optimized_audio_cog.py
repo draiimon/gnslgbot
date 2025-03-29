@@ -60,16 +60,35 @@ class AudioCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         
-        # Create temp directory if it doesn't exist
+        # Create temp directory if it doesn't exist - needed for legacy functions
         self.temp_dir = "temp_audio"
         os.makedirs(self.temp_dir, exist_ok=True)
         
+        # Clean up any old temporary files on start
+        try:
+            for file in os.listdir(self.temp_dir):
+                try:
+                    file_path = os.path.join(self.temp_dir, file)
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
+                        print(f"Cleaned up old temp file: {file}")
+                except Exception as e:
+                    print(f"Error cleaning up file: {e}")
+        except Exception as e:
+            print(f"Error accessing temp directory: {e}")
+            
         # Dictionary to store voice clients and queues per guild
         self.guild_audio_data = {}
         
         # Dictionary to store user voice gender preferences (m = male, f = female)
         # Default is male (m)
         self.user_voice_preferences = {}
+        
+        # Track auto-TTS channels
+        self.auto_tts_channels = {}  # guild_id -> set of channel_ids
+        
+        # Track voice inactivity timers for auto-disconnect
+        self.voice_inactivity_timers = {}  # guild_id -> timer
         
         # ZERO-LATENCY FFMPEG SETTINGS WITH NORMAL VOICE QUALITY
         # Balances instant response with natural sounding voice
