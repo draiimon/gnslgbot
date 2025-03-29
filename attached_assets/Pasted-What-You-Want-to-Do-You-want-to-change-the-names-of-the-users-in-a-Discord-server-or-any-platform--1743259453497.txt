@@ -1,0 +1,95 @@
+What You Want to Do:
+You want to change the names of the users in a Discord server (or any platform you're using) based on their highest role, and also convert the text of the name to a stylized font (specifically a bold, capitalized font) and add an emoji next to their name corresponding to their role.
+
+How to Format the Names:
+Stylize the Text (Font Change):
+
+All names need to be converted into bold capital letters using a special Unicode font (𝑇𝐸𝑋𝑇 𝑓𝑜𝑛𝑡).
+
+For example, a name like "Maintenance" will be converted to 𝐌𝐚𝐢𝐧𝐭𝐞𝐧𝐚𝐧𝐜𝐞.
+
+Add Role Emoji:
+
+For each user, based on their highest role, you need to append an emoji to their name. The emoji should represent their role visually, and you’ll also include a role ID (this seems to be a reference, but it’s not clear whether it's needed for display). The role emojis and role names you provided are as follows:
+
+Role-Emoji Mapping:
+Here’s the list of roles, their emojis, and IDs:
+
+𝐇𝐈𝐆𝐇 🌿 (ID: 1345727357662658603)
+
+𝐊𝐄𝐊𝐋𝐀𝐑𝐒 🍆 (ID: 1345727357645885448)
+
+𝐓𝐀𝐌𝐎𝐃𝐄𝐑𝐀𝐓𝐎𝐑 💦 (ID: 1345727357645885449)
+
+𝐀𝐒𝐀 𝐒𝐏𝐀𝐂𝐄𝐒𝐇𝐈𝐏 🚀 (ID: 1345727357645885442)
+
+𝐕𝐀𝐕𝐀𝐈𝐇𝐀𝐍 🌸 (ID: 1345727357612195890)
+
+𝐁𝐎𝐒𝐒𝐈𝐍𝐆 💪 (ID: 1345727357612195889)
+
+𝐁𝐖𝐈𝐒𝐈𝐓𝐀 ☁️ (ID: 1345727357612195887)
+
+𝐁𝐎𝐓 𝐒𝐈 𝐁𝐇𝐈𝐄 🍑 (ID: 1345727357645885446)
+
+𝐁𝐎𝐁𝐎 🛑 (ID: 1345727357612195885)
+
+How to Implement the Change:
+Identify the Highest Role:
+
+Check which role is dominant or highest for each user. The role with the highest priority will determine the emoji that is added at the end of their name.
+
+Change the User's Name:
+
+Convert the user’s current name to the 𝑇𝐸𝑋𝑇 𝑓𝑜𝑛𝑡 (Unicode bold letters).
+
+Add the corresponding emoji for the highest role they have.
+
+Example:
+
+If your current name is "Maintenance" and your highest role is 𝐇𝐈𝐆𝐇, your name will be converted to 𝐌𝐚𝐢𝐧𝐭𝐞𝐧𝐚𝐧𝐜𝐞 🌿 because 🌿 is the emoji for 𝐇𝐈𝐆𝐇.
+
+Complete Process:
+Identify the highest role of the user.
+
+Convert their name to 𝑇𝐸𝑋𝑇 𝑓𝑜𝑛𝑡 (Bold and capitalized).
+
+Append the appropriate emoji to represent their role.
+
+Save and update their new name.
+
+Clarification with Examples:
+Example 1:
+
+User Name: "John"
+
+Highest Role: 𝐇𝐈𝐆𝐇
+
+Formatted Name: 𝐽𝑜ℎ𝑛 🌿
+
+Example 2:
+
+User Name: "Alice"
+
+Highest Role: 𝐁𝐎𝐒𝐒𝐈𝐍𝐆
+
+Formatted Name: 𝐴𝑙𝑖𝑐𝑒 💪
+
+Example 3:
+
+User Name: "Bob"
+
+Highest Role: 𝐁𝐎𝐁𝐎
+
+Formatted Name: 𝐵𝑜𝑏 🛑
+
+Steps for You to Implement in a Script (if needed):
+Get User Roles: Check the roles of the user.
+
+Find the Highest Role: Determine which role has the highest priority.
+
+Change the Font: Convert their name to a Unicode bold font.
+
+Append the Emoji: Add the emoji that corresponds to the highest role.
+
+Final Note:
+The role IDs you provided seem like reference IDs, but typically they are not needed for the visual name formatting. You would only need them if you're doing advanced role management through a bot or server script.
