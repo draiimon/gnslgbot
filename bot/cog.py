@@ -393,10 +393,10 @@ class ChatCog(commands.Cog):
 
             # Multiple embeds in a single message with different containers
             
-            # Header container
+            # Header container - Added spaces for consistent width
             header_embed = discord.Embed(
-                title="**✨ GINSILOG BOT COMMANDS ✨**",
-                description="**TANGINA MO! GUSTO MO MALAMAN MGA COMMANDS? ETO NA LISTAHAN:**",
+                title="**✨ GINSILOG BOT COMMANDS ✨**                                   ",
+                description="**TANGINA MO! GUSTO MO MALAMAN MGA COMMANDS? ETO NA LISTAHAN:**                                   ",
                 color=discord.Color.from_rgb(255, 59, 59)  # Bright red
             )
             
@@ -404,10 +404,10 @@ class ChatCog(commands.Cog):
             if self.bot.user and self.bot.user.avatar:
                 header_embed.set_thumbnail(url=self.bot.user.avatar.url)
             
-            # AI CHAT COMMANDS CONTAINER
+            # AI CHAT COMMANDS CONTAINER - Added spaces for consistent width
             ai_embed = discord.Embed(
-                title="**🤖 AI CHAT COMMANDS 🤖**",
-                description="**MGA KAUSAPIN MO SI GINSILOG:**",
+                title="**🤖 AI CHAT COMMANDS 🤖**                                   ",
+                description="**KAUSAPIN MO SI GINSILOG BOT:**                                   ",
                 color=discord.Color.blue()  # Blue for AI/chat
             )
             
@@ -425,10 +425,10 @@ class ChatCog(commands.Cog):
             
             ai_embed.description += f"\n\n{ai_text}"
             
-            # ECONOMY COMMANDS CONTAINER
+            # ECONOMY COMMANDS CONTAINER - Added spaces for consistent width
             economy_embed = discord.Embed(
-                title="**💰 ECONOMY COMMANDS 💰**",
-                description="**YUMAMAN KA DITO GAGO:**",
+                title="**💰 ECONOMY COMMANDS 💰**                                   ",
+                description="**YUMAMAN KA DITO GAGO:**                                   ",
                 color=discord.Color.gold()  # Gold for economy
             )
             
@@ -446,10 +446,10 @@ class ChatCog(commands.Cog):
             
             economy_embed.description += f"\n\n{economy_text}"
             
-            # GAMES COMMANDS CONTAINER
+            # GAMES COMMANDS CONTAINER - Added spaces for consistent width
             games_embed = discord.Embed(
-                title="**🎮 GAMES COMMANDS 🎮**",
-                description="**SUGAL SUGAL DIN PAMINSAN-MINSAN:**",
+                title="**🎮 GAMES COMMANDS 🎮**                                   ",
+                description="**SUGAL SUGAL DIN PAMINSAN-MINSAN:**                                   ",
                 color=discord.Color.purple()  # Purple for games
             )
             
@@ -467,10 +467,10 @@ class ChatCog(commands.Cog):
             
             games_embed.description += f"\n\n{games_text}"
             
-            # UTILITY COMMANDS CONTAINER
+            # UTILITY COMMANDS CONTAINER - Added spaces for consistent width
             utility_embed = discord.Embed(
-                title="**🔧 UTILITY COMMANDS 🔧**",
-                description="**IBANG FEATURES NG BOT:**",
+                title="**🔧 UTILITY COMMANDS 🔧**                                   ",
+                description="**IBANG FEATURES NG BOT:**                                   ",
                 color=discord.Color.green()  # Green for utility
             )
             
@@ -603,11 +603,11 @@ class ChatCog(commands.Cog):
         """Clear the conversation history for the current channel"""
         self.conversation_history[ctx.channel.id].clear()
 
-        # Create polite embed for clearing history
+        # Create polite embed for clearing history with consistent width
         clear_embed = discord.Embed(
-            title="**Conversation Cleared**",
+            title="**Conversation Cleared**                                   ",
             description=
-            "Ang conversation history ay na-clear na. Pwede na tayong mag-usap muli.\n\nGamit ang `g!usap <message>`, `g!asklog <message>`, `g!ask <message>` o i-mention mo ako para magsimula ng bagong conversation.",
+            "Ang conversation history ay na-clear na. Pwede na tayong mag-usap muli.\n\nGamit ang `g!usap <message>`, `g!asklog <message>`, `g!ask <message>` o i-mention mo ako para magsimula ng bagong conversation.                                   ",
             color=Config.EMBED_COLOR_INFO)
         clear_embed.set_footer(text="Ginsilog Bot | Fresh Start | Gawa ni Mason Calix")
 
@@ -827,9 +827,9 @@ class ChatCog(commands.Cog):
             await ctx.send("**TANGA!** WALA AKONG MAHANAP NA RULES CHANNEL!")
             return
             
-        # Show rules in any channel
-        rules = discord.Embed(title="**SERVER RULES**",
-                             description="""**BASAHIN MO MABUTI ANG MGA RULES NA ITO!**
+        # Show rules in any channel with consistent width
+        rules = discord.Embed(title="**SERVER RULES**                                   ",
+                             description="""**BASAHIN MO MABUTI ANG MGA RULES NA ITO!**                                   
 
 1. Be respectful to all members
 2. No illegal content
@@ -858,9 +858,9 @@ class ChatCog(commands.Cog):
             await ctx.send(f"**TANGA!** WALA KANG MESSAGE!")
             return
         announcement = discord.Embed(
-            title="Announcement",
+            title="Announcement                                   ",
             description=
-            f"{message}\n\nFor more announcements, check <#{Config.ANNOUNCEMENTS_CHANNEL_ID}>",
+            f"{message}\n\nFor more announcements, check <#{Config.ANNOUNCEMENTS_CHANNEL_ID}>                                   ",
             color=Config.EMBED_COLOR_PRIMARY)
         announcement.set_footer(
             text=
@@ -1172,7 +1172,7 @@ class ChatCog(commands.Cog):
             # AI CHAT COMMANDS CONTAINER - Added spaces for consistent width
             chat_embed = discord.Embed(
                 title="**🤖 AI CHAT COMMANDS 🤖**                                   ",
-                description="**MAG-CHAT AT KAUSAPIN ANG BOT:**                                   ",
+                description="**KAUSAPIN MO SI GINSILOG BOT:**                                   ",
                 color=discord.Color.blue()  # Blue for AI/chat
             )
             
@@ -1247,14 +1247,12 @@ class ChatCog(commands.Cog):
         owner = ctx.guild.get_member(705770837399306332)  # Mason's ID
         owner_avatar = owner.avatar.url if owner and owner.avatar else None if owner else None
 
-        # Create a beautiful styled admin panel embed
+        # Create a beautiful styled admin panel embed with consistent width
         admin_embed = discord.Embed(
-            title="**🛡️ GINSILOG ADMIN DASHBOARD 🛡️**",
+            title="**🛡️ GINSILOG ADMIN DASHBOARD 🛡️**                                   ",
             description="**EXCLUSIVE COMMANDS FOR MODERATORS & ADMINS ONLY**\n\n" + 
-                       "**👑 WELCOME BOSS! MGA COMMANDS MO DITO 👑**",
+                       "**👑 WELCOME BOSS! MGA COMMANDS MO DITO 👑**                                   ",
             color=discord.Color.red())  # Red color for admin panel
-        # Fixed width to ensure consistent size
-        admin_embed.width = 500
             
         # Set thumbnail image with bot's avatar
         admin_embed.set_thumbnail(url=self.bot.user.avatar.url if self.bot.user and self.bot.user.avatar else None)
@@ -1409,15 +1407,13 @@ class ChatCog(commands.Cog):
         # Get top 20 users by balance from the database
         sorted_users = get_leaderboard(20)
 
-        # Create the embed with cleaner design (fewer emojis)
+        # Create the embed with cleaner design and consistent width (fewer emojis)
         embed = discord.Embed(
-            title="**GINSILOG LEADERBOARD - MAYAMAN VS. DUKHA**",
+            title="**GINSILOG LEADERBOARD - MAYAMAN VS. DUKHA**                                   ",
             description=
             "**TANGINA MO! IKAW KAYA NASAAN DITO? SIGURADONG WALA KA DITO KASI WALA KANG KWENTANG PLAYER!**\n\n"
-            + "**TOP MAYAMAN NG SERVER**",
+            + "**TOP MAYAMAN NG SERVER**                                   ",
             color=Config.EMBED_COLOR_PRIMARY)
-        # Fixed width to ensure consistent size
-        embed.width = 500
 
         # Create a formatted leaderboard with cleaner styling
         leaderboard_text = ""
