@@ -231,19 +231,13 @@ class AudioCog(commands.Cog):
             # - zh-CN-YunxiNeural (Chinese)
             # - ja-JP-KenjiNeural (Japanese)
             
-            # Using Microsoft's best and newest 2025 multilingual voice model 
-            # JennyMultilingualNeural - supports ALL languages and has the best pronunciation
-            voice = "en-US-JennyMultilingualNeural"  # Best multilingual voice with perfect pronunciation in all languages
+            # Using reliable voices (confirmed working)
+            # Use a reliable voice that we know works
+            voice = "fil-PH-AngeloNeural"  # Filipino male voice - works well for Tagalog
             
-            # Format message with SSML for enhanced pronunciation and clarity
-            # This makes the TTS more expressive and clearer
-            try:
-                # Try to use advanced SSML formatting
-                enhanced_message = f"<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='https://www.w3.org/2001/mstts' xml:lang='en-US'><voice name='{voice}'><prosody rate='0.9' pitch='+0Hz' volume='+10%'>{message}</prosody></voice></speak>"
-                tts = edge_tts.Communicate(text=enhanced_message, voice=voice)
-            except:
-                # Fallback to basic settings if SSML fails
-                tts = edge_tts.Communicate(text=message, voice=voice)
+            # Use direct text without SSML to ensure compatibility
+            # We'll use the default voice parameters
+            tts = edge_tts.Communicate(text=message, voice=voice)
             
             # Generate MP3 audio using Edge TTS API
             await tts.save(mp3_filename)
