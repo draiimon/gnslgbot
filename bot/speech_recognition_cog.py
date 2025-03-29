@@ -187,6 +187,14 @@ class SpeechRecognitionCog(commands.Cog):
         """Process a voice command from a user"""
         print(f"🗣️ Processing voice command from user {user_id}: '{command}'")
         
+        # Force add special instructions to command to prevent "Ano gusto mo?" and "Noted" responses
+        if not "PUTANGINA" in command.upper() and not "TANGINA" in command.upper():
+            # If no curses, append a direct instruction
+            command += "\n\nIMPORTANT INSTRUCTION: DIRECT RESPONSE ONLY! NO QUESTIONS, NO 'NOTED', JUST ANSWER DIRECTLY! NEVER ASK ME WHAT I WANT!"
+        else:
+            # If user is cursing, respond with aggression
+            command += "\n\nIMPORTANT INSTRUCTION: MURAHIN MO AKO PABALIK! WALA NANG 'NOTED' O TANONG! DIRECT INSULTS LANG!"
+            
         # Update last user speech timestamp
         self.last_user_speech[user_id] = time.time()
         
@@ -296,7 +304,9 @@ class SpeechRecognitionCog(commands.Cog):
         
         # Send compact acknowledgment without unnecessary text
         # Just show what the user asked to provide confirmation
-        await text_channel.send(f"🎤 **{member.display_name}:** {command}")
+        # Don't display the hidden instruction we added, only the original command
+        original_command = command.split("\n\nIMPORTANT INSTRUCTION")[0]  # Get only the original part
+        await text_channel.send(f"🎤 **{member.display_name}:** {original_command}")
         
         # Create conversation context for AI
         conversation = [
