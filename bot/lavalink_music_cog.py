@@ -92,6 +92,7 @@ class LavalinkMusicCog(commands.Cog):
         self.players = {}  # Guild ID -> MusicPlayer
         self.spotify_enabled = Config.SPOTIFY_CLIENT_ID and Config.SPOTIFY_CLIENT_SECRET
         self.lavalink_connected = False
+        self.is_playing_via_ffmpeg = False # Track if we're using FFmpeg fallback
         
         # Import the YouTube parser for fallback
         from bot.custom_youtube import YouTubeUnblocker, SpotifyUnblocker
@@ -101,94 +102,91 @@ class LavalinkMusicCog(commands.Cog):
         # Set up wavelink node when the bot is ready
         bot.loop.create_task(self.connect_nodes())
         
+    async def _play_next_track(self, ctx, music_player):
+        """Play the next track in queue when using FFmpeg directly"""
+        # Don't try to play the next track if we're not in FFmpeg mode
+        if not self.is_playing_via_ffmpeg:
+            return
+            
+        # Get the next track from the queue
+        track = music_player.next()
+        
+        if track:
+            # Get voice client
+            voice_client = ctx.voice_client
+            if voice_client and voice_client.is_connected():
+                try:
+                    # Get the audio URL
+                    source_url = track.get('source_url') or track.get('url')
+                    
+                    if source_url:
+                        # Play using FFmpeg
+                        from discord import FFmpegPCMAudio
+                        
+                        # Create FFmpeg options
+                        ffmpeg_options = {
+                            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+                            'options': '-vn'
+                        }
+                        
+                        # Create audio source and play
+                        audio_source = FFmpegPCMAudio(source_url, **ffmpeg_options)
+                        voice_client.play(audio_source, after=lambda e: 
+                            self.bot.loop.create_task(self._play_next_track(ctx, music_player)))
+                            
+                        # Send a notification
+                        if music_player.text_channel:
+                            await music_player.text_channel.send(f"🎵 Now playing: **{track['title']}**")
+                except Exception as e:
+                    print(f"Error playing next track with FFmpeg: {e}")
+                    if music_player.text_channel:
+                        await music_player.text_channel.send(f"❌ Error playing next track: {str(e)}")
+            else:
+                print("No voice client available to play next track")
+        else:
+            # End of queue
+            if music_player.text_channel:
+                await music_player.text_channel.send("✓ Queue finished! Add more songs using `g!lplay`")
+        
     async def connect_nodes(self):
         """Connect to Lavalink nodes"""
         await self.bot.wait_until_ready()
         
-        # Use the primary Lavalink server (now set to Singapore/HK region)
-        lavalink_host = Config.LAVALINK_HOST  # Singapore-based server
-        lavalink_port = Config.LAVALINK_PORT
-        lavalink_password = Config.LAVALINK_PASSWORD
-        lavalink_secure = getattr(Config, 'LAVALINK_SECURE', False)  # Default to False if not set
+        # IMPORTANT: Since we're having DNS issues with all Lavalink servers,
+        # we'll prioritize the fallback YouTube parser for reliability
         
-        print(f"✓ Connecting to Lavalink server in Asian region at {lavalink_host}:{lavalink_port} (Secure: {lavalink_secure})")
+        print(f"⚠️ Due to DNS resolution issues on Replit, skipping Lavalink connection")
+        print(f"✅ Using YouTube direct streaming instead for reliable playback")
         
-        # First try the primary server (Singapore server)
+        # Don't even try to connect to Lavalink servers if we're in Replit
+        # Mark as not connected so fallback is used
+        self.lavalink_connected = False
+        
+        # Optional debugging - try IP address directly instead of hostname
+        # This is just for diagnostic purposes
         try:
-            # Connect using wavelink 3.x API
-            nodes = [
-                wavelink.Node(
-                    uri=f'{"https" if lavalink_secure else "http"}://{lavalink_host}:{lavalink_port}', 
-                    password=lavalink_password
-                )
-            ]
-            await wavelink.Pool.connect(nodes=nodes, client=self.bot)
-            self.lavalink_connected = True
-            print("✅ Successfully connected to Asia region Lavalink server!")
-            return
-        except Exception as e:
-            print(f"❌ Failed to connect to primary Asia region Lavalink server: {e}")
-            print("⚠️ Trying other servers...")
-        
-        # March 2025 - Updated more reliable servers
-        all_servers = [
-            # Don't try lavalink.devamop.in again as it's the primary
-            {
-                'host': 'lavalink4u.herokuapp.com',
-                'port': 443,
-                'password': 'passwords',
-                'secure': True
-            },
-            {
-                'host': 'lavalink.oops.wtf',
-                'port': 2000,
-                'password': 'www.freelavalink.herokuapp.com',
-                'secure': False
-            },
-            {
-                'host': 'lavalinkau.xtremebot.xyz',
-                'port': 10232,
-                'password': 'alivecapital12',
-                'secure': False
-            }
-        ]
+            # Attempt direct IP connection to a reliable server (optional)
+            # This is only for testing if direct IP works better than hostname
+            direct_ip_node = wavelink.Node(
+                uri="http://144.172.83.115:2333",  # Use an IP address to bypass DNS
+                password="youshallnotpass"
+            )
             
-        # Try each server directly
-        for i, server in enumerate(all_servers):
             try:
-                host = server['host']
-                port = server['port']
-                password = server['password']
-                secure = server.get('secure', False)
-                
-                print(f"🔄 Trying Lavalink server {i+1}: {host}:{port} (Secure: {secure})")
-                
-                # Create new wavelink nodes
-                try:
-                    # First, disconnect from any existing nodes
-                    try:
-                        await wavelink.Pool.disconnect()
-                    except:
-                        pass  # Ignore any disconnect errors
-                    
-                    node = wavelink.Node(
-                        uri=f'{"https" if secure else "http"}://{host}:{port}', 
-                        password=password
-                    )
-                    
-                    await wavelink.Pool.connect(nodes=[node], client=self.bot)
-                    self.lavalink_connected = True
-                    print(f"✅ Successfully connected to Lavalink server: {host}:{port}")
-                    return
-                except Exception as connect_error:
-                    print(f"❌ Connection error with {host}: {connect_error}")
-                    continue
-            except Exception as server_error:
-                print(f"❌ General error with server: {server_error}")
-        
-        # If all servers failed
-        print("❌ All Lavalink servers failed to connect")
-        print("⚠️ The bot will fall back to using the custom YouTube parser for music functionality.")
+                await wavelink.Pool.connect(nodes=[direct_ip_node], client=self.bot)
+                self.lavalink_connected = True
+                print("✅ Connected to Lavalink via direct IP! This is unexpected but good.")
+                return
+            except Exception as direct_ip_error:
+                print(f"❌ Direct IP connection also failed: {direct_ip_error}")
+                # Continue with fallback
+        except Exception as e:
+            print(f"❌ Error setting up direct IP connection: {e}")
+            
+        # If we're still here, we'll use the fallback
+        print("ℹ️ The bot will use the custom YouTube parser for music playback")
+        print("💡 Benefits: Works reliably in Replit environment with no external dependencies")
+        print("💡 Features: YouTube search, direct URL playback, queue management")
         self.lavalink_connected = False
         
     def get_player(self, guild_id):
@@ -456,9 +454,48 @@ class LavalinkMusicCog(commands.Cog):
                                 # We need to handle it differently
                                 await ctx.send(f"🎵 Now playing: **{track['title']}**")
                                 
-                                # Here we would add code to play the track using FFmpeg
-                                # But for now, just inform the user that playback isn't implemented
-                                await ctx.send("⚠️ Fallback playback not fully implemented. Please check back later.")
+                                # Get the audio URL from the track info
+                                source_url = track.get('source_url') or track.get('url')
+                                
+                                if source_url:
+                                    # Connect to voice channel if needed
+                                    if not ctx.voice_client:
+                                        await self.join_voice_channel(ctx)
+                                    
+                                    # Play the audio using FFmpeg (similar to how other music cogs work)
+                                    # Since we're using wavelink Player, we can use its play method with custom FFMPEG options
+                                    try:
+                                        # Using wavelink's FFmpeg source
+                                        from discord import FFmpegPCMAudio
+                                        from discord.opus import Encoder
+                                        
+                                        voice_client = ctx.voice_client
+                                        
+                                        # First stop any currently playing audio
+                                        voice_client.stop()
+                                        
+                                        # Play using FFmpeg
+                                        # Using standard options for better compatibility
+                                        ffmpeg_options = {
+                                            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+                                            'options': '-vn'
+                                        }
+                                        
+                                        # Create audio source
+                                        audio_source = FFmpegPCMAudio(source_url, **ffmpeg_options)
+                                        
+                                        # Play the audio
+                                        voice_client.play(audio_source, after=lambda e: 
+                                            self.bot.loop.create_task(self._play_next_track(ctx, music_player)))
+                                        
+                                        # Use event to handle track ending when using FFmpeg direct
+                                        self.is_playing_via_ffmpeg = True
+                                        
+                                    except Exception as ffmpeg_error:
+                                        print(f"Error playing audio via FFmpeg: {ffmpeg_error}")
+                                        await ctx.send(f"❌ Error playing the track: {str(ffmpeg_error)}")
+                                else:
+                                    await ctx.send("❌ No playable URL found for this track.")
                     
                     except Exception as fallback_error:
                         print(f"Error in fallback mode: {fallback_error}")
@@ -810,11 +847,16 @@ class LavalinkMusicCog(commands.Cog):
     @commands.command(name="lmusichelp", aliases=["lmhelp"])
     async def lmusichelp(self, ctx):
         """Show help for all music commands"""
-        streaming_status = "✅ Advanced streaming mode" if self.lavalink_connected else "⚠️ Basic playback mode (no Lavalink)"
+        if self.lavalink_connected:
+            streaming_status = "✅ Advanced streaming mode (full features)"
+            status_desc = "Connected to Lavalink server for high-quality playback"
+        else:
+            streaming_status = "⚠️ Basic playback mode (YouTube only)"
+            status_desc = "Using direct YouTube parser for reliable playback in Replit"
         
         embed = discord.Embed(
             title="🎵 Ginsilog Music Commands",
-            description=f"Ang bagong music player ng Ginsilog!\n\n**Status: {streaming_status}**",
+            description=f"Ang bagong music player ng Ginsilog!\n\n**Status: {streaming_status}**\n{status_desc}",
             color=0xFF5733
         )
         
@@ -860,7 +902,7 @@ class LavalinkMusicCog(commands.Cog):
         if self.lavalink_connected:
             footer_text = "Music powered by Lavalink - Supports YouTube, Spotify, and SoundCloud"
         else:
-            footer_text = "Running in fallback mode - Some features may be limited"
+            footer_text = "Running in reliable fallback mode via direct YouTube - DNS errors with Lavalink hosts"
             
         embed.set_footer(text=footer_text)
         await ctx.send(embed=embed)

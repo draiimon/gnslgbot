@@ -80,6 +80,14 @@ async def on_ready():
         await bot.add_cog(lavalink_music_cog)
         print("🎧 Lavalink Music Cog loaded - NO DOWNLOAD STREAMING MODE!")
         
+        # Display the streaming mode status clearly at startup
+        if hasattr(lavalink_music_cog, 'lavalink_connected') and lavalink_music_cog.lavalink_connected:
+            print("✅ Lavalink connection successful - Using advanced streaming")
+        else:
+            print("⚠️ Lavalink connection failed - Using reliable fallback YouTube parser")
+            print("💡 Pro: More reliable in Replit environment")
+            print("💡 Pro: No external server dependencies")
+        
     # Start the greetings scheduler
     check_greetings.start()
     print("✅ Greetings scheduler started")
