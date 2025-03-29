@@ -36,18 +36,15 @@ class ChatCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
-        """Automatically connect to voice channels when a user joins"""
-        vc = member.guild.voice_client
-
+        """No longer automatically connects to voice channels - only on explicit command"""
         # Don't trigger on our own actions
         if member.id == self.bot.user.id:
             return
         # Channel didn't change, so not a join or leave event
         elif before.channel == after.channel:
             return
-        # If we're not in a voice channel and someone joined a channel
-        elif not vc and after.channel:
-            await self._connect(after.channel)
+        # No longer auto-connecting to prevent unwanted rejoins
+        # Now the bot will only connect when explicitly commanded
 
     async def _connect(self, channel):
         """Helper method to connect to a voice channel"""
@@ -1162,6 +1159,8 @@ class ChatCog(commands.Cog):
                 "Ipakita ang basic admin commands",
                 "g!commandslist":
                 "Ipakita ang lahat ng commands (ito mismo)",
+                "g!setupnn":
+                "Mag-format ng lahat ng usernames ayon sa role at emoji",
                 "g!ask <message>":
                 "Voice-only AI response (console log only)",
                 "g!asklog <message>":
@@ -1358,6 +1357,8 @@ class ChatCog(commands.Cog):
             "Ipakita ang lahat ng admin commands (ito mismo)",
             "g!commandslist":
             "Ipakita ang master list ng lahat ng commands",
+            "g!setupnn":
+            "Mag-format ng lahat ng usernames ayon sa role at emoji",
             "g!ask <message>":
             "Voice-only AI response (console log only, walang Discord log)",
             "g!asklog <message>":
@@ -1381,7 +1382,7 @@ class ChatCog(commands.Cog):
         }
 
         # Group commands by type for better organization
-        mod_tools = ["g!sagad", "g!bawas", "g!clear_messages"]
+        mod_tools = ["g!sagad", "g!bawas", "g!clear_messages", "g!setupnn"]
         message_tools = [
             "g!g", "g!goodmorning", "g!goodnight", "g!test", "g!announcement"
         ]
@@ -1675,6 +1676,140 @@ class ChatCog(commands.Cog):
         # Show confirmation
         status = "ON" if new_state else "OFF"
         await ctx.send(f"**MAINTENANCE MODE NOW:** `{status}`")
+
+    @commands.command(name="setupnn")
+    @commands.check(lambda ctx: any(role.id in [
+        1345727357662658603, 1345727357645885449, 1345727357645885448
+    ] for role in ctx.author.roles))
+    async def setupnn(self, ctx):
+        """Set up name formatting based on highest role (admin only)"""
+        # Role-to-emoji mapping
+        role_emoji_map = {
+            1345727357662658603: "🌿",  # 𝐇𝐈𝐆𝐇
+            1345727357645885448: "🍆",  # 𝐊𝐄𝐊𝐋𝐀𝐑𝐒
+            1345727357645885449: "💦",  # 𝐓𝐀𝐌𝐎𝐃𝐄𝐑𝐀𝐓𝐎𝐑
+            1345727357645885442: "🚀",  # 𝐀𝐒𝐀 𝐒𝐏𝐀𝐂𝐄𝐒𝐇𝐈𝐏
+            1345727357612195890: "🌸",  # 𝐕𝐀𝐕𝐀𝐈𝐇𝐀𝐍
+            1345727357612195889: "💪",  # 𝐁𝐎𝐒𝐒𝐈𝐍𝐆
+            1345727357612195887: "☁️",  # 𝐁𝐖𝐈𝐒𝐈𝐓𝐀
+            1345727357645885446: "🍑",  # 𝐁𝐎𝐓 𝐒𝐈 𝐁𝐇𝐈𝐄
+            1345727357612195885: "🛑",  # 𝐁𝐎𝐁𝐎
+        }
+        
+        # Role names for display in log
+        role_names = {
+            1345727357662658603: "𝐇𝐈𝐆𝐇",
+            1345727357645885448: "𝐊𝐄𝐊𝐋𝐀𝐑𝐒",
+            1345727357645885449: "𝐓𝐀𝐌𝐎𝐃𝐄𝐑𝐀𝐓𝐎𝐑",
+            1345727357645885442: "𝐀𝐒𝐀 𝐒𝐏𝐀𝐂𝐄𝐒𝐇𝐈𝐏",
+            1345727357612195890: "𝐕𝐀𝐕𝐀𝐈𝐇𝐀𝐍",
+            1345727357612195889: "𝐁𝐎𝐒𝐒𝐈𝐍𝐆",
+            1345727357612195887: "𝐁𝐖𝐈𝐒𝐈𝐓𝐀",
+            1345727357645885446: "𝐁𝐎𝐓 𝐒𝐈 𝐁𝐇𝐈𝐄",
+            1345727357612195885: "𝐁𝐎𝐁𝐎",
+        }
+        
+        # Unicode text conversion map for bold text style
+        unicode_map = {
+            'A': '𝐀', 'B': '𝐁', 'C': '𝐂', 'D': '𝐃', 'E': '𝐄', 'F': '𝐅', 'G': '𝐆', 'H': '𝐇', 
+            'I': '𝐈', 'J': '𝐉', 'K': '𝐊', 'L': '𝐋', 'M': '𝐌', 'N': '𝐍', 'O': '𝐎', 'P': '𝐏', 
+            'Q': '𝐐', 'R': '𝐑', 'S': '𝐒', 'T': '𝐓', 'U': '𝐔', 'V': '𝐕', 'W': '𝐖', 'X': '𝐗', 
+            'Y': '𝐘', 'Z': '𝐙',
+            'a': '𝐚', 'b': '𝐛', 'c': '𝐜', 'd': '𝐝', 'e': '𝐞', 'f': '𝐟', 'g': '𝐠', 'h': '𝐡', 
+            'i': '𝐢', 'j': '𝐣', 'k': '𝐤', 'l': '𝐥', 'm': '𝐦', 'n': '𝐧', 'o': '𝐨', 'p': '𝐩', 
+            'q': '𝐪', 'r': '𝐫', 's': '𝐬', 't': '𝐭', 'u': '𝐮', 'v': '𝐯', 'w': '𝐰', 'x': '𝐱', 
+            'y': '𝐲', 'z': '𝐳', 
+            '0': '0', '1': '1', '2': '2', '3': '3', '4': '4', 
+            '5': '5', '6': '6', '7': '7', '8': '8', '9': '9',
+            ' ': ' ', '_': '_', '-': '-', '.': '.', ',': ',', '!': '!', '?': '?'
+        }
+        
+        # Function to convert text to Unicode bold style
+        def to_unicode_bold(text):
+            return ''.join(unicode_map.get(c, c) for c in text)
+        
+        # Status message and counter
+        status_embed = discord.Embed(
+            title="👑 𝐒𝐄𝐓𝐔𝐏𝐍𝐍 - 𝐍𝐀𝐌𝐄 𝐅𝐎𝐑𝐌𝐀𝐓𝐓𝐈𝐍𝐆 👑",
+            description="Formatting member names based on roles...",
+            color=Config.EMBED_COLOR_PRIMARY
+        )
+        status_message = await ctx.send(embed=status_embed)
+        
+        # Counters for stats
+        updated_count = 0
+        failed_count = 0
+        skipped_count = 0
+        
+        # Process members
+        members = ctx.guild.members
+        total_members = len(members)
+        
+        for i, member in enumerate(members):
+            # Skip bots
+            if member.bot:
+                skipped_count += 1
+                continue
+                
+            # Get member's roles sorted by position (highest first)
+            member_roles = sorted(member.roles, key=lambda r: r.position, reverse=True)
+            
+            # Find the highest role that's in our mapping
+            highest_matched_role_id = None
+            for role in member_roles:
+                if role.id in role_emoji_map:
+                    highest_matched_role_id = role.id
+                    break
+            
+            # Skip if no matching role found
+            if not highest_matched_role_id:
+                skipped_count += 1
+                continue
+                
+            # Get the emoji for this role
+            emoji = role_emoji_map[highest_matched_role_id]
+            role_name = role_names[highest_matched_role_id]
+            
+            # Format the name
+            original_name = member.display_name
+            # Remove any existing emoji suffix before converting
+            clean_name = original_name
+            for emoji_value in role_emoji_map.values():
+                if clean_name.endswith(emoji_value):
+                    clean_name = clean_name[:-len(emoji_value)].strip()
+            
+            # Convert to Unicode bold style
+            formatted_name = to_unicode_bold(clean_name)
+            
+            # Add the role emoji
+            new_name = f"{formatted_name} {emoji}"
+            
+            # Skip if the name is already correctly formatted
+            if member.display_name == new_name:
+                skipped_count += 1
+                continue
+                
+            # Update the name
+            try:
+                await member.edit(nick=new_name)
+                updated_count += 1
+                # Update status every 5 members
+                if i % 5 == 0:
+                    status_embed.description = f"Processing... ({i+1}/{total_members})\n\nUpdated: {updated_count}\nSkipped: {skipped_count}\nFailed: {failed_count}"
+                    await status_message.edit(embed=status_embed)
+                print(f"Updated {member.name} to {new_name} with role {role_name}")
+            except Exception as e:
+                failed_count += 1
+                print(f"Failed to update {member.name}: {e}")
+                
+            # Small delay to avoid rate limits
+            await asyncio.sleep(0.5)
+        
+        # Final status update
+        status_embed.title = "✅ 𝐍𝐀𝐌𝐄 𝐅𝐎𝐑𝐌𝐀𝐓𝐓𝐈𝐍𝐆 𝐂𝐎𝐌𝐏𝐋𝐄𝐓𝐄"
+        status_embed.description = f"**Process complete!**\n\n**Updated:** {updated_count} members\n**Skipped:** {skipped_count} members\n**Failed:** {failed_count} members"
+        status_embed.color = Config.EMBED_COLOR_SUCCESS
+        await status_message.edit(embed=status_embed)
 
 
 def setup(bot):
