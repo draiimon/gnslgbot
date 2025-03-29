@@ -428,21 +428,15 @@ class AudioCog(commands.Cog):
         try:
             # Only process if all conditions are met
             if message.author.voice and len(message.content) > 0 and len(message.content) <= 200:
-                # Check if the user has spoken recently (within 1 second) to avoid spam
-                user_id = message.author.id
-                now = datetime.datetime.now()
+                # Don't use time-based rate limiting for auto-TTS messages
+                # Just let all messages through, Discord's own rate limiting will prevent abuse
+                # The only check we need is to make sure the bot doesn't speak its own confirmation messages
+                if message.content.startswith('🔊'):
+                    print(f"Skipping TTS for bot confirmation message")
+                    return False
                 
-                if user_id in self.last_user_speech:
-                    last_time = self.last_user_speech[user_id]
-                    time_diff = (now - last_time).total_seconds()
-                    
-                    # If user has spoken too recently, skip this message
-                    if time_diff < 1:
-                        print(f"Skipping TTS for {message.author.name}: too frequent")
-                        return False
-                
-                # Update last speech time
-                self.last_user_speech[user_id] = now
+                # Update last speech time (using current timestamp)
+                self.last_user_speech[message.author.id] = datetime.datetime.now()
                 voice_channel = message.author.voice.channel
                 
                 # For ultra-fast TTS, we'll use direct streaming without file storage
