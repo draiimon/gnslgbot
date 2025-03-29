@@ -395,8 +395,8 @@ class ChatCog(commands.Cog):
             
             # Header container with red left border (Discohook style)
             header_embed = discord.Embed(
-                title="**TANGINA MO! GUSTO MO MALAMAN MGA COMMANDS?**‎‎‎‎‎‎‎‎ㅤ ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ",
-                description="**ETO NA LISTAHAN:**‎‎‎‎‎‎‎‎ㅤ ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ",
+                title="**TANGINA MO! GUSTO MO MALAMAN MGA COMMANDS?**                    ",
+                description="**ETO NA LISTAHAN:**                    ",
                 color=discord.Color.from_rgb(255, 59, 59)  # Bright red
             )
             
@@ -406,8 +406,8 @@ class ChatCog(commands.Cog):
             
             # AI CHAT COMMANDS CONTAINER with blue left border (Discohook style)
             ai_embed = discord.Embed(
-                title="**🤖 AI CHAT COMMANDS 🤖**‎‎‎‎‎‎‎‎ㅤ ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ",
-                description="**KAUSAPIN MO SI GINSILOG BOT:**‎‎‎‎‎‎‎‎ㅤ ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ",
+                title="**🤖 AI CHAT COMMANDS 🤖**                    ",
+                description="**KAUSAPIN MO SI GINSILOG BOT:**                    ",
                 color=discord.Color.blue()  # Blue for AI/chat
             )
             
@@ -427,8 +427,8 @@ class ChatCog(commands.Cog):
             
             # ECONOMY COMMANDS CONTAINER with gold left border (Discohook style)
             economy_embed = discord.Embed(
-                title="**💰 ECONOMY COMMANDS 💰**‎‎‎‎‎‎‎‎ㅤ ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ",
-                description="**YUMAMAN KA DITO GAGO:**‎‎‎‎‎‎‎‎ㅤ ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ",
+                title="**💰 ECONOMY COMMANDS 💰**                    ",
+                description="**YUMAMAN KA DITO GAGO:**                    ",
                 color=discord.Color.gold()  # Gold for economy
             )
             
@@ -448,8 +448,8 @@ class ChatCog(commands.Cog):
             
             # GAMES COMMANDS CONTAINER with purple left border (Discohook style)
             games_embed = discord.Embed(
-                title="**🎮 GAMES COMMANDS 🎮**‎‎‎‎‎‎‎‎ㅤ ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ",
-                description="**SUGAL SUGAL DIN PAMINSAN-MINSAN:**‎‎‎‎‎‎‎‎ㅤ ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ",
+                title="**🎮 GAMES COMMANDS 🎮**                    ",
+                description="**SUGAL SUGAL DIN PAMINSAN-MINSAN:**                    ",
                 color=discord.Color.purple()  # Purple for games
             )
             
@@ -469,8 +469,8 @@ class ChatCog(commands.Cog):
             
             # UTILITY COMMANDS CONTAINER with green left border (Discohook style)
             utility_embed = discord.Embed(
-                title="**🔧 UTILITY COMMANDS 🔧**‎‎‎‎‎‎‎‎ㅤ ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ",
-                description="**IBANG FEATURES NG BOT:**‎‎‎‎‎‎‎‎ㅤ ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ",
+                title="**🔧 UTILITY COMMANDS 🔧**                    ",
+                description="**IBANG FEATURES NG BOT:**                    ",
                 color=discord.Color.green()  # Green for utility
             )
             
@@ -605,9 +605,9 @@ class ChatCog(commands.Cog):
 
         # Create polite embed for clearing history with blue left border (Discohook style)
         clear_embed = discord.Embed(
-            title="**Conversation Cleared**‎‎‎‎‎‎‎‎ㅤ ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ",
+            title="**Conversation Cleared**                    ",
             description=
-            "Ang conversation history ay na-clear na. Pwede na tayong mag-usap muli.\n\nGamit ang `g!usap <message>`, `g!asklog <message>`, `g!ask <message>` o i-mention mo ako para magsimula ng bagong conversation.‎‎‎‎‎‎‎‎ㅤ ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ",
+            "Ang conversation history ay na-clear na. Pwede na tayong mag-usap muli.\n\nGamit ang `g!usap <message>`, `g!asklog <message>`, `g!ask <message>` o i-mention mo ako para magsimula ng bagong conversation.                    ",
             color=Config.EMBED_COLOR_INFO)
         clear_embed.set_footer(text="Ginsilog Bot | Fresh Start | Gawa ni Mason Calix")
 
@@ -828,8 +828,8 @@ class ChatCog(commands.Cog):
             return
             
         # Show rules in any channel with colored left border (Discohook style)
-        rules = discord.Embed(title="**SERVER RULES**‎‎‎‎‎‎‎‎ㅤ ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ",
-                             description="""**BASAHIN MO MABUTI ANG MGA RULES NA ITO!**‎‎‎‎‎‎‎‎ㅤ ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ
+        rules = discord.Embed(title="**SERVER RULES**                    ",
+                             description="""**BASAHIN MO MABUTI ANG MGA RULES NA ITO!**                    
 
 1. Be respectful to all members
 2. No illegal content
@@ -858,9 +858,9 @@ class ChatCog(commands.Cog):
             await ctx.send(f"**TANGA!** WALA KANG MESSAGE!")
             return
         announcement = discord.Embed(
-            title="Announcement‎‎‎‎‎‎‎‎ㅤ ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ",
+            title="Announcement                    ",
             description=
-            f"{message}\n\nFor more announcements, check <#{Config.ANNOUNCEMENTS_CHANNEL_ID}>‎‎‎‎‎‎‎‎ㅤ ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ‎‎‎‎‎‎‎‎ㅤ",
+            f"{message}\n\nFor more announcements, check <#{Config.ANNOUNCEMENTS_CHANNEL_ID}>                    ",
             color=Config.EMBED_COLOR_PRIMARY)
         announcement.set_footer(
             text=
