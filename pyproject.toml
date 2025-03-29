@@ -18,7 +18,7 @@ pytz = "^2025.2"
 gtts = "^2.5.4"
 pydub = "^0.25.1"
 lavalink = "^5.9.0"
-wavelink = "^3.4.1"
+wavelink = "2.6.3"
 psycopg2-binary = "^2.9.10"
 
 [build-system]
