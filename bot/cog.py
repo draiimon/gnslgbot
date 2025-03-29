@@ -449,9 +449,9 @@ class ChatCog(commands.Cog):
 
             # GAMES COMMANDS CONTAINER with purple left border (Discohook style)
             games_embed = discord.Embed(
-                title="**🎮 GAMES COMMANDS 🎮**                                                                                                                                                                   ",
+                title="**🎮 GAMES COMMANDS 🎮**                                                                                                                                                                                                                                                                                                                                                                                                                           ",
                 description=
-                "**SUGAL SUGAL DIN PAMINSAN-MINSAN:**                                                                                                                                                                   ",
+                "**SUGAL SUGAL DIN PAMINSAN-MINSAN:**                                                                                                                                                                                                                                                                                                                                                                                                                           ",
                 color=discord.Color.purple()  # Purple for games
             )
 
@@ -471,8 +471,8 @@ class ChatCog(commands.Cog):
 
             # UTILITY COMMANDS CONTAINER with green left border (Discohook style)
             utility_embed = discord.Embed(
-                title="**🔧 UTILITY COMMANDS 🔧**                                                                                                                                                                   ",
-                description="**IBANG FEATURES NG BOT:**                                                                                                                                                                   ",
+                title="**🔧 UTILITY COMMANDS 🔧**                                                                                                                                                                                                                                                                                                                                                                                                                           ",
+                description="**IBANG FEATURES NG BOT:**                                                                                                                                                                                                                                                                                                                                                                                                                           ",
                 color=discord.Color.green()  # Green for utility
             )
 
@@ -613,9 +613,9 @@ class ChatCog(commands.Cog):
 
         # Create polite embed for clearing history with blue left border (Discohook style)
         clear_embed = discord.Embed(
-            title="**Conversation Cleared**                                                                                                                                                                   ",
+            title="**Conversation Cleared**                                                                                                                                                                                                                                                                                                                                                                                                                           ",
             description=
-            "Ang conversation history ay na-clear na. Pwede na tayong mag-usap muli.\n\nGamit ang `g!usap <message>`, `g!asklog <message>`, `g!ask <message>` o i-mention mo ako para magsimula ng bagong conversation.                                                                                                                                                                   ",
+            "Ang conversation history ay na-clear na. Pwede na tayong mag-usap muli.\n\nGamit ang `g!usap <message>`, `g!asklog <message>`, `g!ask <message>` o i-mention mo ako para magsimula ng bagong conversation.                                                                                                                                                                                                                                                                                                                                                                                                                           ",
             color=Config.EMBED_COLOR_INFO)
         clear_embed.set_footer(
             text="Ginsilog Bot | Fresh Start | Gawa ni Mason Calix")
@@ -842,9 +842,9 @@ class ChatCog(commands.Cog):
 
         # Show rules in any channel with colored left border (Discohook style)
         rules = discord.Embed(
-            title="**SERVER RULES**                                                                                                                                                                   ",
+            title="**SERVER RULES**                                                                                                                                                                                                                                                                                                                                                                                                                           ",
             description=
-            """**BASAHIN MO MABUTI ANG MGA RULES NA ITO!**                                                                                                                                                                   
+            """**BASAHIN MO MABUTI ANG MGA RULES NA ITO!**                                                                                                                                                                                                                                                                                                                                                                                                                           
 
 1. Be respectful to all members
 2. No illegal content
