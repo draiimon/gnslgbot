@@ -45,6 +45,94 @@ class ChatCog(commands.Cog):
             return
         # No longer auto-connecting to prevent unwanted rejoins
         # Now the bot will only connect when explicitly commanded
+        
+    @commands.Cog.listener()
+    async def on_member_update(self, before, after):
+        """Automatically update nickname when a user's roles change"""
+        # Only process if roles have changed
+        if before.roles == after.roles:
+            return
+            
+        # Role-to-emoji mapping - must match the one in setupnn command
+        role_emoji_map = {
+            1345727357662658603: "🌿",  # 𝐇𝐈𝐆𝐇
+            1345727357645885448: "🍆",  # 𝐊𝐄𝐊𝐋𝐀𝐑𝐒
+            1345727357645885449: "💦",  # 𝐓𝐀𝐌𝐎𝐃𝐄𝐑𝐀𝐓𝐎𝐑
+            1345727357645885442: "🚀",  # 𝐀𝐒𝐀 𝐒𝐏𝐀𝐂𝐄𝐒𝐇𝐈𝐏
+            1345727357612195890: "🌸",  # 𝐕𝐀𝐕𝐀𝐈𝐇𝐀𝐍
+            1345727357612195889: "💪",  # 𝐁𝐎𝐒𝐒𝐈𝐍𝐆
+            1345727357612195887: "☁️",  # 𝐁𝐖𝐈𝐒𝐈𝐓𝐀
+            1345727357645885446: "🍑",  # 𝐁𝐎𝐓 𝐒𝐈 𝐁𝐇𝐈𝐄
+            1345727357612195885: "🛑",  # 𝐁𝐎𝐁𝐎
+        }
+        
+        # Skip bots
+        if after.bot:
+            return
+            
+        # Get member's roles sorted by position (highest first)
+        member_roles = sorted(after.roles, key=lambda r: r.position, reverse=True)
+        
+        # Find the highest role that's in our mapping
+        highest_matched_role_id = None
+        for role in member_roles:
+            if role.id in role_emoji_map:
+                highest_matched_role_id = role.id
+                break
+        
+        # Skip if no matching role found
+        if not highest_matched_role_id:
+            return
+            
+        # Get the emoji for this role
+        emoji = role_emoji_map[highest_matched_role_id]
+        
+        # Format the name - same as in setupnn
+        original_name = after.display_name
+        
+        # Clean name of all emojis
+        clean_name = original_name
+        
+        # Special case for cloud emoji (both variants)
+        clean_name = clean_name.replace("☁️", "").replace("☁", "")
+        
+        # Handle all other emojis from the role map
+        for emoji_value in role_emoji_map.values():
+            while emoji_value in clean_name:
+                clean_name = clean_name.replace(emoji_value, '')
+        
+        # Remove any extra spaces
+        clean_name = clean_name.strip()
+        
+        # Convert to Unicode bold style (reusing the function)
+        unicode_map = {
+            'A': '𝐀', 'B': '𝐁', 'C': '𝐂', 'D': '𝐃', 'E': '𝐄', 'F': '𝐅', 'G': '𝐆', 'H': '𝐇', 
+            'I': '𝐈', 'J': '𝐉', 'K': '𝐊', 'L': '𝐋', 'M': '𝐌', 'N': '𝐍', 'O': '𝐎', 'P': '𝐏', 
+            'Q': '𝐐', 'R': '𝐑', 'S': '𝐒', 'T': '𝐓', 'U': '𝐔', 'V': '𝐕', 'W': '𝐖', 'X': '𝐗', 
+            'Y': '𝐘', 'Z': '𝐙',
+            'a': '𝐚', 'b': '𝐛', 'c': '𝐜', 'd': '𝐝', 'e': '𝐞', 'f': '𝐟', 'g': '𝐠', 'h': '𝐡', 
+            'i': '𝐢', 'j': '𝐣', 'k': '𝐤', 'l': '𝐥', 'm': '𝐦', 'n': '𝐧', 'o': '𝐨', 'p': '𝐩', 
+            'q': '𝐪', 'r': '𝐫', 's': '𝐬', 't': '𝐭', 'u': '𝐮', 'v': '𝐯', 'w': '𝐰', 'x': '𝐱', 
+            'y': '𝐲', 'z': '𝐳', 
+            '0': '0', '1': '1', '2': '2', '3': '3', '4': '4', 
+            '5': '5', '6': '6', '7': '7', '8': '8', '9': '9',
+            ' ': ' ', '_': '_', '-': '-', '.': '.', ',': ',', '!': '!', '?': '?'
+        }
+        formatted_name = ''.join(unicode_map.get(c, c) for c in clean_name)
+        
+        # Add the role emoji
+        new_name = f"{formatted_name} {emoji}"
+        
+        # Skip if the name is already correctly formatted
+        if after.display_name == new_name:
+            return
+            
+        # Update the name (silently - no notifications)
+        try:
+            await after.edit(nick=new_name)
+            print(f"[Auto] Updated {after.name}'s nickname to {new_name} due to role change")
+        except Exception as e:
+            print(f"[Auto] Failed to update {after.name}'s nickname: {e}")
 
     async def _connect(self, channel):
         """Helper method to connect to a voice channel"""
@@ -1775,6 +1863,11 @@ class ChatCog(commands.Cog):
             
             # Step 1: Remove ALL role emojis from the name, regardless of position
             clean_name = original_name
+            
+            # Special case for cloud emoji (both variants)
+            clean_name = clean_name.replace("☁️", "").replace("☁", "")
+            
+            # Handle all other emojis from the role map
             for emoji_value in role_emoji_map.values():
                 # Keep removing this emoji until there are none left
                 while emoji_value in clean_name:
