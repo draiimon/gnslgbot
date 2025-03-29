@@ -23,6 +23,9 @@ edge-tts = "^7.0.0"
 pyaudio = "^0.2.14"
 pocketsphinx = "^5.0.4"
 speechrecognition = "^3.14.2"
+pytube = "^15.0.0"
+wavelink = "^3.4.1"
+yt-dlp = "^2025.3.27"
 
 [build-system]
 requires = ["poetry-core"]
