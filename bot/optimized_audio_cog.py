@@ -380,50 +380,7 @@ class AudioCog(commands.Cog):
             
             return False
             
-    # Added for auto TTS functionality
-    @commands.Cog.listener()
-    async def on_message(self, message):
-        """Listen for messages and convert to speech if AutoTTS is enabled"""
-        # Ignore messages from self or other bots
-        if message.author.bot:
-            return
-            
-        # Ignore commands
-        if message.content.startswith('g!'):
-            return
-            
-        # Check if this is a channel with AutoTTS enabled
-        guild_id = message.guild.id
-        channel_id = message.channel.id
-        
-        # If AutoTTS is enabled for this channel
-        if (guild_id in self.auto_tts_channels and 
-            channel_id in self.auto_tts_channels[guild_id]):
-            
-            # Check if the user has spoken recently (within 2 seconds) to avoid spam
-            user_id = message.author.id
-            now = datetime.datetime.now()
-            
-            if user_id in self.last_user_speech:
-                last_time = self.last_user_speech[user_id]
-                time_diff = (now - last_time).total_seconds()
-                
-                # If user has spoken too recently, skip this message
-                if time_diff < 2:
-                    print(f"Skipping TTS for {message.author.name}: too frequent")
-                    return
-            
-            # Update last speech time
-            self.last_user_speech[user_id] = now
-            
-            # Process TTS 
-            await self.process_auto_tts(message)
-            
-            # Add a small reaction to show the message was processed for TTS
-            try:
-                await message.add_reaction("🔊")
-            except:
-                pass
+    # Auto-TTS feature removed as requested by user
             
     async def process_auto_tts(self, message):
         """Process TTS message automatically when user types in chat (ULTRA FAST)"""
@@ -492,13 +449,13 @@ class AudioCog(commands.Cog):
             voice = "fil-PH-AngeloNeural" if is_tagalog or is_definitely_tagalog else "en-US-GuyNeural"
             
             # Direct TTS with Edge TTS API
-            # Use a better voice that speaks VERY clearly with perfect pronunciation
+            # Use a better voice that speaks clearly but not too slow (accuracy with faster response)
             if is_tagalog:
-                # Filipino - SUPER clear speaking voice at slower pace for perfect pronunciation
-                tts = edge_tts.Communicate(text=message_text, voice="fil-PH-AngeloNeural", rate="-15%", volume="+20%")
+                # Filipino - clear speaking voice at more natural pace
+                tts = edge_tts.Communicate(text=message_text, voice="fil-PH-AngeloNeural", rate="-5%", volume="+15%")
             else:
-                # English - SUPER clear speaking voice at slower pace for perfect pronunciation
-                tts = edge_tts.Communicate(text=message_text, voice="en-US-GuyNeural", rate="-15%", volume="+20%")
+                # English - clear speaking voice at more natural pace
+                tts = edge_tts.Communicate(text=message_text, voice="en-US-GuyNeural", rate="-5%", volume="+15%")
             
             # Direct streaming approach
             mp3_filename = f"{self.temp_dir}/tts_direct_{message_id}.mp3"
@@ -581,28 +538,22 @@ class AudioCog(commands.Cog):
     
     @commands.command(name="vc", aliases=["say", "speak"])
     async def vc(self, ctx, *, message: str):
-        """Text-to-speech using Edge TTS with instant Discord playback (2025 Method)"""
+        """Text-to-speech using Edge TTS with INSTANT Discord playback (Ultra Fast 2025 Method)"""
         # Check if user is in a voice channel
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
         
-        # Check rate limiting
-        if is_rate_limited(ctx.author.id):
-            return await ctx.send(f"**TEKA LANG {ctx.author.mention}!** Ang bilis mo mag-type! Hinay-hinay lang!")
-        
-        add_rate_limit_entry(ctx.author.id)
-        
         # Send quick acknowledgment - immediately add reaction to show we're working
         await ctx.message.add_reaction("🔊")
         
-        # Process TTS in background to avoid blocking
+        # ULTRA-FAST: Skip database, process directly
+        # This makes response much faster with no delay
         asyncio.create_task(
-            self.process_tts(
+            self.process_tts_direct(
                 message, 
                 ctx.author.voice.channel, 
                 ctx.author.id,
-                ctx.message.id,
-                ctx.channel  # Send confirmation messages to the channel
+                ctx.message.id
             )
         )
     
