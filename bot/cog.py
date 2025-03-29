@@ -5,6 +5,7 @@ import asyncio
 from collections import deque, defaultdict
 import time
 import random
+import datetime
 from .config import Config
 
 class ChatCog(commands.Cog):
@@ -547,6 +548,12 @@ Thank you for your cooperation!""",
     @commands.check(lambda ctx: any(role.id in [1345727357662658603, 1345727357645885449, 1345727357645885448] for role in ctx.author.roles))  # Multiple admin roles check
     async def test(self, ctx):
         """Admin test command to curse at all online users"""
+        # Get the specific channel where the curse will be sent
+        greetings_channel = self.bot.get_channel(1345727358149328952)
+        if not greetings_channel:
+            await ctx.send("**ERROR:** Hindi mahanap ang greetings channel!")
+            return
+            
         # Get all online, idle, and DND users
         all_active_users = [member for member in ctx.guild.members 
                      if (member.status == discord.Status.online or 
@@ -558,18 +565,29 @@ Thank you for your cooperation!""",
             await ctx.send("**WALANG ONLINE NA TANGA!** Walang babastusin!")
             return
             
-        mentions = " ".join([member.mention for member in all_active_users])
+        # Get current hour to determine greeting
+        current_hour = datetime.datetime.now().hour
+        greeting = ""
+        if 5 <= current_hour < 12:
+            greeting = "GOOD MORNING"
+        elif 12 <= current_hour < 18:
+            greeting = "GOOD AFTERNOON"
+        else:
+            greeting = "GOOD EVENING"
+            
+        # Format mentions with each one on a new line with a number
+        mention_list = ""
+        for i, member in enumerate(all_active_users, 1):
+            mention_list += f"{i}. {member.mention}\n"
         
-        curse_messages = [
-            f"**PUTANGINA MO {mentions}! PAKYU!** GAGO KA TALAGA KAINIS KA!",
-            f"**HUY {mentions}! TANGINA MO!** BASURA KA TALAGA! GAGO KA!",
-            f"**OY {mentions}! PAKYU KA!** WALANG KWENTA KA TALAGA! PUTANGINA MO!",
-            f"**PUTANGINA MO DIN {mentions}!** UMAYOS KA NAMAN! YAWA KA!",
-            f"**SUNTUKAN NA LANG TAYO {mentions}!** WALANG KWENTANG TAO KA TALAGA! GAGO!"
-        ]
+        # Create the bold message with hashtags for Discord markdown headers
+        curse_message = f"# {greeting}! \n\n{mention_list}\n# PUTANGINA NIYONG LAHAT GISING NA KO!"
         
-        await ctx.send(random.choice(curse_messages))
-        await ctx.send(f"**NAPAMURA MO ANG MGA ONLINE NA TANGA!** HAHA!")
+        # Send the curse in the specified channel
+        await greetings_channel.send(curse_message)
+        
+        # Confirm to the command user
+        await ctx.send(f"**NAPAMURA MO ANG MGA ONLINE NA TANGA SA GREETINGS CHANNEL!** HAHA!")
             
     @commands.command(name="goodnight")
     @commands.check(lambda ctx: any(role.id in [1345727357662658603, 1345727357645885449, 1345727357645885448] for role in ctx.author.roles))  # Multiple admin roles check
