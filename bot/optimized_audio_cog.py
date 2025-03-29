@@ -452,10 +452,10 @@ class AudioCog(commands.Cog):
             # SUPER CLEAR VOICE with much slower and deliberate speaking
             if is_tagalog:
                 # Filipino - ULTRA clear speaking with slow deliberate pronunciation
-                tts = edge_tts.Communicate(text=message_text, voice="fil-PH-AngeloNeural", rate="-30%", volume="+30%", pitch="+0%")
+                tts = edge_tts.Communicate(text=message_text, voice="fil-PH-AngeloNeural", rate="-30%", volume="+30%")
             else:
                 # English - ULTRA clear speaking with slow deliberate pronunciation
-                tts = edge_tts.Communicate(text=message_text, voice="en-US-GuyNeural", rate="-30%", volume="+30%", pitch="+0%")
+                tts = edge_tts.Communicate(text=message_text, voice="en-US-GuyNeural", rate="-30%", volume="+30%")
             
             # Direct streaming approach
             mp3_filename = f"{self.temp_dir}/tts_direct_{message_id}.mp3"
