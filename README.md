@@ -101,6 +101,8 @@ python main.py
 ### Server Management
 - `g!announcement <message>` - Make an announcement
 - `g!tulong` - Display help information
+- `g!setupnn` - Set up automatic nickname formatting according to user roles
+- `g!maintenance <on/off>` - Toggle maintenance mode (disables automated features)
 
 ## Docker Deployment
 
@@ -159,6 +161,16 @@ You can also use the `render.yaml` file in this repository to deploy directly fr
 - To avoid spam, TTS messages are limited to 200 characters
 - The bot can read messages in multiple languages (Tagalog, English, Chinese, Japanese, Korean)
 - The PostgreSQL database stores audio data for the replay function, conversation history, and economy data
+
+### Nickname Formatting System
+
+The bot includes an automatic nickname formatting system that:
+- Converts members' names to a bold Unicode font format
+- Adds role-specific emojis to nicknames based on the member's highest role
+- Automatically updates nicknames when roles change
+- Continuously scans and updates all nicknames every 10 seconds
+- Handles special permissions for server owners and high-role users
+- Can be enabled server-wide with the `g!setupnn` command (admin only)
 
 ## License
 

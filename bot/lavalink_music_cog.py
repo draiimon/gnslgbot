@@ -149,33 +149,69 @@ class LavalinkMusicCog(commands.Cog):
                 await music_player.text_channel.send("✓ Queue finished! Add more songs using `g!lplay`")
         
     async def connect_nodes(self):
-        """Initializes music playback system prioritizing direct streaming for Replit compatibility"""
+        """Initializes music playback system with Lavalink or fallback streaming"""
         await self.bot.wait_until_ready()
         
-        print("\n🔄 Initializing music system for Replit environment...")
+        print("\n🔄 Initializing music system for Render deployment...")
         
-        # REPLIT COMPATIBILITY MODE:
-        # After extensive testing, we've found that Lavalink connections consistently fail in Replit
-        # due to outgoing connection restrictions (non-standard ports are blocked)
-        # Rather than repeatedly trying to connect to blocked services, we'll use our reliable fallback
-        
-        print("🛡️ Replit environment detected - non-standard ports are likely blocked")
-        print("✅ Using direct YouTube streaming for guaranteed functionality")
-        print("💡 Features enabled: YouTube search, playlist support, queue management")
-        
-        # Skip Lavalink connection attempts entirely - they will reliably fail in this environment
-        self.lavalink_connected = False
-        
-        # Log for reference
-        print("\n📋 Optimized music system status:")
-        print("- Mode: Direct streaming via YouTube API")
-        print("- Reliability: High (no external server dependencies)")
-        print("- Features: Search, queue, volume, seek, play/pause")
-        print("- Sources: YouTube, YouTube Music")
-        
-        # Mark fallback as active
-        print("✅ Music system initialized in reliable mode")
-        self.is_playing_via_ffmpeg = True  # Pre-set the flag since we'll be using FFmpeg
+        # Try to connect to Lavalink servers in order of preference
+        try:
+            # First attempt - connect to primary configured Lavalink server
+            print(f"🎵 Connecting to primary Lavalink server: {Config.LAVALINK_HOST}:{Config.LAVALINK_PORT}")
+            
+            node = await wavelink.NodePool.create_node(
+                bot=self.bot,
+                host=Config.LAVALINK_HOST,
+                port=Config.LAVALINK_PORT,
+                password=Config.LAVALINK_PASSWORD,
+                https=Config.LAVALINK_SECURE,
+                identifier=f"Main_{Config.LAVALINK_HOST}"
+            )
+            self.lavalink_connected = True
+            print(f"✅ Successfully connected to Lavalink server: {Config.LAVALINK_HOST}")
+            
+        except Exception as e:
+            print(f"❌ Failed to connect to primary Lavalink server: {str(e)}")
+            
+            # Try alternative servers from the config
+            for i, server in enumerate(Config.ALT_LAVALINK_SERVERS):
+                try:
+                    print(f"🎵 Attempting connection to backup Lavalink server {i+1}: {server['host']}:{server['port']}")
+                    
+                    # Create a node for this backup server
+                    node = await wavelink.NodePool.create_node(
+                        bot=self.bot,
+                        host=server['host'],
+                        port=server['port'],
+                        password=server['password'],
+                        https=server['secure'],
+                        identifier=f"Backup_{i}_{server['host']}"
+                    )
+                    
+                    self.lavalink_connected = True
+                    print(f"✅ Successfully connected to backup Lavalink server: {server['host']}")
+                    break
+                    
+                except Exception as backup_error:
+                    print(f"❌ Failed to connect to backup Lavalink server {i+1}: {str(backup_error)}")
+            
+            # If all Lavalink connections failed, use the fallback mode
+            if not self.lavalink_connected:
+                print("⚠️ All Lavalink connection attempts failed")
+                print("✅ Using direct YouTube streaming fallback for guaranteed functionality")
+                print("💡 Features enabled: YouTube search, playlist support, queue management")
+                
+                # Mark fallback as active
+                self.is_playing_via_ffmpeg = True  # Use FFmpeg for direct playback
+                
+                # Log reference for status
+                print("\n📋 Fallback music system status:")
+                print("- Mode: Direct streaming via YouTube API")
+                print("- Reliability: High (no external server dependencies)")
+                print("- Features: Search, queue, volume, seek, play/pause")
+                print("- Sources: YouTube, YouTube Music")
+            
+        print("✅ Music system initialization complete!")
         
     def get_player(self, guild_id):
         """Get or create a music player for a guild"""
