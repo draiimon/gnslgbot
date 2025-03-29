@@ -39,11 +39,11 @@ async def on_ready():
         print("ChatCog initialized")
         print("✅ ChatCog loaded")
         
-    # Import and load the NEW audio cog (No Lavalink required)
-    from bot.new_audio_cog import AudioCog
+    # Import and load the OPTIMIZED audio cog (No Lavalink required, low memory usage)
+    from bot.optimized_audio_cog import AudioCog
     if not bot.get_cog("AudioCog"):
         await bot.add_cog(AudioCog(bot))
-        print("✅ NEW AudioCog loaded (No Lavalink Required)")
+        print("✅ OPTIMIZED AudioCog loaded (No Lavalink, low memory usage)")
         
     # Start the greetings scheduler
     check_greetings.start()
