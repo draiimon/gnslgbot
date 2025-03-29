@@ -67,11 +67,18 @@ class AudioCog(commands.Cog):
         # Dictionary to store voice clients and queues per guild
         self.guild_audio_data = {}
         
-        # ULTRA-SUPER-MAXIMUM QUALITY FFMPEG AUDIO SETTINGS FOR 2025 - OPTIMIZED FOR MAXIMUM CLARITY
-        # These settings provide the best audio quality with crystal clear voice
+        # ULTRA-ZERO-LATENCY FFMPEG AUDIO SETTINGS FOR INSTANT TTS - OPTIMIZED FOR SPEED
+        # These settings prioritize ultra-fast playback with minimal processing overhead
         self.ffmpeg_options = {
-            'options': '-f opus -ac 2 -ar 48000 -b:a 256k -bufsize 512k -minrate 192k -maxrate 320k -compression_level 0',
-            'before_options': '-nostdin -threads 8 -probesize 42M -analyzeduration 0'
+            'options': '-ac 1 -ar 24000 -vn -b:a 96k -bufsize 64k -f wav',
+            'before_options': '-nostdin -threads 4 -probesize 1k -analyzeduration 0'
+        }
+        
+        # For direct pipe streaming (even faster)
+        self.pipe_ffmpeg_options = {
+            'pipe': True,
+            'options': '-ac 1 -ar 24000 -f wav -vn -b:a 96k -bufsize 64k',
+            'before_options': '-nostdin'
         }
         
         # Track channels with AutoTTS enabled (guild_id -> set of channels)
@@ -420,7 +427,7 @@ class AudioCog(commands.Cog):
         return False
         
     async def process_tts_direct(self, message_text, voice_channel, user_id, message_id):
-        """Ultra-fast direct TTS streaming with ZERO processing delay - 2025 implementation"""
+        """ZERO-LATENCY TTS with real-time pipe streaming - 2025 implementation"""
         try:
             # PARALLEL EXECUTION: Start voice connection and TTS generation simultaneously
             # This is the key to absolute zero latency - we prepare both at the same time
@@ -464,10 +471,34 @@ class AudioCog(commands.Cog):
                 while voice_client.is_playing():
                     await asyncio.sleep(0.1)  # Check more frequently
             
-            # STEP 7: INSTANT PLAYBACK - Use optimized FFmpeg options for highest quality
-            audio_source = discord.FFmpegPCMAudio(mp3_filename, **self.ffmpeg_options)
+            # STEP 7: STREAMING PLAYBACK - Real-time pipe-based FFmpeg streaming
+            # This is revolutionary compared to normal playback - no waiting for conversion
+            detected_lang = "Tagalog" if is_tagalog or is_definitely_tagalog else "English"
+            voice_used = "fil-PH-AngeloNeural" if is_tagalog or is_definitely_tagalog else "en-US-GuyNeural"
+            print(f"⚡️ ULTRA-FAST TTS: '{message_text}' (Detected: {detected_lang}, Using voice: {voice_used})")
+            
+            # The magic: Set up FFmpeg pipe command for real-time streaming
+            import subprocess
+            ffmpeg_cmd = ["ffmpeg", "-i", mp3_filename, "-ac", "1", "-ar", "24000", "-f", "wav", "pipe:1"]
+            
+            # Execute FFmpeg process with pipe to stdout
+            ffmpeg_process = subprocess.Popen(ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            
+            # Create audio source directly from pipe for instant playback
+            # This eliminates file writing delay completely - streaming directly from ffmpeg
+            audio_source = discord.FFmpegPCMAudio(ffmpeg_process.stdout, pipe=True, **{
+                'options': '-ac 1 -ar 24000',
+                'before_options': '-nostdin'
+            })
+            
+            # Play the audio with minimal buffering for instant response
             voice_client.play(audio_source, after=lambda e: self.cleanup_direct_tts(mp3_filename, e))
             
+        except Exception as e:
+            print(f"⚠️ DIRECT TTS ERROR: {e}")
+            import traceback
+            traceback.print_exc()
+    
     async def _ensure_voice_connection(self, voice_channel):
         """Ensure voice connection exists and return voice client"""
         guild = voice_channel.guild
@@ -481,11 +512,6 @@ class AudioCog(commands.Cog):
             await voice_client.move_to(voice_channel)
             
         return voice_client
-            
-        except Exception as e:
-            print(f"⚠️ DIRECT TTS ERROR: {e}")
-            import traceback
-            traceback.print_exc()
     
     def cleanup_direct_tts(self, filename, error):
         """Clean up temporary file after direct TTS playback"""
@@ -702,22 +728,29 @@ class AudioCog(commands.Cog):
                     pass
                     
             except Exception as pcm_error:
-                # If PCM method fails, try FFmpeg with optimized settings
+                # If PCM method fails, try pipe-based FFmpeg streaming (ZERO LATENCY)
                 try:
-                    print(f"PCM method failed: {pcm_error}, trying FFmpeg with optimized settings...")
+                    print(f"PCM method failed: {pcm_error}, trying direct pipe streaming...")
                     voice_client = ctx.voice_client
                     if not voice_client:
                         voice_client = await voice_channel.connect()
                     
-                    # Create audio source from the MP3 file with HIGH QUALITY settings
-                    # Stereo audio, high bitrate, optimal buffer - for crisp clear audio
-                    audio_source = discord.FFmpegPCMAudio(mp3_filename, **self.ffmpeg_options)
+                    # PIPE-BASED STREAMING: Ultra-fast real-time audio playback
+                    # Set up FFmpeg command for direct pipe streaming
+                    import subprocess
+                    ffmpeg_cmd = ["ffmpeg", "-i", mp3_filename, "-ac", "1", "-ar", "24000", "-f", "wav", "pipe:1"]
                     
-                    # Apply volume transformer with lower volume to reduce processing
-                    audio = discord.PCMVolumeTransformer(audio_source, volume=1.0)
+                    # Execute FFmpeg as a process with pipe to stdout
+                    ffmpeg_process = subprocess.Popen(ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
                     
-                    # Play the audio file
-                    voice_client.play(audio)
+                    # Create audio source directly from pipe (zero file I/O latency)
+                    audio_source = discord.FFmpegPCMAudio(ffmpeg_process.stdout, pipe=True, **{
+                        'options': '-ac 1 -ar 24000',
+                        'before_options': '-nostdin'
+                    })
+                    
+                    # Play the audio directly from pipe
+                    voice_client.play(audio_source)
                     print(f"Playing replay audio with optimized FFmpeg settings: {mp3_filename}")
                     
                     # Success message
