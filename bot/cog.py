@@ -410,7 +410,7 @@ class ChatCog(commands.Cog):
                 "**KAUSAPIN MO SI GINSILOG BOT:**                                                         ",
                 color=discord.Color.blue()  # Blue for AI/chat
             )
-            ai_embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1355508565393014815/1355508565393014815/image.png")
+            ai_embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1345733998357512215/1355508565347143720/Untitled_design_3.png?ex=67e92f3a&is=67e7ddba&hm=579b82f09e02b6d6c83d54831273c3dd4a99b0f90ab268c08dedd4c2660503e6&")
 
             ai_commands = {
                 "g!usap <message>": "Kausapin ang Ginsilog AI assistant",
@@ -433,7 +433,7 @@ class ChatCog(commands.Cog):
                 description="**YUMAMAN KA DITO GAGO:**                                                         ",
                 color=discord.Color.gold()  # Gold for economy
             )
-            economy_embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1355508565393014815/1355508565393014815/image.png")
+            economy_embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1345733998357512215/1355508565347143720/Untitled_design_3.png?ex=67e92f3a&is=67e7ddba&hm=579b82f09e02b6d6c83d54831273c3dd4a99b0f90ab268c08dedd4c2660503e6&")
 
             economy_commands = {
                 "g!daily": "Kunin ang daily ₱10,000 mo",
@@ -456,7 +456,7 @@ class ChatCog(commands.Cog):
                 "**SUGAL SUGAL DIN PAMINSAN-MINSAN:**                                                                                                                                                                                                                                                                                                                                                                                                                           ",
                 color=discord.Color.purple()  # Purple for games
             )
-            games_embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1355508565393014815/1355508565393014815/image.png")
+            games_embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1345733998357512215/1355508565347143720/Untitled_design_3.png?ex=67e92f3a&is=67e7ddba&hm=579b82f09e02b6d6c83d54831273c3dd4a99b0f90ab268c08dedd4c2660503e6&")
 
             games_commands = {
                 "g!toss <h/t> <bet>": "Coin flip game (heads/tails)",
@@ -478,7 +478,7 @@ class ChatCog(commands.Cog):
                 description="**IBANG FEATURES NG BOT:**                                                                                                                                                                                                                                                                                                                                                                                                                           ",
                 color=discord.Color.green()  # Green for utility
             )
-            utility_embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1355508565393014815/1355508565393014815/image.png")
+            utility_embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1345733998357512215/1355508565347143720/Untitled_design_3.png?ex=67e92f3a&is=67e7ddba&hm=579b82f09e02b6d6c83d54831273c3dd4a99b0f90ab268c08dedd4c2660503e6&")
 
             utility_commands = {
                 "g!joinvc": "Sumali sa voice channel mo",
@@ -1163,7 +1163,7 @@ class ChatCog(commands.Cog):
                 "**PERA AT ECONOMY SYSTEM:**                                   ",
                 color=discord.Color.gold()  # Gold for economy
             )
-            economy_embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1355508565393014815/1355508565393014815/image.png")
+            economy_embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1345733998357512215/1355508565347143720/Untitled_design_3.png?ex=67e92f3a&is=67e7ddba&hm=579b82f09e02b6d6c83d54831273c3dd4a99b0f90ab268c08dedd4c2660503e6&")
 
             economy_commands = {
                 "g!daily": "Claim daily ₱10,000",
@@ -1211,7 +1211,7 @@ class ChatCog(commands.Cog):
                 "**KAUSAPIN MO SI GINSILOG BOT:**                                   ",
                 color=discord.Color.blue()  # Blue for AI/chat
             )
-            chat_embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1355508565393014815/1355508565393014815/image.png")
+            chat_embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1345733998357512215/1355508565347143720/Untitled_design_3.png?ex=67e92f3a&is=67e7ddba&hm=579b82f09e02b6d6c83d54831273c3dd4a99b0f90ab268c08dedd4c2660503e6&")
 
             chat_commands = {
                 "g!usap <message>": "Chat with the AI assistant",
@@ -1236,7 +1236,7 @@ class ChatCog(commands.Cog):
                 "**MISCELLANEOUS AT IBA PANG HELPFUL COMMANDS:**                                   ",
                 color=discord.Color.green()  # Green for utility
             )
-            utility_embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1355508565393014815/1355508565393014815/image.png")
+            utility_embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1345733998357512215/1355508565347143720/Untitled_design_3.png?ex=67e92f3a&is=67e7ddba&hm=579b82f09e02b6d6c83d54831273c3dd4a99b0f90ab268c08dedd4c2660503e6&")
 
             utility_commands = {
                 "g!join/leave": "Voice channel management",
