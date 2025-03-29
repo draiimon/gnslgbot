@@ -391,8 +391,8 @@ class ChatCog(commands.Cog):
                 print(f"Error fetching owner avatar: {e}")
                 owner_avatar = None
 
-            # Main title embed
-            main_embed = discord.Embed(
+            # Single embed with multiple fields for all command categories
+            all_commands_embed = discord.Embed(
                 title="**✨ GINSILOG BOT COMMANDS ✨**",
                 description="**TANGINA MO! GUSTO MO MALAMAN MGA COMMANDS? ETO NA LISTAHAN:**",
                 color=discord.Color.from_rgb(255, 59, 59)  # Bright red
@@ -400,25 +400,9 @@ class ChatCog(commands.Cog):
             
             # Set a nice thumbnail - use bot's avatar
             if self.bot.user and self.bot.user.avatar:
-                main_embed.set_thumbnail(url=self.bot.user.avatar.url)
+                all_commands_embed.set_thumbnail(url=self.bot.user.avatar.url)
             
-            # Footer for main embed
-            main_embed.set_footer(
-                text="⚡ GINSILOG BOT 2025 EDITION ⚡ | Gawa ni Mason Calix",
-                icon_url=owner_avatar
-            )
-            
-            await ctx.send(embed=main_embed)
-            
-            # AI CHAT COMMANDS
-            ai_embed = discord.Embed(
-                title="**🤖 AI CHAT COMMANDS 🤖**",
-                description="**MGA KAUSAPIN MO SI GINSILOG:**",
-                color=discord.Color.from_rgb(64, 224, 208)  # Turquoise
-            )
-            # Fixed width to ensure consistent size
-            ai_embed.width = 500
-            
+            # AI CHAT COMMANDS SECTION
             ai_commands = {
                 "g!usap <message>": "Kausapin ang Ginsilog AI assistant",
                 "g!ask <message>": "Voice-only AI response (walang text log)",
@@ -426,21 +410,20 @@ class ChatCog(commands.Cog):
                 "g!clear": "I-clear ang chat history ng channel"
             }
             
-            # Set consistent field layout
-            for cmd, desc in ai_commands.items():
-                ai_embed.add_field(name=f"**{cmd}**", value=desc, inline=False)
-            
-            # No footer here - will be in the last embed only
-            
-            # ECONOMY COMMANDS
-            economy_embed = discord.Embed(
-                title="**💰 ECONOMY COMMANDS 💰**",
-                description="**YUMAMAN KA DITO GAGO:**",
-                color=discord.Color.from_rgb(255, 215, 0)  # Gold
+            # Add AI section header
+            all_commands_embed.add_field(
+                name="**🤖 AI CHAT COMMANDS 🤖**",
+                value="**MGA KAUSAPIN MO SI GINSILOG:**",
+                inline=False
             )
-            # Fixed width to ensure consistent size
-            economy_embed.width = 500
             
+            # Add AI commands
+            ai_text = ""
+            for cmd, desc in ai_commands.items():
+                ai_text += f"• **{cmd}** - {desc}\n"
+            all_commands_embed.add_field(name="** **", value=ai_text, inline=False)
+            
+            # ECONOMY COMMANDS SECTION
             economy_commands = {
                 "g!daily": "Kunin ang daily ₱10,000 mo",
                 "g!balance": "Check ang pera mo",
@@ -448,21 +431,20 @@ class ChatCog(commands.Cog):
                 "g!leaderboard": "Top 20 pinakamayayaman sa server"
             }
             
-            # Set consistent field layout
-            for cmd, desc in economy_commands.items():
-                economy_embed.add_field(name=f"**{cmd}**", value=desc, inline=False)
-            
-            # No footer here - will be in the last embed only
-            
-            # GAMES COMMANDS
-            games_embed = discord.Embed(
-                title="**🎮 GAMES COMMANDS 🎮**",
-                description="**SUGAL SUGAL DIN PAMINSAN-MINSAN:**",
-                color=discord.Color.from_rgb(138, 43, 226)  # Purple
+            # Add Economy section header
+            all_commands_embed.add_field(
+                name="**💰 ECONOMY COMMANDS 💰**",
+                value="**YUMAMAN KA DITO GAGO:**",
+                inline=False
             )
-            # Fixed width to ensure consistent size
-            games_embed.width = 500
             
+            # Add Economy commands
+            economy_text = ""
+            for cmd, desc in economy_commands.items():
+                economy_text += f"• **{cmd}** - {desc}\n"
+            all_commands_embed.add_field(name="** **", value=economy_text, inline=False)
+            
+            # GAMES COMMANDS SECTION
             games_commands = {
                 "g!toss <h/t> <bet>": "Coin flip game (heads/tails)",
                 "g!blackjack <bet>": "Maglaro ng Blackjack (21)",
@@ -470,21 +452,20 @@ class ChatCog(commands.Cog):
                 "g!stand": "End turn sa Blackjack game"
             }
             
-            # Set consistent field layout
-            for cmd, desc in games_commands.items():
-                games_embed.add_field(name=f"**{cmd}**", value=desc, inline=False)
-            
-            # No footer here - will be in the last embed only
-            
-            # UTILITY COMMANDS
-            utility_embed = discord.Embed(
-                title="**🔧 UTILITY COMMANDS 🔧**",
-                description="**IBANG FEATURES NG BOT:**",
-                color=discord.Color.from_rgb(79, 134, 247)  # Blue
+            # Add Games section header
+            all_commands_embed.add_field(
+                name="**🎮 GAMES COMMANDS 🎮**",
+                value="**SUGAL SUGAL DIN PAMINSAN-MINSAN:**",
+                inline=False
             )
-            # Fixed width to ensure consistent size
-            utility_embed.width = 500
             
+            # Add Games commands
+            games_text = ""
+            for cmd, desc in games_commands.items():
+                games_text += f"• **{cmd}** - {desc}\n"
+            all_commands_embed.add_field(name="** **", value=games_text, inline=False)
+            
+            # UTILITY COMMANDS SECTION
             utility_commands = {
                 "g!joinvc": "Sumali sa voice channel mo",
                 "g!leavevc": "Umalis sa voice channel",
@@ -496,21 +477,27 @@ class ChatCog(commands.Cog):
                 "g!rules": "Tignan ang server rules"
             }
             
-            # Set consistent field layout
+            # Add Utility section header
+            all_commands_embed.add_field(
+                name="**🔧 UTILITY COMMANDS 🔧**",
+                value="**IBANG FEATURES NG BOT:**",
+                inline=False
+            )
+            
+            # Add Utility commands
+            utility_text = ""
             for cmd, desc in utility_commands.items():
-                utility_embed.add_field(name=f"**{cmd}**", value=desc, inline=False)
-                
-            # Footer ONLY on the last embed
-            utility_embed.set_footer(
+                utility_text += f"• **{cmd}** - {desc}\n"
+            all_commands_embed.add_field(name="** **", value=utility_text, inline=False)
+            
+            # Single footer for the entire embed
+            all_commands_embed.set_footer(
                 text="⚡ GINSILOG BOT 2025 EDITION ⚡ | Gawa ni Mason Calix",
                 icon_url=owner_avatar
             )
             
-            # Send all embeds in consistent fixed-size format
-            await ctx.send(embed=ai_embed)
-            await ctx.send(embed=economy_embed)
-            await ctx.send(embed=games_embed)
-            await ctx.send(embed=utility_embed)
+            # Send single embed with all commands
+            await ctx.send(embed=all_commands_embed)
             
         except Exception as e:
             print(f"Error in tulong command: {e}")
