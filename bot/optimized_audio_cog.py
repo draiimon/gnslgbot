@@ -67,17 +67,19 @@ class AudioCog(commands.Cog):
         # Dictionary to store voice clients and queues per guild
         self.guild_audio_data = {}
         
-        # ULTRA-HIGH QUALITY FFMPEG AUDIO SETTINGS FOR 2025
-        # These settings provide the absolute best audio quality possible in Discord
+        # ULTRA-HIGH QUALITY FFMPEG AUDIO SETTINGS FOR 2025 - OPTIMIZED FOR SPEED AND CLARITY
+        # These settings provide the best balance between response time and audio quality
         self.ffmpeg_options = {
-            'options': '-f opus -ac 2 -ar 48000 -b:a 256k -bufsize 512k -minrate 192k -maxrate 320k -preset medium -application audio -compression_level 10',
-            'before_options': '-nostdin -threads 4'
+            'options': '-f opus -ac 2 -ar 48000 -b:a 192k -bufsize 384k -minrate 128k -maxrate 256k -preset ultrafast -application voip -compression_level 0',
+            'before_options': '-nostdin -threads 8 -probesize 42M -analyzeduration 0'
         }
         
         # Track channels with AutoTTS enabled (guild_id -> set of channels)
         self.auto_tts_channels = {}
         # Track the last time a user has spoken to prevent repeated TTS
         self.last_user_speech = {}
+        # Track voice inactivity for auto-disconnect
+        self.voice_inactivity_timers = {}
     
     def get_guild_data(self, guild_id):
         """Get or create guild audio data"""
@@ -455,33 +457,10 @@ class AudioCog(commands.Cog):
         return False
         
     async def process_tts_direct(self, message_text, voice_channel, user_id, message_id):
-        """Ultra-fast direct TTS streaming without file storage"""
+        """Ultra-fast direct TTS streaming with no processing delay"""
         try:
-            # Intelligent language detection (reuse function from process_tts)
-            def detect_language(text):
-                text = text.lower()
-                
-                # Check for Filipino/Tagalog words and patterns
-                tagalog_words = ['ako', 'ikaw', 'siya', 'tayo', 'kami', 'kayo', 'sila', 
-                                'ng', 'sa', 'ang', 'mga', 'naman', 'talaga', 'lang',
-                                'po', 'opo', 'salamat', 'kamusta', 'kumain', 'mahal',
-                                'gago', 'putang', 'tangina', 'bobo', 'tanga']
-                
-                # Count common Tagalog words
-                tagalog_count = sum(word in text for word in tagalog_words)
-                
-                # Simple check - if any Tagalog words found, use Tagalog voice
-                if tagalog_count > 0:
-                    return "fil"
-                return "en"  # Default to English for speed
-            
-            # Fast language detection - only Tagalog vs English for speed
-            detected_lang = detect_language(message_text)
-            
-            # Choose voice based on detected language (simplified for speed)
-            voice = "fil-PH-AngeloNeural" if detected_lang == "fil" else "en-US-GuyNeural"
-            
-            # Connect to voice channel first before generating TTS
+            # PERFORMANCE OPTIMIZATION: Connect to the voice channel FIRST before generating TTS
+            # This eliminates the delay between message sending and audio playback
             guild = voice_channel.guild
             voice_client = guild.voice_client
             if not voice_client:
@@ -496,8 +475,18 @@ class AudioCog(commands.Cog):
                 while voice_client.is_playing():
                     await asyncio.sleep(0.2)
             
+            # ULTRA-SIMPLIFIED language detection for near-zero delay
+            is_tagalog = any(word in message_text.lower() for word in ['ako', 'ikaw', 'ang', 'ng', 'sa'])
+            voice = "fil-PH-AngeloNeural" if is_tagalog else "en-US-GuyNeural"
+            
             # Direct TTS with Edge TTS API
-            tts = edge_tts.Communicate(text=message_text, voice=voice)
+            # Use a better voice that speaks clearly but not rushed
+            if is_tagalog:
+                # Filipino - clear speaking voice at normal pace
+                tts = edge_tts.Communicate(text=message_text, voice="fil-PH-AngeloNeural", rate="-5%", volume="+15%")
+            else:
+                # English - clear speaking voice at normal pace
+                tts = edge_tts.Communicate(text=message_text, voice="en-US-GuyNeural", rate="-5%", volume="+15%")
             
             # Direct streaming approach
             mp3_filename = f"{self.temp_dir}/tts_direct_{message_id}.mp3"
@@ -528,6 +517,51 @@ class AudioCog(commands.Cog):
                 print(f"Removed direct TTS file: {filename}")
         except Exception as e:
             print(f"Error removing direct TTS file: {e}")
+            
+        # Start inactivity timer to disconnect after a period of inactivity
+        # Extract guild ID from filename (using message ID which has guild context)
+        try:
+            # Get all voice clients
+            for guild in self.bot.guilds:
+                if guild.voice_client and guild.voice_client.is_connected():
+                    guild_id = guild.id
+                    
+                    # Cancel any existing timer
+                    if guild_id in self.voice_inactivity_timers:
+                        try:
+                            self.voice_inactivity_timers[guild_id].cancel()
+                        except:
+                            pass
+                    
+                    # Create and start a simple timer to disconnect after 120 seconds
+                    try:
+                        # Cancel any existing timer task to avoid duplicate tasks
+                        if guild_id in self.voice_inactivity_timers and self.voice_inactivity_timers[guild_id]:
+                            self.voice_inactivity_timers[guild_id].cancel()
+                            
+                        # Use a safer way to start the timer
+                        async def auto_disconnect_task():
+                            try:
+                                # Wait 2 minutes before disconnecting
+                                await asyncio.sleep(120)
+                                
+                                # Get the current guild and voice client state at disconnect time
+                                current_guild = self.bot.get_guild(guild_id)
+                                if current_guild and current_guild.voice_client:
+                                    if current_guild.voice_client.is_connected() and not current_guild.voice_client.is_playing():
+                                        await current_guild.voice_client.disconnect()
+                                        print(f"Auto-disconnected from voice in {current_guild.name} due to 2 minutes of inactivity")
+                            except Exception as e:
+                                print(f"Error in auto-disconnect task: {e}")
+                                
+                        # Schedule using the bot's loop instead of trying to get the current loop
+                        # This is safer and prevents threading issues
+                        self.voice_inactivity_timers[guild_id] = self.bot.loop.create_task(auto_disconnect_task())
+                        print(f"Started inactivity timer for guild: {guild.name}")
+                    except Exception as timer_error:
+                        print(f"Error starting disconnect timer: {timer_error}")
+        except Exception as e:
+            print(f"Error setting up auto-disconnect: {e}")
     
     @commands.command(name="vc", aliases=["say", "speak"])
     async def vc(self, ctx, *, message: str):
@@ -577,6 +611,40 @@ class AudioCog(commands.Cog):
             await ctx.send(f"**AUTO TTS ENABLED!** Automatic kong bibigkasin lahat ng messages sa channel na ito. Type normally!", delete_after=10)
         
         print(f"Auto TTS {'enabled' if channel_id in self.auto_tts_channels.get(guild_id, set()) else 'disabled'} for channel {ctx.channel.name}")
+        
+    @commands.command(name="resetvc")
+    async def reset_vc(self, ctx):
+        """Force reset all voice connections and clear audio queue"""
+        # Disconnect from all voice channels
+        try:
+            voice_client = ctx.guild.voice_client
+            if voice_client:
+                await voice_client.disconnect()
+                await ctx.send("**RESET COMPLETE!** Inalis ko ang sarili ko sa voice channel.", delete_after=10)
+            else:
+                await ctx.send("**TANGA!** Wala naman ako sa voice channel!", delete_after=10)
+                
+            # Also clear any guild data
+            if ctx.guild.id in self.guild_audio_data:
+                self.guild_audio_data[ctx.guild.id]["queue"].clear()
+                
+            # Clear any temporary files
+            try:
+                for filename in os.listdir(self.temp_dir):
+                    if filename.startswith("tts_"):
+                        try:
+                            os.remove(os.path.join(self.temp_dir, filename))
+                            print(f"Cleaned up file: {filename}")
+                        except:
+                            pass
+            except:
+                pass
+                
+            print(f"Voice connections reset for guild: {ctx.guild.name}")
+            
+        except Exception as e:
+            await ctx.send(f"**ERROR:** {str(e)}", delete_after=10)
+            print(f"Error resetting voice connections: {e}")
         
     @commands.command(name="replay")
     async def replay(self, ctx):
