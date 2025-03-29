@@ -105,15 +105,15 @@ class LavalinkMusicCog(commands.Cog):
         """Connect to Lavalink nodes"""
         await self.bot.wait_until_ready()
         
-        # First try the primary Lavalink server
-        lavalink_host = Config.LAVALINK_HOST
+        # Use the primary Lavalink server (now set to Singapore/HK region)
+        lavalink_host = Config.LAVALINK_HOST  # Singapore-based server
         lavalink_port = Config.LAVALINK_PORT
         lavalink_password = Config.LAVALINK_PASSWORD
         lavalink_secure = getattr(Config, 'LAVALINK_SECURE', False)  # Default to False if not set
         
-        print(f"✓ Connecting to primary Lavalink server at {lavalink_host}:{lavalink_port} (Secure: {lavalink_secure})")
+        print(f"✓ Connecting to Lavalink server in Asian region at {lavalink_host}:{lavalink_port} (Secure: {lavalink_secure})")
         
-        # Try to connect to primary Lavalink server
+        # First try the primary server (Singapore server)
         try:
             # Connect using wavelink 3.x API
             nodes = [
@@ -124,44 +124,66 @@ class LavalinkMusicCog(commands.Cog):
             ]
             await wavelink.Pool.connect(nodes=nodes, client=self.bot)
             self.lavalink_connected = True
-            print("✅ Successfully connected to primary Lavalink server!")
+            print("✅ Successfully connected to Asia region Lavalink server!")
             return
         except Exception as e:
-            print(f"❌ Failed to connect to primary Lavalink server: {e}")
-            print("⚠️ Trying alternative Lavalink servers...")
+            print(f"❌ Failed to connect to primary Asia region Lavalink server: {e}")
+            print("⚠️ Trying other servers...")
         
-        # Debug server list
-        if hasattr(Config, 'ALT_LAVALINK_SERVERS'):
-            print(f"DEBUG: Found {len(Config.ALT_LAVALINK_SERVERS)} alternative servers")
+        # Simple direct attempt to the other servers (avoid disconnect issues)
+        all_servers = [
+            {
+                'host': 'lava.link',
+                'port': 80,
+                'password': 'anything as a password',
+                'secure': False
+            },
+            {
+                'host': 'lavalink.api.noaxa.tw',
+                'port': 443,
+                'password': 'noaxaiscool',
+                'secure': True
+            },
+            {
+                'host': 'lavalink.devamop.in',
+                'port': 443,
+                'password': 'DevamOP',
+                'secure': True
+            }
+        ]
             
-            # Try each alternative server
-            for i, server in enumerate(Config.ALT_LAVALINK_SERVERS):
+        # Try each server directly
+        for i, server in enumerate(all_servers):
+            try:
+                host = server['host']
+                port = server['port']
+                password = server['password']
+                secure = server.get('secure', False)
+                
+                print(f"🔄 Trying Lavalink server {i+1}: {host}:{port} (Secure: {secure})")
+                
+                # Create new wavelink nodes
                 try:
-                    host = server['host']
-                    port = server['port']
-                    password = server['password']
-                    secure = server.get('secure', False)
+                    # First, disconnect from any existing nodes
+                    try:
+                        await wavelink.Pool.disconnect()
+                    except:
+                        pass  # Ignore any disconnect errors
                     
-                    print(f"🔄 Trying alternative Lavalink server {i+1}: {host}:{port} (Secure: {secure})")
-                    
-                    # Clear previous nodes from pool
-                    await wavelink.Pool.disconnect()
-                    
-                    # Create a new node
                     node = wavelink.Node(
                         uri=f'{"https" if secure else "http"}://{host}:{port}', 
                         password=password
                     )
                     
-                    # Connect using a single node
                     await wavelink.Pool.connect(nodes=[node], client=self.bot)
                     self.lavalink_connected = True
-                    print(f"✅ Successfully connected to alternative Lavalink server: {host}:{port}")
+                    print(f"✅ Successfully connected to Lavalink server: {host}:{port}")
                     return
-                except Exception as alt_error:
-                    print(f"❌ Failed to connect to alternative Lavalink server {host}: {alt_error}")
-        else:
-            print("DEBUG: No ALT_LAVALINK_SERVERS found in Config")
+                except Exception as connect_error:
+                    print(f"❌ Connection error with {host}: {connect_error}")
+                    continue
+            except Exception as server_error:
+                print(f"❌ General error with server: {server_error}")
         
         # If all servers failed
         print("❌ All Lavalink servers failed to connect")

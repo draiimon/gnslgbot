@@ -46,11 +46,11 @@ class Config:
     EMBED_COLOR_ERROR = 0xFF3357    # Bright red
     EMBED_COLOR_INFO = 0x3357FF     # Bright blue
     
-    # Lavalink settings - using a public Lavalink server
-    LAVALINK_HOST = os.getenv('LAVALINK_HOST', 'lavalink.lexnet.cc')
-    LAVALINK_PORT = int(os.getenv('LAVALINK_PORT', '443'))
-    LAVALINK_PASSWORD = os.getenv('LAVALINK_PASSWORD', 'lexn3tl4v4')
-    LAVALINK_SECURE = True  # Use SSL for this server
+    # Lavalink settings - using a Singapore-based Lavalink server for faster PH connections
+    LAVALINK_HOST = os.getenv('LAVALINK_HOST', 'lavalink.clxud.lol')
+    LAVALINK_PORT = int(os.getenv('LAVALINK_PORT', '2333'))
+    LAVALINK_PASSWORD = os.getenv('LAVALINK_PASSWORD', 'youshallnotpass')
+    LAVALINK_SECURE = False  # No SSL for this server
     
     # Alternative Lavalink servers (fallbacks)
     ALT_LAVALINK_SERVERS = [
