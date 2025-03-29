@@ -48,9 +48,17 @@ class ChatCog(commands.Cog):
         
     @commands.Cog.listener()
     async def on_member_update(self, before, after):
-        """Automatically update nickname when a user's roles change"""
-        # Only process if roles have changed
-        if before.roles == after.roles:
+        """Automatically update nickname when a user's roles change or they change their nickname"""
+        # Add debug logging to see when this event fires
+        print(f"[Debug] Member update detected for {after.name}:")
+        print(f"[Debug] - Roles changed: {before.roles != after.roles}")
+        print(f"[Debug] - Nickname changed: {before.display_name != after.display_name}")
+        print(f"[Debug] - Before nickname: {before.display_name}")
+        print(f"[Debug] - After nickname: {after.display_name}")
+        
+        # Only process if roles have changed OR nickname has changed
+        if before.roles == after.roles and before.display_name == after.display_name:
+            print(f"[Debug] - No relevant changes for {after.name}, skipping")
             return
             
         # Role-to-emoji mapping - must match the one in setupnn command
@@ -130,7 +138,16 @@ class ChatCog(commands.Cog):
         # Update the name (silently - no notifications)
         try:
             await after.edit(nick=new_name)
-            print(f"[Auto] Updated {after.name}'s nickname to {new_name} due to role change")
+            
+            # Determine what triggered the update
+            if before.roles != after.roles and before.display_name != after.display_name:
+                trigger = "role and nickname change"
+            elif before.roles != after.roles:
+                trigger = "role change"
+            else:
+                trigger = "nickname change"
+                
+            print(f"[Auto] Updated {after.name}'s nickname to {new_name} due to {trigger}")
         except Exception as e:
             print(f"[Auto] Failed to update {after.name}'s nickname: {e}")
 
