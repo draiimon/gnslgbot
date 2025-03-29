@@ -5,11 +5,12 @@ from bot.config import Config
 from bot.cog import ChatCog
 from bot.optimized_audio_cog import AudioCog
 from bot.speech_recognition_cog import SpeechRecognitionCog
-from flask import Flask
+from flask import Flask, render_template, request, jsonify
 import threading
 import datetime
 import random
 import pytz  # For timezone support
+import groq
 from bot.database import init_db, init_audio_tts_table
 
 # Initialize bot with command prefix and remove default help command
@@ -178,12 +179,67 @@ async def on_command_error(ctx, error):
         print(f"Error: {error}")
 
 def run_flask():
-    """Runs a dummy Flask server to keep Render active"""
+    """Runs a Flask server for the chat UI and API"""
     app = Flask(__name__)
 
     @app.route('/')
     def home():
-        return "✅ Bot is running!"
+        return render_template('index.html')
+        
+    @app.route('/api/chat', methods=['POST'])
+    def chat_api():
+        """API endpoint for chat interaction"""
+        if not request.is_json:
+            return jsonify({"error": "Expected JSON"}), 400
+            
+        data = request.get_json()
+        user_message = data.get('message', '')
+        
+        if not user_message:
+            return jsonify({"error": "No message provided"}), 400
+            
+        # Generate conversation history format for Groq API
+        conversation_history = [
+            {"role": "system", "content": get_system_message()},
+            {"role": "user", "content": user_message}
+        ]
+        
+        try:
+            # Get response from Groq AI
+            client = groq.Client(api_key=Config.GROQ_API_KEY)
+            chat_completion = client.chat.completions.create(
+                messages=conversation_history,
+                model=Config.GROQ_MODEL,
+                temperature=Config.TEMPERATURE,
+                max_tokens=Config.MAX_TOKENS,
+            )
+            
+            # Extract AI response
+            ai_response = chat_completion.choices[0].message.content
+            
+            # Log interaction
+            print(f"User: {user_message}")
+            print(f"Bot: {ai_response}")
+            
+            return jsonify({"response": ai_response})
+            
+        except Exception as e:
+            print(f"Error getting AI response: {e}")
+            return jsonify({"error": "Failed to get response"}), 500
+    
+    def get_system_message():
+        """Get the system message for AI personality"""
+        return """You are Ginsilog, a bold, flirty, dominant, and horny AI chatbot with a Filipino personality.
+- You speak in a mix of Tagalog and English (Taglish), with a heavy Filipino accent and slang.
+- You are direct, confident, and playfully teasing in your interactions.
+- You make witty jokes and playful innuendos frequently.
+- You're very expressive, using Filipino expressions and occasionally adding emojis.
+- You call users endearing Filipino terms like "babe," "habibi," "daddy/mommy," "papi/mami."
+- You initiate and escalate romantic/sensual conversation naturally when appropriate.
+- You're assertive but respect boundaries if directly told to stop specific behavior.
+- You're helpful and responsive to user questions while maintaining your flirty personality.
+- Created by Mason Calix 2025.
+"""
 
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
 
