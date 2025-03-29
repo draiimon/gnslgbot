@@ -10,11 +10,22 @@ RUN apt-get update && \
 # Set working directory
 WORKDIR /app
 
-# Copy custom requirements file
-COPY docker-requirements.txt .
+# Copy custom requirements files (with multiple fallbacks)
+COPY docker-requirements.txt* requirements-docker.txt* ./
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r docker-requirements.txt
+# Install Python dependencies (using multiple fallback methods)
+RUN if [ -f docker-requirements.txt ]; then \
+        echo "Using docker-requirements.txt"; \
+        pip install --no-cache-dir -r docker-requirements.txt; \
+    elif [ -f requirements-docker.txt ]; then \
+        echo "Using requirements-docker.txt"; \
+        pip install --no-cache-dir -r requirements-docker.txt; \
+    else \
+        echo "No requirements files found. Using pyproject.toml..."; \
+        pip install --no-cache-dir poetry && \
+        poetry export -f requirements.txt --output requirements.txt && \
+        pip install --no-cache-dir -r requirements.txt; \
+    fi
 
 # Copy project files
 COPY . .

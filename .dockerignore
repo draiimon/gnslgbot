@@ -42,3 +42,10 @@ LICENSE
 !bot/
 !lavalink/
 !templates/
+
+# Explicitly include requirements files
+!docker-requirements.txt
+!requirements.txt
+!requirements-docker.txt
+!pyproject.toml
+!poetry.lock
