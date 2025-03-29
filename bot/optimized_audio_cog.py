@@ -67,10 +67,10 @@ class AudioCog(commands.Cog):
         # Dictionary to store voice clients and queues per guild
         self.guild_audio_data = {}
         
-        # OPTIMIZED FFMPEG SETTINGS FOR REPLIT (to prevent return code -9)
+        # HIGH QUALITY FFMPEG AUDIO SETTINGS
         self.ffmpeg_options = {
-            'options': '-f opus -ac 1 -b:a 32k -bufsize 64k',
-            'before_options': '-nostdin -threads 1'
+            'options': '-f opus -ac 2 -ar 48000 -b:a 128k -bufsize 256k -minrate 96k -maxrate 160k -preset veryfast -application audio',
+            'before_options': '-nostdin -threads 4'
         }
     
     def get_guild_data(self, guild_id):
@@ -188,10 +188,10 @@ class AudioCog(commands.Cog):
             self.closed = False
             
         def read(self):
-            # Read smaller buffer size (1920 bytes) for lower memory usage
+            # Read larger buffer size for better audio quality
             if self.closed:
                 return b''
-            return self.file.readframes(480)  # OPTIMIZED: Using smaller frames (480 instead of 960)
+            return self.file.readframes(960)  # IMPROVED: Using larger frames for better quality
             
         def is_opus(self):
             return False  # This is PCM, not Opus
@@ -222,10 +222,21 @@ class AudioCog(commands.Cog):
             print(f"Generating Edge TTS for message: '{message}'")
             mp3_filename = f"{self.temp_dir}/tts_{ctx.message.id}.mp3"
             
-            # Create Edge TTS communicator - use Tagalog/Filipino voice
+            # Create Edge TTS communicator - using clearest Filipino voice at highest quality
             # Options: fil-PH-AngeloNeural (male), fil-PH-BlessicaNeural (female)
-            # If these fail, fallback to en-US-JennyNeural or en-US-ChristopherNeural
-            tts = edge_tts.Communicate(text=message, voice="fil-PH-BlessicaNeural")
+            voice = "fil-PH-AngeloNeural"  # Changed to male voice which is often clearer
+            rate = "+0%"  # Normal rate
+            volume = "+0%"  # Normal volume
+            pitch = "+0%"  # Normal pitch
+            
+            # Create TTS with improved voice parameters
+            tts = edge_tts.Communicate(
+                text=message, 
+                voice=voice,
+                rate=rate,
+                volume=volume,
+                pitch=pitch
+            )
             
             # Generate MP3 audio using Edge TTS API
             await tts.save(mp3_filename)
@@ -265,17 +276,28 @@ class AudioCog(commands.Cog):
                 from pydub import AudioSegment
                 wav_filename = f"{self.temp_dir}/tts_wav_{ctx.message.id}.wav"
                 
-                # Convert using pydub with optimized settings (mono, lower quality)
+                # Convert using pydub with HIGH QUALITY settings (stereo, highest quality)
                 audio = AudioSegment.from_mp3(mp3_filename)
-                audio = audio.set_frame_rate(44100).set_channels(1)  # OPTIMIZED: mono, reduced quality
-                audio.export(wav_filename, format="wav")
+                audio = audio.set_frame_rate(48000).set_channels(2)  # HIGH QUALITY: stereo, highest sample rate
+                audio.export(wav_filename, format="wav", parameters=["-q:a", "0"])
                 
                 # Use our custom PCM streaming
                 source = self.PCMStream(wav_filename)
+                
+                # Check if already playing and wait for it to finish
+                if voice_client.is_playing():
+                    print("Audio already playing, waiting for it to finish first...")
+                    await ctx.send("**SANDALI LANG!** May pinapatugtog pa ako!", delete_after=5)
+                    while voice_client.is_playing():
+                        await asyncio.sleep(0.5)
+                
                 voice_client.play(source)
                 
                 # Success message for direct PCM method
-                await processing_msg.delete()
+                try:
+                    await processing_msg.delete()
+                except:
+                    pass  # Message may have been deleted already
                 await ctx.send(f"🔊 **SPEAKING:** {message}", delete_after=10)
                 
                 # Wait for playback to finish
@@ -296,19 +318,29 @@ class AudioCog(commands.Cog):
                     if not voice_client:
                         voice_client = await voice_channel.connect()
                     
-                    # Create audio source from the MP3 file with optimized settings for Replit
-                    # Low bitrate, mono, smaller buffer - perfect for Replit's limited RAM
+                    # Create audio source from the MP3 file with HIGH QUALITY settings
+                    # Stereo audio, high bitrate, optimal buffer - for crisp clear audio
                     audio_source = discord.FFmpegPCMAudio(mp3_filename, **self.ffmpeg_options)
                     
                     # Apply volume transformer with lower volume to reduce processing
-                    audio = discord.PCMVolumeTransformer(audio_source, volume=0.8)
+                    audio = discord.PCMVolumeTransformer(audio_source, volume=1.0)
                     
+                    # Check if already playing and wait for it to finish
+                    if voice_client.is_playing():
+                        print("Audio already playing, waiting for it to finish first...")
+                        await ctx.send("**SANDALI LANG!** May pinapatugtog pa ako!", delete_after=5)
+                        while voice_client.is_playing():
+                            await asyncio.sleep(0.5)
+                            
                     # Play the audio file
                     voice_client.play(audio)
                     print(f"Playing TTS audio with optimized FFmpeg settings: {mp3_filename}")
                     
                     # Success message
-                    await processing_msg.delete()
+                    try:
+                        await processing_msg.delete()
+                    except:
+                        pass  # Message may have been deleted already
                     await ctx.send(f"🔊 **SPEAKING (FFmpeg Mode):** {message}", delete_after=10)
                     
                     # Wait for the audio to finish playing
@@ -394,17 +426,28 @@ class AudioCog(commands.Cog):
                 from pydub import AudioSegment
                 wav_filename = f"{self.temp_dir}/replay_wav_{ctx.message.id}.wav"
                 
-                # Convert using pydub with optimized settings (mono, lower quality)
+                # Convert using pydub with HIGH QUALITY settings (stereo, highest quality)
                 audio = AudioSegment.from_mp3(mp3_filename)
-                audio = audio.set_frame_rate(44100).set_channels(1)  # OPTIMIZED: mono, reduced quality
-                audio.export(wav_filename, format="wav")
+                audio = audio.set_frame_rate(48000).set_channels(2)  # HIGH QUALITY: stereo, highest sample rate
+                audio.export(wav_filename, format="wav", parameters=["-q:a", "0"])
                 
                 # Use our custom PCM streaming
                 source = self.PCMStream(wav_filename)
+                
+                # Check if already playing and wait for it to finish
+                if voice_client.is_playing():
+                    print("Audio already playing, waiting for it to finish first...")
+                    await ctx.send("**SANDALI LANG!** May pinapatugtog pa ako!", delete_after=5)
+                    while voice_client.is_playing():
+                        await asyncio.sleep(0.5)
+                
                 voice_client.play(source)
                 
                 # Success message for direct PCM method
-                await processing_msg.delete()
+                try:
+                    await processing_msg.delete()
+                except:
+                    pass  # Message may have been deleted already
                 await ctx.send(f"🔊 **REPLAYING LAST MESSAGE**", delete_after=10)
                 
                 # Wait for playback to finish
@@ -425,12 +468,12 @@ class AudioCog(commands.Cog):
                     if not voice_client:
                         voice_client = await voice_channel.connect()
                     
-                    # Create audio source from the MP3 file with optimized settings for Replit
-                    # Low bitrate, mono, smaller buffer - perfect for Replit's limited RAM
+                    # Create audio source from the MP3 file with HIGH QUALITY settings
+                    # Stereo audio, high bitrate, optimal buffer - for crisp clear audio
                     audio_source = discord.FFmpegPCMAudio(mp3_filename, **self.ffmpeg_options)
                     
                     # Apply volume transformer with lower volume to reduce processing
-                    audio = discord.PCMVolumeTransformer(audio_source, volume=0.8)
+                    audio = discord.PCMVolumeTransformer(audio_source, volume=1.0)
                     
                     # Play the audio file
                     voice_client.play(audio)
