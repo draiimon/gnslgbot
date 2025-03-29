@@ -39,14 +39,16 @@ class SpeechRecognitionCog(commands.Cog):
     async def on_ready(self):
         """Called when the cog is ready"""
         # Try to get the get_ai_response method from ChatCog
-        for cog in self.bot.cogs.values():
+        print("🔍 Looking for AI response handler in cogs...")
+        for cog_name, cog in self.bot.cogs.items():
+            print(f"  - Checking cog: {cog_name}, type: {type(cog).__name__}")
             if hasattr(cog, 'get_ai_response'):
                 self.get_ai_response = cog.get_ai_response
-                print("✅ Found AI response handler in ChatCog")
+                print(f"✅ Found AI response handler in {cog_name}")
                 break
         
         if not self.get_ai_response:
-            print("❌ Could not find AI response handler")
+            print("❌ Could not find AI response handler - AI responses won't work!")
     
     @commands.command()
     async def listen(self, ctx):
@@ -163,13 +165,20 @@ class SpeechRecognitionCog(commands.Cog):
     
     async def handle_voice_command(self, guild_id, user_id, command):
         """Process a voice command from a user"""
+        print(f"🗣️ Processing voice command from user {user_id}: '{command}'")
+        
+        # First, check if we have the AI response handler
         if not self.get_ai_response:
-            await self.speak_message(guild_id, "Sorry, I can't process AI responses right now.")
+            print("❌ ERROR: No AI response handler available!")
+            await self.speak_message(guild_id, "Sorry, I can't process AI responses right now. The AI handler is not connected properly.")
             return
+        else:
+            print("✅ AI response handler is available")
         
         # Get the guild and channel
         guild = self.bot.get_guild(guild_id)
         if not guild:
+            print(f"❌ ERROR: Could not find guild with ID {guild_id}")
             return
         
         # Find a suitable text channel to send response
@@ -182,12 +191,14 @@ class SpeechRecognitionCog(commands.Cog):
                 break
         
         if not text_channel:
+            print("❌ ERROR: Could not find a suitable text channel to respond in")
             await self.speak_message(guild_id, "I can't find a text channel to respond in.")
             return
         
         # Get the member
         member = guild.get_member(int(user_id))
         if not member:
+            print(f"❌ ERROR: Could not find member with ID {user_id}")
             return
         
         # Send acknowledgment message
@@ -204,7 +215,9 @@ class SpeechRecognitionCog(commands.Cog):
         
         # Get AI response
         try:
+            print(f"🧠 Generating AI response for command: '{command}'")
             response = await self.get_ai_response(conversation)
+            print(f"✅ AI response generated: '{response[:50]}...'")
             
             # Send response to text channel
             await text_channel.send(f"🤖 **AI Response:** {response}")
@@ -213,6 +226,9 @@ class SpeechRecognitionCog(commands.Cog):
             await self.speak_message(guild_id, response)
         except Exception as e:
             error_message = f"Error generating response: {str(e)}"
+            print(f"❌ AI ERROR: {error_message}")
+            import traceback
+            traceback.print_exc()
             await text_channel.send(f"❌ **ERROR:** {error_message}")
             await self.speak_message(guild_id, "Sorry, I encountered an error processing your request.")
     

@@ -35,11 +35,17 @@ async def on_ready():
     # Remove Lavalink node connection for now since we don't have Java installed
     # Will use direct FFmpeg approach instead
     
-    # Ensure cogs are loaded
+    # Ensure cogs are loaded in the correct order
+    # Always load ChatCog first, since other cogs depend on it
+    chat_cog = None
     if not bot.get_cog("ChatCog"):
-        await bot.add_cog(ChatCog(bot))
+        chat_cog = ChatCog(bot)
+        await bot.add_cog(chat_cog)
         print("ChatCog initialized")
         print("✅ ChatCog loaded")
+    else:
+        chat_cog = bot.get_cog("ChatCog")
+        print("ChatCog already loaded")
         
     # Load audio cog if not already loaded
     if not bot.get_cog("AudioCog"):
@@ -47,9 +53,13 @@ async def on_ready():
         await bot.add_cog(audio_cog)
         print("✅ Audio Cog loaded with 2025 TTS implementation (Optimized for Replit)")
         
-    # Load new speech recognition cog
+    # Load new speech recognition cog with direct access to ChatCog's AI response method
     if not bot.get_cog("SpeechRecognitionCog"):
         speech_cog = SpeechRecognitionCog(bot)
+        # Directly set the get_ai_response method
+        if chat_cog:
+            speech_cog.get_ai_response = chat_cog.get_ai_response
+            print("✅ Manually connected AI response handler from ChatCog to SpeechRecognitionCog")
         await bot.add_cog(speech_cog)
         print("✅ Speech Recognition Cog loaded with voice command support")
         
