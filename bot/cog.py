@@ -32,6 +32,9 @@ class ChatCog(commands.Cog):
         self.daily_cooldown = defaultdict(int)
         self.blackjack_games = {}
         self.ADMIN_ROLE_ID = 1345727357662658603
+        
+        # Setup regular nickname update check
+        self.nickname_update_task = bot.loop.create_task(self._regular_nickname_scan())
         print("ChatCog initialized")
 
     @commands.Cog.listener()
@@ -46,6 +49,90 @@ class ChatCog(commands.Cog):
         # No longer auto-connecting to prevent unwanted rejoins
         # Now the bot will only connect when explicitly commanded
         
+    @commands.Cog.listener()
+    async def on_member_join(self, member):
+        """Automatically format nickname of new members when they join"""
+        # Skip bots
+        if member.bot:
+            return
+            
+        # Role-to-emoji mapping - must match the one in setupnn command
+        role_emoji_map = {
+            1345727357662658603: "🌿",  # 𝐇𝐈𝐆𝐇
+            1345727357645885448: "🍆",  # 𝐊𝐄𝐊𝐋𝐀𝐑𝐒
+            1345727357645885449: "💦",  # 𝐓𝐀𝐌𝐎𝐃𝐄𝐑𝐀𝐓𝐎𝐑
+            1345727357645885442: "🚀",  # 𝐀𝐒𝐀 𝐒𝐏𝐀𝐂𝐄𝐒𝐇𝐈𝐏
+            1345727357612195890: "🌸",  # 𝐕𝐀𝐕𝐀𝐈𝐇𝐀𝐍
+            1345727357612195889: "💪",  # 𝐁𝐎𝐒𝐒𝐈𝐍𝐆
+            1345727357612195887: "☁️",  # 𝐁𝐖𝐈𝐒𝐈𝐓𝐀
+            1345727357645885446: "🍑",  # 𝐁𝐎𝐓 𝐒𝐈 𝐁𝐇𝐈𝐄
+            1345727357612195885: "🛑",  # 𝐁𝐎𝐁𝐎
+        }
+        
+        # Get member's roles sorted by position (highest first)
+        member_roles = sorted(member.roles, key=lambda r: r.position, reverse=True)
+        
+        # Find the highest role that's in our mapping
+        highest_matched_role_id = None
+        for role in member_roles:
+            if role.id in role_emoji_map:
+                highest_matched_role_id = role.id
+                break
+        
+        # Skip if no matching role found
+        if not highest_matched_role_id:
+            return
+            
+        # Get the emoji for this role
+        emoji = role_emoji_map[highest_matched_role_id]
+        
+        # Format the name
+        original_name = member.display_name
+        
+        # Clean name of all emojis
+        clean_name = original_name
+        
+        # Special case for cloud emoji (both variants)
+        clean_name = clean_name.replace("☁️", "").replace("☁", "")
+        
+        # Handle all other emojis from the role map
+        for emoji_value in role_emoji_map.values():
+            while emoji_value in clean_name:
+                clean_name = clean_name.replace(emoji_value, '')
+        
+        # Remove any extra spaces
+        clean_name = clean_name.strip()
+        
+        # Convert to Unicode bold style
+        unicode_map = {
+            'A': '𝐀', 'B': '𝐁', 'C': '𝐂', 'D': '𝐃', 'E': '𝐄', 'F': '𝐅', 'G': '𝐆', 'H': '𝐇', 
+            'I': '𝐈', 'J': '𝐉', 'K': '𝐊', 'L': '𝐋', 'M': '𝐌', 'N': '𝐍', 'O': '𝐎', 'P': '𝐏', 
+            'Q': '𝐐', 'R': '𝐑', 'S': '𝐒', 'T': '𝐓', 'U': '𝐔', 'V': '𝐕', 'W': '𝐖', 'X': '𝐗', 
+            'Y': '𝐘', 'Z': '𝐙',
+            'a': '𝐚', 'b': '𝐛', 'c': '𝐜', 'd': '𝐝', 'e': '𝐞', 'f': '𝐟', 'g': '𝐠', 'h': '𝐡', 
+            'i': '𝐢', 'j': '𝐣', 'k': '𝐤', 'l': '𝐥', 'm': '𝐦', 'n': '𝐧', 'o': '𝐨', 'p': '𝐩', 
+            'q': '𝐪', 'r': '𝐫', 's': '𝐬', 't': '𝐭', 'u': '𝐮', 'v': '𝐯', 'w': '𝐰', 'x': '𝐱', 
+            'y': '𝐲', 'z': '𝐳', 
+            '0': '0', '1': '1', '2': '2', '3': '3', '4': '4', 
+            '5': '5', '6': '6', '7': '7', '8': '8', '9': '9',
+            ' ': ' ', '_': '_', '-': '-', '.': '.', ',': ',', '!': '!', '?': '?'
+        }
+        formatted_name = ''.join(unicode_map.get(c, c) for c in clean_name)
+        
+        # Add the role emoji
+        new_name = f"{formatted_name} {emoji}"
+        
+        # Skip if the name is already correctly formatted
+        if member.display_name == new_name:
+            return
+            
+        # Update the name
+        try:
+            await member.edit(nick=new_name)
+            print(f"[Join] Set new member {member.name}'s nickname to {new_name}")
+        except Exception as e:
+            print(f"[Join] Failed to update new member {member.name}'s nickname: {e}")
+
     @commands.Cog.listener()
     async def on_member_update(self, before, after):
         """Automatically update nickname when a user's roles change or they change their nickname"""
@@ -1782,6 +1869,132 @@ class ChatCog(commands.Cog):
         status = "ON" if new_state else "OFF"
         await ctx.send(f"**MAINTENANCE MODE NOW:** `{status}`")
 
+    async def _regular_nickname_scan(self):
+        """Automatically scan and update all nicknames every few seconds"""
+        await self.bot.wait_until_ready()
+        while not self.bot.is_closed():
+            print("[Auto] Starting rapid nickname scan...")
+            try:
+                for guild in self.bot.guilds:
+                    # Role-to-emoji mapping - same as in setupnn
+                    role_emoji_map = {
+                        1345727357662658603: "🌿",  # 𝐇𝐈𝐆𝐇
+                        1345727357645885448: "🍆",  # 𝐊𝐄𝐊𝐋𝐀𝐑𝐒
+                        1345727357645885449: "💦",  # 𝐓𝐀𝐌𝐎𝐃𝐄𝐑𝐀𝐓𝐎𝐑
+                        1345727357645885442: "🚀",  # 𝐀𝐒𝐀 𝐒𝐏𝐀𝐂𝐄𝐒𝐇𝐈𝐏
+                        1345727357612195890: "🌸",  # 𝐕𝐀𝐕𝐀𝐈𝐇𝐀𝐍
+                        1345727357612195889: "💪",  # 𝐁𝐎𝐒𝐒𝐈𝐍𝐆
+                        1345727357612195887: "☁️",  # 𝐁𝐖𝐈𝐒𝐈𝐓𝐀
+                        1345727357645885446: "🍑",  # 𝐁𝐎𝐓 𝐒𝐈 𝐁𝐇𝐈𝐄
+                        1345727357612195885: "🛑",  # 𝐁𝐎𝐁𝐎
+                    }
+                    
+                    # Role names for display in log
+                    role_names = {
+                        1345727357662658603: "𝐇𝐈𝐆𝐇",
+                        1345727357645885448: "𝐊𝐄𝐊𝐋𝐀𝐑𝐒",
+                        1345727357645885449: "𝐓𝐀𝐌𝐎𝐃𝐄𝐑𝐀𝐓𝐎𝐑",
+                        1345727357645885442: "𝐀𝐒𝐀 𝐒𝐏𝐀𝐂𝐄𝐒𝐇𝐈𝐏",
+                        1345727357612195890: "𝐕𝐀𝐕𝐀𝐈𝐇𝐀𝐍",
+                        1345727357612195889: "𝐁𝐎𝐒𝐒𝐈𝐍𝐆",
+                        1345727357612195887: "𝐁𝐖𝐈𝐒𝐈𝐓𝐀",
+                        1345727357645885446: "𝐁𝐎𝐓 𝐒𝐈 𝐁𝐇𝐈𝐄",
+                        1345727357612195885: "𝐁𝐎𝐁𝐎",
+                    }
+                    
+                    # Unicode map for text conversion
+                    unicode_map = {
+                        'A': '𝐀', 'B': '𝐁', 'C': '𝐂', 'D': '𝐃', 'E': '𝐄', 'F': '𝐅', 'G': '𝐆', 'H': '𝐇', 
+                        'I': '𝐈', 'J': '𝐉', 'K': '𝐊', 'L': '𝐋', 'M': '𝐌', 'N': '𝐍', 'O': '𝐎', 'P': '𝐏', 
+                        'Q': '𝐐', 'R': '𝐑', 'S': '𝐒', 'T': '𝐓', 'U': '𝐔', 'V': '𝐕', 'W': '𝐖', 'X': '𝐗', 
+                        'Y': '𝐘', 'Z': '𝐙',
+                        'a': '𝐚', 'b': '𝐛', 'c': '𝐜', 'd': '𝐝', 'e': '𝐞', 'f': '𝐟', 'g': '𝐠', 'h': '𝐡', 
+                        'i': '𝐢', 'j': '𝐣', 'k': '𝐤', 'l': '𝐥', 'm': '𝐦', 'n': '𝐧', 'o': '𝐨', 'p': '𝐩', 
+                        'q': '𝐪', 'r': '𝐫', 's': '𝐬', 't': '𝐭', 'u': '𝐮', 'v': '𝐯', 'w': '𝐰', 'x': '𝐱', 
+                        'y': '𝐲', 'z': '𝐳', 
+                        '0': '0', '1': '1', '2': '2', '3': '3', '4': '4', 
+                        '5': '5', '6': '6', '7': '7', '8': '8', '9': '9',
+                        ' ': ' ', '_': '_', '-': '-', '.': '.', ',': ',', '!': '!', '?': '?'
+                    }
+                    
+                    def to_unicode_bold(text):
+                        return ''.join(unicode_map.get(c, c) for c in text)
+                    
+                    updated_count = 0
+                    skipped_count = 0
+                    failed_count = 0
+                    
+                    for member in guild.members:
+                        # Skip bots
+                        if member.bot:
+                            skipped_count += 1
+                            continue
+                        
+                        # Get member's roles sorted by position (highest first)
+                        member_roles = sorted(member.roles, key=lambda r: r.position, reverse=True)
+                        
+                        # Find the highest role that's in our mapping
+                        highest_matched_role_id = None
+                        for role in member_roles:
+                            if role.id in role_emoji_map:
+                                highest_matched_role_id = role.id
+                                break
+                        
+                        # Skip if no matching role found
+                        if not highest_matched_role_id:
+                            skipped_count += 1
+                            continue
+                        
+                        # Get the emoji for this role
+                        emoji = role_emoji_map[highest_matched_role_id]
+                        role_name = role_names[highest_matched_role_id]
+                        
+                        # Format the name
+                        original_name = member.display_name
+                        
+                        # Clean name of all emojis
+                        clean_name = original_name
+                        
+                        # Special case for cloud emoji (both variants)
+                        clean_name = clean_name.replace("☁️", "").replace("☁", "")
+                        
+                        # Handle all other emojis from the role map
+                        for emoji_value in role_emoji_map.values():
+                            while emoji_value in clean_name:
+                                clean_name = clean_name.replace(emoji_value, '')
+                        
+                        # Remove any extra spaces
+                        clean_name = clean_name.strip()
+                        
+                        # Convert to Unicode bold style
+                        formatted_name = to_unicode_bold(clean_name)
+                        
+                        # Add the role emoji
+                        new_name = f"{formatted_name} {emoji}"
+                        
+                        # Skip if the name is already correctly formatted
+                        if member.display_name == new_name:
+                            skipped_count += 1
+                            continue
+                        
+                        # Update the name
+                        try:
+                            await member.edit(nick=new_name)
+                            updated_count += 1
+                            print(f"[Scan] Updated {member.name} to {new_name} with role {role_name}")
+                            # Very small delay to avoid rate limits but still be responsive
+                            await asyncio.sleep(0.1)
+                        except Exception as e:
+                            failed_count += 1
+                            print(f"[Scan] Failed to update {member.name}: {e}")
+                
+                print(f"[Auto] Rapid nickname scan complete! Updated: {updated_count}, Skipped: {skipped_count}, Failed: {failed_count}")
+            except Exception as e:
+                print(f"[Auto] Error during nickname scan: {e}")
+                
+            # Wait for only a few seconds before scanning again
+            await asyncio.sleep(10)  # 10 seconds between scans
+            
     @commands.command(name="setupnn")
     @commands.check(lambda ctx: any(role.id in [
         1345727357662658603, 1345727357645885449, 1345727357645885448
