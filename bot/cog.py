@@ -130,19 +130,19 @@ class ChatCog(commands.Cog):
     # ========== HELPER FUNCTIONS ==========
     def get_user_balance(self, user_id):
         """Get user's balance with aggressive Tagalog flair"""
-        return self.user_coins.get(user_id, 50_000)
+        from bot.database import get_user_balance
+        return get_user_balance(user_id)
 
     def add_coins(self, user_id, amount):
         """Add coins to user's balance"""
-        self.user_coins[user_id] += amount
-        return self.user_coins[user_id]
+        from bot.database import add_coins
+        return add_coins(user_id, amount)
 
     def deduct_coins(self, user_id, amount):
         """Deduct coins from user's balance"""
-        if self.user_coins[user_id] >= amount:
-            self.user_coins[user_id] -= amount
-            return True
-        return False
+        from bot.database import deduct_coins
+        result = deduct_coins(user_id, amount)
+        return result is not None
 
     def is_rate_limited(self, user_id):
         """Check if user is spamming commands"""
@@ -169,17 +169,36 @@ class ChatCog(commands.Cog):
     @commands.command(name="daily")
     async def daily(self, ctx):
         """Claim your daily ₱10,000 pesos"""
-        current_time = time.time()
-        last_claim = self.daily_cooldown.get(ctx.author.id, 0)
-
-        if current_time - last_claim < 86400:
+        from bot.database import get_daily_cooldown, update_daily_cooldown
+        from datetime import datetime, timedelta
+        import pytz
+        
+        # Get Philippines timezone for proper cooldown calculation
+        ph_timezone = pytz.timezone('Asia/Manila')
+        current_time = datetime.now(ph_timezone)
+        
+        # Get last daily claim time from database
+        last_claim = get_daily_cooldown(ctx.author.id)
+        
+        # Check if enough time has passed (24 hours)
+        if last_claim and current_time - last_claim < timedelta(days=1):
+            # Calculate remaining time
+            remaining_time = timedelta(days=1) - (current_time - last_claim)
+            hours, remainder = divmod(remaining_time.seconds, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            
             await ctx.send(
-                f"**BOBO KA BA?!** {ctx.author.mention} KAKA-CLAIM MO LANG NG DAILY MO! KINANGINA MO! BALIK KA BUKAS! 😤"
+                f"**BOBO KA BA?!** {ctx.author.mention} KAKA-CLAIM MO LANG NG DAILY MO! KINANGINA MO! BALIK KA BUKAS!\n"
+                f"⏰ REMAINING TIME: **{hours}h {minutes}m {seconds}s** 😤"
             )
             return
 
-        self.daily_cooldown[ctx.author.id] = current_time
+        # Update cooldown in the database
+        update_daily_cooldown(ctx.author.id)
+        
+        # Add coins
         self.add_coins(ctx.author.id, 10_000)
+        
         await ctx.send(
             f"🎉 {ctx.author.mention} NAKA-CLAIM KA NA NG DAILY MO NA **₱10,000**! BALANCE MO NGAYON: **₱{self.get_user_balance(ctx.author.id):,}**"
         )
@@ -967,19 +986,44 @@ class ChatCog(commands.Cog):
     ] for role in ctx.author.roles))  # Multiple admin roles check
     async def commandslist(self, ctx):
         """Admin command panel - comprehensive list of all commands for admins"""
-        # Create embed for all commands (admin and regular)
-        embed = discord.Embed(
-            title="**🔑 GNSLG COMMAND MASTER LIST 🔑**",
+        # Get owner's avatar for the footer
+        owner = ctx.guild.get_member(705770837399306332)  # Mason's ID
+        owner_avatar = owner.avatar_url if owner else None
+        
+        # Main header embed
+        header_embed = discord.Embed(
+            title="**🌟 GINSILOG BOT MASTER COMMAND LIST 🌟**",
             description=
-            "**KOMPLETONG LISTA NG LAHAT NG COMMANDS PARA SA MGA MODERATOR:**",
+            "**KUMPLETO AT MAGANDANG LISTA NG LAHAT NG COMMANDS PARA SA MGA MODERATOR!**\n\n"
+            "**⬇️ SCROLL DOWN TO VIEW ALL COMMAND CATEGORIES ⬇️**",
             color=Config.EMBED_COLOR_PRIMARY)
+            
+        # Set thumbnail image with bot's avatar
+        header_embed.set_thumbnail(url=self.bot.user.avatar_url)
+        
+        # Set author information
+        header_embed.set_author(
+            name="Ginsilog Master Commands", 
+            icon_url=self.bot.user.avatar_url
+        )
+            
+        # Set footer with owner's avatar
+        header_embed.set_footer(
+            text="MASTER LIST | PARA SA MODERATOR LANG | Gawa ni Mason Calix",
+            icon_url=owner_avatar
+        )
+        
+        # Send the header embed first
+        await ctx.send(embed=header_embed)
 
-        # All admin-only commands
+        # ADMIN COMMANDS EMBED - with fancy styling
         admin_commands = {
             "g!admin":
             "Ipakita ang basic admin commands",
             "g!commandslist":
             "Ipakita ang lahat ng commands (ito mismo)",
+            "g!ask <message>":
+            "Voice-only AI response (console log only)",
             "g!asklog <message>":
             "Chat with AI at ilagay ang logs sa channel 1345733998357512215",
             "g!sagad <amount> <@user>":
@@ -1000,83 +1044,133 @@ class ChatCog(commands.Cog):
             "Burahin lahat ng messages ng bot sa isang channel"
         }
 
-        # Regular commands that admins can also use
+        admin_embed = discord.Embed(
+            title="**🛡️ ADMIN COMMANDS 🛡️**",
+            description="**EXCLUSIVE COMMANDS PARA SA MGA MODERATORS LANG:**",
+            color=discord.Color.red()  # Distinctive red color for admin
+        )
+        
+        admin_text = ""
+        for cmd, desc in admin_commands.items():
+            admin_text += f"• **{cmd}** - {desc}\n"
+            
+        admin_embed.description += f"\n\n{admin_text}"
+        admin_embed.set_footer(
+            text="ADMIN COMMANDS | Moderator Exclusive | Gawa ni Mason Calix",
+            icon_url=owner_avatar
+        )
+        
+        # Send admin commands embed
+        await ctx.send(embed=admin_embed)
+
+        # ECONOMY COMMANDS EMBED
         economy_commands = {
             "g!daily": "Claim daily ₱10,000",
             "g!balance": "Check your balance",
             "g!give <@user> <amount>": "Transfer money",
             "g!leaderboard": "Top 20 richest players"
         }
+        
+        economy_embed = discord.Embed(
+            title="**💰 ECONOMY COMMANDS 💰**",
+            description="**PERA AT ECONOMY SYSTEM:**",
+            color=discord.Color.gold()  # Gold color for money
+        )
+        
+        economy_text = ""
+        for cmd, desc in economy_commands.items():
+            economy_text += f"• **{cmd}** - {desc}\n"
+            
+        economy_embed.description += f"\n\n{economy_text}"
+        economy_embed.set_footer(
+            text="ECONOMY SYSTEM | Money Commands | Gawa ni Mason Calix",
+            icon_url=owner_avatar
+        )
+        
+        # Send economy commands embed
+        await ctx.send(embed=economy_embed)
 
+        # GAME COMMANDS EMBED
         game_commands = {
             "g!toss <h/t> <bet>": "Coin flip game",
             "g!blackjack <bet> (or g!bj)": "Play Blackjack",
             "g!hit": "Draw a card in Blackjack",
             "g!stand": "End your turn in Blackjack"
         }
+        
+        game_embed = discord.Embed(
+            title="**🎮 GAME COMMANDS 🎮**",
+            description="**LARO AT GAMES NA PWEDE PANG-PATAY ORAS:**",
+            color=discord.Color.purple()  # Purple for games
+        )
+        
+        game_text = ""
+        for cmd, desc in game_commands.items():
+            game_text += f"• **{cmd}** - {desc}\n"
+            
+        game_embed.description += f"\n\n{game_text}"
+        game_embed.set_footer(
+            text="GAMES | Entertainment Commands | Gawa ni Mason Calix",
+            icon_url=owner_avatar
+        )
+        
+        # Send game commands embed
+        await ctx.send(embed=game_embed)
 
+        # AI CHAT COMMANDS EMBED
         chat_commands = {
             "g!usap <message>": "Chat with the AI assistant",
             "g!ask <message>": "Voice-only AI response (console log only)",
-            "g!asklog <message>": "Chat with AI and log to channel 1345733998357512215",
+            "g!asklog <message>": "Chat with AI and log to channel",
             "@Ginsilog BOT <message>": "Mention the bot to chat",
             "g!clear": "Clear chat history"
         }
+        
+        chat_embed = discord.Embed(
+            title="**🤖 AI CHAT COMMANDS 🤖**",
+            description="**MAG-CHAT AT KAUSAPIN ANG BOT (GROQ AI):**",
+            color=discord.Color.blue()  # Blue for AI
+        )
+        
+        chat_text = ""
+        for cmd, desc in chat_commands.items():
+            chat_text += f"• **{cmd}** - {desc}\n"
+            
+        chat_embed.description += f"\n\n{chat_text}"
+        chat_embed.set_footer(
+            text="AI SYSTEM | Chat Commands | Gawa ni Mason Calix",
+            icon_url=owner_avatar
+        )
+        
+        # Send AI chat commands embed
+        await ctx.send(embed=chat_embed)
 
+        # UTILITY COMMANDS EMBED
         utility_commands = {
             "g!join/leave": "Voice channel management",
-            "g!rules": "Server rules",
+            "g!rules": "Server rules (may clickable link)",
             "g!announcement <message>": "Make an announcement",
             "g!tulong": "Show help for regular users"
         }
-
-        # Add each category as a field
-        admin_text = ""
-        for cmd, desc in admin_commands.items():
-            admin_text += f"• **{cmd}**: {desc}\n"
-
-        embed.add_field(name="**🛡️ ADMIN COMMANDS (MODERATOR ROLES ONLY):**",
-                        value=admin_text,
-                        inline=False)
-
-        economy_text = ""
-        for cmd, desc in economy_commands.items():
-            economy_text += f"• **{cmd}**: {desc}\n"
-
-        embed.add_field(name="**💰 ECONOMY COMMANDS:**",
-                        value=economy_text,
-                        inline=False)
-
-        game_text = ""
-        for cmd, desc in game_commands.items():
-            game_text += f"• **{cmd}**: {desc}\n"
-
-        embed.add_field(name="**🎮 GAME COMMANDS:**",
-                        value=game_text,
-                        inline=False)
-
-        chat_text = ""
-        for cmd, desc in chat_commands.items():
-            chat_text += f"• **{cmd}**: {desc}\n"
-
-        embed.add_field(name="**🤖 AI CHAT COMMANDS:**",
-                        value=chat_text,
-                        inline=False)
-
+        
+        utility_embed = discord.Embed(
+            title="**🔧 UTILITY COMMANDS 🔧**",
+            description="**MISCELLANEOUS AT IBA PANG HELPFUL COMMANDS:**",
+            color=discord.Color.green()  # Green for utility
+        )
+        
         utility_text = ""
         for cmd, desc in utility_commands.items():
-            utility_text += f"• **{cmd}**: {desc}\n"
-
-        embed.add_field(name="**🔧 UTILITY COMMANDS:**",
-                        value=utility_text,
-                        inline=False)
-
-        embed.set_footer(
-            text=
-            "MASTER LIST! PARA SA MODERATOR LANG! | Ginsilog Command System | Gawa ni Mason Calix")
-
-        # Send the embed in the channel
-        await ctx.send(embed=embed)
+            utility_text += f"• **{cmd}** - {desc}\n"
+            
+        utility_embed.description += f"\n\n{utility_text}"
+        utility_embed.set_footer(
+            text="UTILITY | Helpful Commands | Gawa ni Mason Calix",
+            icon_url=owner_avatar
+        )
+        
+        # Send utility commands embed
+        await ctx.send(embed=utility_embed)
 
     @commands.command(name="admin")
     async def admin(self, ctx):
@@ -1095,14 +1189,28 @@ class ChatCog(commands.Cog):
                 "**HINDI KA ADMIN GAGO!** Wala kang access sa command na 'to!",
                 delete_after=10)
             return
+            
+        # Get owner's avatar for the footer
+        owner = ctx.guild.get_member(705770837399306332)  # Mason's ID
+        owner_avatar = owner.avatar_url if owner else None
 
-        # Create embed for admin commands
-        embed = discord.Embed(
-            title="**🔑 GINSILOG ADMIN COMMANDS 🔑**",
-            description="**LISTA NG MGA ADMIN COMMANDS PARA SA MGA BOSS:**",
-            color=Config.EMBED_COLOR_PRIMARY)
+        # Create a beautiful styled admin panel embed
+        admin_embed = discord.Embed(
+            title="**🛡️ GINSILOG ADMIN DASHBOARD 🛡️**",
+            description="**EXCLUSIVE COMMANDS FOR MODERATORS & ADMINS ONLY**\n\n" + 
+                       "**👑 WELCOME BOSS! MGA COMMANDS MO DITO 👑**",
+            color=discord.Color.red())  # Red color for admin panel
+            
+        # Set thumbnail image with bot's avatar
+        admin_embed.set_thumbnail(url=self.bot.user.avatar_url)
+        
+        # Set author information
+        admin_embed.set_author(
+            name="Admin Control Panel", 
+            icon_url=ctx.author.avatar_url  # Use the admin's avatar here
+        )
 
-        # List all admin commands
+        # List all admin commands with improved formatting
         admin_commands = {
             "g!admin":
             "Ipakita ang lahat ng admin commands (ito mismo)",
@@ -1130,19 +1238,74 @@ class ChatCog(commands.Cog):
             "Burahin lahat ng messages ng bot sa isang channel"
         }
 
-        command_text = ""
+        # Group commands by type for better organization
+        mod_tools = ["g!sagad", "g!bawas", "g!clear_messages"]
+        message_tools = ["g!g", "g!goodmorning", "g!goodnight", "g!test", "g!announcement"]
+        ai_tools = ["g!ask", "g!asklog"]
+        
+        # Moderator Actions Section
+        mod_text = ""
         for cmd, desc in admin_commands.items():
-            command_text += f"• **{cmd}**: {desc}\n"
+            if any(cmd.startswith(tool) for tool in mod_tools):
+                mod_text += f"• **{cmd}** - {desc}\n"
+                
+        admin_embed.add_field(
+            name="🔧 MODERATOR ACTIONS:",
+            value=mod_text or "No moderator commands available.",
+            inline=False
+        )
+        
+        # Messaging Tools Section
+        msg_text = ""
+        for cmd, desc in admin_commands.items():
+            if any(cmd.startswith(tool) for tool in message_tools):
+                msg_text += f"• **{cmd}** - {desc}\n"
+                
+        admin_embed.add_field(
+            name="📢 MESSAGING TOOLS:",
+            value=msg_text or "No messaging commands available.",
+            inline=False
+        )
+        
+        # AI Tools Section
+        ai_text = ""
+        for cmd, desc in admin_commands.items():
+            if any(cmd.startswith(tool) for tool in ai_tools):
+                ai_text += f"• **{cmd}** - {desc}\n"
+                
+        admin_embed.add_field(
+            name="🤖 AI TOOLS:",
+            value=ai_text or "No AI commands available.",
+            inline=False
+        )
+        
+        # Other Admin Commands Section
+        other_text = ""
+        for cmd, desc in admin_commands.items():
+            if not any(cmd.startswith(tool) for tool in mod_tools + message_tools + ai_tools):
+                other_text += f"• **{cmd}** - {desc}\n"
+                
+        admin_embed.add_field(
+            name="🔑 OTHER ADMIN COMMANDS:",
+            value=other_text or "No other commands available.",
+            inline=False
+        )
+            
+        # Add a role check note
+        admin_embed.add_field(
+            name="⚠️ NOTE:",
+            value="All these commands require Admin or Moderator roles to use.",
+            inline=False
+        )
 
-        embed.add_field(name="**AVAILABLE ADMIN COMMANDS:**",
-                        value=command_text,
-                        inline=False)
-
-        embed.set_footer(
-            text="ADMIN LANG PWEDE GUMAMIT NITO! | Ginsilog Admin Panel | Gawa ni Mason Calix")
+        # Set footer with owner's avatar
+        admin_embed.set_footer(
+            text="AUTHORIZED ACCESS ONLY | Ginsilog Admin Panel | Gawa ni Mason Calix",
+            icon_url=owner_avatar
+        )
 
         # Send the embed in the channel
-        await ctx.send(embed=embed)
+        await ctx.send(embed=admin_embed)
 
     @commands.command(name="clear_messages")
     @commands.check(lambda ctx: any(role.id in [
@@ -1185,10 +1348,11 @@ class ChatCog(commands.Cog):
     @commands.command(name="leaderboard")
     async def leaderboard(self, ctx):
         """Display wealth rankings"""
-        # Sort users by their coin balance in descending order
-        sorted_users = sorted(self.user_coins.items(),
-                              key=lambda x: x[1],
-                              reverse=True)[:20]
+        # Import the database function
+        from bot.database import get_leaderboard
+        
+        # Get top 20 users by balance from the database
+        sorted_users = get_leaderboard(20)
 
         # Create the embed with cleaner design (fewer emojis)
         embed = discord.Embed(
@@ -1221,11 +1385,18 @@ class ChatCog(commands.Cog):
 
         embed.description += f"\n\n{leaderboard_text}"
 
-        # Add motivational footer (insulting style but cleaner)
-        embed.set_footer(
-            text=
-            "DAPAT ANDITO KA SA TAAS! KUNGDI MAGTIPID KA GAGO! | Ginsilog Economy System"
-        )
+        # Add owner's profile picture to the footer
+        owner = await self.bot.fetch_user(705770837399306332)
+        if owner:
+            embed.set_footer(
+                text="DAPAT ANDITO KA SA TAAS! KUNGDI MAGTIPID KA GAGO! | Ginsilog Economy System",
+                icon_url=owner.avatar.url if owner.avatar else None
+            )
+        else:
+            # Fallback if owner can't be fetched
+            embed.set_footer(
+                text="DAPAT ANDITO KA SA TAAS! KUNGDI MAGTIPID KA GAGO! | Ginsilog Economy System"
+            )
 
         # Send the embed
         await ctx.send(embed=embed)
