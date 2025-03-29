@@ -12,15 +12,14 @@ discord-py = "^2.5.2"
 groq = "^0.18.0"
 pynacl = "^1.5.0"
 python-dotenv = "^1.0.1"
-flask = "^3.0.0"  # Added Flask to prevent errors
+flask = "^3.0.0"
 openai = "^1.69.0"
 pytz = "^2025.2"
 gtts = "^2.5.4"
 pydub = "^0.25.1"
-lavalink = "^5.9.0"
-wavelink = "2.6.3"
 psycopg2-binary = "^2.9.10"
 edge-tts = "^7.0.0"
+# Removed lavalink and wavelink dependencies
 
 [build-system]
 requires = ["poetry-core"]
