@@ -30,7 +30,7 @@ class Config:
 
     # Groq API settings
     GROQ_MODEL = "gemma2-9b-it"  # Using Gemma 2 9B instruct model through Groq (correct model name)
-    MAX_TOKENS = 300  # Reduced for shorter, more conversational responses
+    MAX_TOKENS = 200  # Further reduced for even shorter, more concise responses
     TEMPERATURE = 1.9  # Even higher temperature for more unpredictable and varied responses
 
     # Bot personality settings
