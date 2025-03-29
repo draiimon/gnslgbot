@@ -58,21 +58,8 @@ async def on_ready():
     init_db()
     init_audio_tts_table()
     
-    # Start Lavalink server
-    lavalink_started = await start_lavalink()
-    
-    # Connect to the Lavalink server with wavelink if started successfully
-    if lavalink_started:
-        # Connect to Lavalink node
-        try:
-            node = wavelink.Node(
-                uri="http://localhost:2333",
-                password="youshallnotpass"
-            )
-            await wavelink.Pool.connect(nodes=[node], client=bot)
-            print("✅ Connected to Lavalink server")
-        except Exception as e:
-            print(f"⚠️ Failed to connect to Lavalink node: {e}")
+    # Clean up temp audio files at startup
+    await clean_audio_temp()
     
     # Ensure cogs are loaded
     if not bot.get_cog("ChatCog"):
@@ -80,18 +67,11 @@ async def on_ready():
         print("ChatCog initialized")
         print("✅ ChatCog loaded")
     
-    # Load optimized audio cog for TTS    
-    from bot.optimized_audio_cog import AudioCog as OptimizedAudioCog
-    if not bot.get_cog("OptimizedAudioCog"):
-        await bot.add_cog(OptimizedAudioCog(bot))
-        print("✅ TTS AudioCog loaded (Fast TTS with Edge TTS)")
-    
-    # Load music cog with Lavalink integration for music playback
-    if lavalink_started:
-        from bot.audio_cog import AudioCog
-        if not bot.get_cog("AudioCog"):
-            await bot.add_cog(AudioCog(bot))
-            print("✅ Music AudioCog loaded (YouTube/Spotify playback)")
+    # Load our all-in-one audio cog (TTS + Music without Lavalink)
+    from bot.optimized_audio_cog import AudioCog
+    if not bot.get_cog("AudioCog"):
+        await bot.add_cog(AudioCog(bot))
+        print("✅ AudioCog loaded (TTS + Direct Music Playback)")
         
     # Start the greetings scheduler
     check_greetings.start()
