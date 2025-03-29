@@ -291,7 +291,7 @@ class AudioCog(commands.Cog):
     
     @commands.command(name="vc")
     async def vc(self, ctx, *, message: str):
-        """Text-to-speech using Edge TTS API (PURE implementation - no FFmpeg or Opus)"""
+        """Text-to-speech using Edge TTS API with FFmpegOpusAudio"""
         # Check if user is in a voice channel
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
@@ -337,9 +337,7 @@ class AudioCog(commands.Cog):
                 audio_id = store_audio_tts(ctx.author.id, message, audio_data)
                 print(f"Stored Edge TTS in database with ID: {audio_id}")
             
-            # Now we're going to use a PURE approach without FFmpeg dependencies
-            # We'll just connect and let the bot join the voice channel, but
-            # we won't actually use discord.py's audio playback (which needs opus/ffmpeg)
+            # Connect to the voice channel
             voice_channel = ctx.author.voice.channel
             
             # If we have a wavelink player or any voice client, disconnect it
@@ -349,30 +347,48 @@ class AudioCog(commands.Cog):
                 await voice_client.disconnect()
                 voice_client = None
                 
-            # Connect to the voice channel (just to show the bot joining)
+            # Try playing audio using FFmpegOpusAudio
             try:
-                # We'll just connect to the channel without playing audio
-                # This shows the bot "joining" the channel, but we're not playing audio directly
-                await voice_channel.connect()
-                print(f"Connected to {voice_channel.name} for TTS presence")
+                # Connect to the voice channel
+                voice_client = await voice_channel.connect()
+                print(f"Connected to {voice_channel.name} for TTS playback")
                 
-                # Success message - let the user know we're not actually playing 
-                # audio through Discord but the TTS was generated
+                # Create audio source with FFmpegOpusAudio and proper codec
+                source = discord.FFmpegOpusAudio(filename, codec="libopus")
+                
+                print("Starting Edge TTS playback with FFmpegOpusAudio")
+                voice_client.play(source)
+                
+                # Success message
                 await processing_msg.delete()
-                await ctx.send(f"🔊 **TTS GENERATED:** {message}\n\n(Audio saved but not played due to FFmpeg limitations. TTS file is stored in the database.)", delete_after=15)
+                await ctx.send(f"🔊 **SPEAKING:** {message}", delete_after=10)
                 
-                # Wait briefly, then disconnect
+                # Wait for the audio to finish playing
+                # First, give a reasonable amount of time based on message length
+                word_count = len(message.split())
+                estimated_duration = max(5, min(20, word_count / 2))  # ~2 words per second
+                
+                # Wait for the audio to finish playing
+                while voice_client.is_playing():
+                    await asyncio.sleep(1)
+                
+                # Wait an additional 2 seconds before disconnecting
                 await asyncio.sleep(2)
                 
-                # Get the voice client again (since we reconnected)
-                voice_client = ctx.guild.voice_client
-                if voice_client:
-                    await voice_client.disconnect()
-                    print("Disconnected from voice channel")
+                # Disconnect
+                await voice_client.disconnect()
+                print("Disconnected from voice channel after playback")
                 
-            except Exception as connect_error:
-                print(f"Error connecting to voice channel: {connect_error}")
-                # We'll still continue since we've generated the TTS file
+            except Exception as play_error:
+                print(f"Edge TTS playback error: {play_error}")
+                
+                # Even if playback fails, we've still generated the TTS
+                await processing_msg.delete()
+                await ctx.send(f"🔊 **TTS GENERATED:** {message}\n\n(Audio generated but couldn't be played. Error: {str(play_error)[:100]}...)", delete_after=15)
+                
+                # Disconnect if we're still connected
+                if voice_client and voice_client.is_connected():
+                    await voice_client.disconnect()
                 
             # Clean up the file
             try:
@@ -402,7 +418,7 @@ class AudioCog(commands.Cog):
     
     @commands.command(name="replay")
     async def replay(self, ctx):
-        """Replay last TTS message from database (PURE implementation - no FFmpeg or Opus)"""
+        """Replay last TTS message from database using FFmpegOpusAudio"""
         # Check if user is in a voice channel
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
@@ -425,9 +441,7 @@ class AudioCog(commands.Cog):
                 
             print(f"Saved replay audio to file: {filename}")
             
-            # Now we're going to use a PURE approach without FFmpeg dependencies
-            # We'll just connect and let the bot join the voice channel, but
-            # we won't actually use discord.py's audio playback (which needs opus/ffmpeg)
+            # Connect to the voice channel
             voice_channel = ctx.author.voice.channel
             
             # If we have a wavelink player or any voice client, disconnect it
@@ -437,30 +451,43 @@ class AudioCog(commands.Cog):
                 await voice_client.disconnect()
                 voice_client = None
                 
-            # Connect to the voice channel (just to show the bot joining)
+            # Try playing audio using FFmpegOpusAudio
             try:
-                # We'll just connect to the channel without playing audio
-                # This shows the bot "joining" the channel, but we're not playing audio directly
-                await voice_channel.connect()
-                print(f"Connected to {voice_channel.name} for replay presence")
+                # Connect to the voice channel
+                voice_client = await voice_channel.connect()
+                print(f"Connected to {voice_channel.name} for replay playback")
                 
-                # Success message - let the user know we're not actually playing 
-                # audio through Discord but the TTS file was retrieved
+                # Create audio source with FFmpegOpusAudio and proper codec
+                source = discord.FFmpegOpusAudio(filename, codec="libopus")
+                
+                print("Starting replay with FFmpegOpusAudio")
+                voice_client.play(source)
+                
+                # Success message
                 await processing_msg.delete()
-                await ctx.send(f"🔊 **LAST TTS RETRIEVED**\n\n(Audio file found in database but not played due to FFmpeg limitations. TTS file is available.)", delete_after=15)
+                await ctx.send(f"🔊 **REPLAYING:** Last TTS message", delete_after=10)
                 
-                # Wait briefly, then disconnect
+                # Wait for the audio to finish playing
+                while voice_client.is_playing():
+                    await asyncio.sleep(1)
+                
+                # Wait an additional 2 seconds before disconnecting
                 await asyncio.sleep(2)
                 
-                # Get the voice client again (since we reconnected)
-                voice_client = ctx.guild.voice_client
-                if voice_client:
-                    await voice_client.disconnect()
-                    print("Disconnected from voice channel after replay")
+                # Disconnect
+                await voice_client.disconnect()
+                print("Disconnected from voice channel after replay")
                 
-            except Exception as connect_error:
-                print(f"Error connecting to voice channel for replay: {connect_error}")
-                # We'll still continue since we've found the TTS file
+            except Exception as play_error:
+                print(f"Replay error: {play_error}")
+                
+                # Even if playback fails, we've still retrieved the audio
+                await processing_msg.delete()
+                await ctx.send(f"🔊 **LAST TTS RETRIEVED**\n\n(Audio file found but couldn't be played. Error: {str(play_error)[:100]}...)", delete_after=15)
+                
+                # Disconnect if we're still connected
+                if voice_client and voice_client.is_connected():
+                    await voice_client.disconnect()
                 
             # Clean up the file
             try:
