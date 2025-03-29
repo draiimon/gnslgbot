@@ -1386,14 +1386,20 @@ class ChatCog(commands.Cog):
         embed.description += f"\n\n{leaderboard_text}"
 
         # Add owner's profile picture to the footer
-        owner = await self.bot.fetch_user(705770837399306332)
-        if owner:
-            embed.set_footer(
-                text="DAPAT ANDITO KA SA TAAS! KUNGDI MAGTIPID KA GAGO! | Ginsilog Economy System",
-                icon_url=owner.avatar.url if owner.avatar else None
-            )
-        else:
-            # Fallback if owner can't be fetched
+        try:
+            owner = await self.bot.fetch_user(705770837399306332)
+            if owner and owner.avatar:
+                embed.set_footer(
+                    text="DAPAT ANDITO KA SA TAAS! KUNGDI MAGTIPID KA GAGO! | Ginsilog Economy System",
+                    icon_url=owner.avatar.url
+                )
+            else:
+                embed.set_footer(
+                    text="DAPAT ANDITO KA SA TAAS! KUNGDI MAGTIPID KA GAGO! | Ginsilog Economy System"
+                )
+        except Exception as e:
+            print(f"Error fetching owner avatar: {e}")
+            # Fallback if there's any error
             embed.set_footer(
                 text="DAPAT ANDITO KA SA TAAS! KUNGDI MAGTIPID KA GAGO! | Ginsilog Economy System"
             )
