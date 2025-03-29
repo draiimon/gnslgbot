@@ -488,7 +488,9 @@ class ChatCog(commands.Cog):
                 "g!autotts": "Toggle Auto TTS sa channel",
                 "g!replay": "Ulitin ang huling TTS message",
                 "g!resetvc": "Ayusin ang voice connection issues",
-                "g!rules": "Tignan ang server rules"
+                "g!rules": "Tignan ang server rules",
+                "g!view [@user]": "Tignan ang full profile picture at stats ng user",
+                "g!maintenance": "Admin-only: i-toggle ang maintenance mode"
             }
 
             # Add utility commands to description
@@ -1613,7 +1615,7 @@ class ChatCog(commands.Cog):
             
         # Set footer
         embed.set_footer(
-            text=f"Requested by {ctx.author.display_name} | Ginsilog Profile System",
+            text=f"Requested by Maintenance | Ginsilog Profile System",
             icon_url=ctx.author.avatar.url if ctx.author.avatar else None
         )
             
