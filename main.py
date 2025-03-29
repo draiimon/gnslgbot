@@ -8,6 +8,7 @@ import threading
 import datetime
 import random
 import pytz  # For timezone support
+from bot.database import init_db
 
 # Initialize bot with command prefix and remove default help command
 intents = discord.Intents.all()
@@ -25,11 +26,23 @@ async def on_ready():
     print(f'✅ Logged in as {bot.user.name} ({bot.user.id})')
     print('------')
 
-    # Ensure cog is loaded
+    # Initialize the database
+    init_db()
+    
+    # Remove Lavalink node connection for now since we don't have Java installed
+    # Will use direct FFmpeg approach instead
+    
+    # Ensure cogs are loaded
     if not bot.get_cog("ChatCog"):
         await bot.add_cog(ChatCog(bot))
         print("ChatCog initialized")
         print("✅ ChatCog loaded")
+        
+    # Import and load the audio cog
+    from bot.audio_cog import AudioCog
+    if not bot.get_cog("AudioCog"):
+        await bot.add_cog(AudioCog(bot))
+        print("✅ AudioCog loaded")
         
     # Start the greetings scheduler
     check_greetings.start()
@@ -153,7 +166,7 @@ def run_flask():
     def home():
         return "✅ Bot is running!"
 
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 10000)))
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
 
 def main():
     """Main function to run the bot"""

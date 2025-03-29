@@ -327,7 +327,7 @@ class ChatCog(commands.Cog):
                 "g!game": "Number guessing game"
             },
             "🔧 UTILITY": {
-                "g!join/leave": "Voice channel management",
+                "g!joinvc/leavevc": "Voice channel management",
                 "g!vc <message>": "Text-to-speech sa voice channel",
                 "g!rules": "Server rules",
                 "g!announcement": "Make an announcement"
@@ -460,60 +460,68 @@ LAGING TANDAAN:
         await ctx.send(embed=clear_embed)
     
     # ========== VOICE CHANNEL COMMANDS ==========
-    @commands.command(name="join")
-    async def join(self, ctx):
-        """Join voice channel"""
-        if not ctx.author.voice:
-            await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
-            return
-        channel = ctx.author.voice.channel
-        if ctx.voice_client and ctx.voice_client.channel == channel:
-            await ctx.send("**BOBO!** NASA VOICE CHANNEL NA AKO!")
-            return
-        if ctx.voice_client:
-            await ctx.voice_client.disconnect()
-        await channel.connect(timeout=60, reconnect=True)
-        await ctx.send(f"**SIGE!** PAPASOK NA KO SA {channel.name}!")
+    # Voice commands moved to AudioCog to avoid duplicate commands
+    # @commands.command(name="join_old")
+    # async def join_old(self, ctx):
+    #     """Join voice channel"""
+    #     if not ctx.author.voice:
+    #         await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
+    #         return
+    #     channel = ctx.author.voice.channel
+    #     if ctx.voice_client and ctx.voice_client.channel == channel:
+    #         await ctx.send("**BOBO!** NASA VOICE CHANNEL NA AKO!")
+    #         return
+    #     if ctx.voice_client:
+    #         await ctx.voice_client.disconnect()
+    #     await channel.connect(timeout=60, reconnect=True)
+    #     await ctx.send(f"**SIGE!** PAPASOK NA KO SA {channel.name}!")
 
-    @commands.command(name="leave")
-    async def leave(self, ctx):
-        """Leave voice channel"""
-        if ctx.voice_client:
-            await ctx.voice_client.disconnect()
-            await ctx.send("**AYOS!** UMALIS NA KO!")
-        else:
-            await ctx.send("**TANGA!** WALA AKO SA VOICE CHANNEL!")
+    # Leave command moved to AudioCog
+    # @commands.command(name="leave_old") 
+    # async def leave_old(self, ctx):
+    #     """Leave voice channel"""
+    #     if ctx.voice_client:
+    #         await ctx.voice_client.disconnect()
+    #         await ctx.send("**AYOS!** UMALIS NA KO!")
+    #     else:
+    #         await ctx.send("**TANGA!** WALA AKO SA VOICE CHANNEL!")
 
-    @commands.command(name="vc")
-    async def vc(self, ctx, *, message: str):
-        """Text-to-speech in voice channel (For everyone)"""
+    # TTS command moved to AudioCog
+    # @commands.command(name="vc_old")
+    # async def vc_old(self, ctx, *, message: str):
+    #     """Text-to-speech in voice channel (For everyone)"""
         # Check if user is in a voice channel
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
+        
+        # Import modules here to avoid loading issues
+        from gtts import gTTS
+        from pydub import AudioSegment
+        import io
         
         # Create temp directory if it doesn't exist
         temp_dir = "temp_audio"
         if not os.path.exists(temp_dir):
             os.makedirs(temp_dir)
         
-        # Generate unique filename to avoid conflicts
+        # Generate unique filename
         unique_id = f"{ctx.author.id}_{int(time.time())}"
-        temp_file = f"{temp_dir}/tts_{unique_id}.mp3"
+        temp_mp3 = f"{temp_dir}/tts_{unique_id}.mp3"
+        temp_wav = f"{temp_dir}/tts_{unique_id}.wav"
         
-        # Tracking variables for cleanup
+        # Processing message variable
         processing_msg = None
-        new_connection = False
         
         try:
-            # Send "processing" message
+            # Send processing message
             processing_msg = await ctx.send("**ANTAY KA MUNA!** Ginagawa ko pa yung audio...")
             
-            # Clean up old files (keep only the latest 10)
+            # Clean up old files (keep only latest 5)
             try:
                 files = sorted([f for f in os.listdir(temp_dir) if f.startswith("tts_")], 
                              key=lambda x: os.path.getmtime(os.path.join(temp_dir, x)))
-                if len(files) > 10:
-                    for old_file in files[:-10]:
+                if len(files) > 5:
+                    for old_file in files[:-5]:
                         try:
                             os.remove(os.path.join(temp_dir, old_file))
                             print(f"Cleaned up old file: {old_file}")
@@ -533,97 +541,113 @@ LAGING TANDAAN:
             if len(words) > 3 and tagalog_count < 2:
                 lang = 'en'
             
-            # Generate TTS file
+            # Generate TTS file (directly to memory to avoid file issues)
             tts = gTTS(text=message, lang=lang, slow=False)
-            tts.save(temp_file)
+            mp3_fp = io.BytesIO()
+            tts.write_to_fp(mp3_fp)
+            mp3_fp.seek(0)
             
-            # Verify the file was created successfully
-            if not os.path.exists(temp_file) or os.path.getsize(temp_file) == 0:
+            # Convert MP3 to WAV using pydub (avoids FFmpeg process issues)
+            sound = AudioSegment.from_mp3(mp3_fp)
+            sound.export(temp_wav, format="wav")
+            
+            # Verify file exists
+            if not os.path.exists(temp_wav) or os.path.getsize(temp_wav) == 0:
                 raise Exception("Failed to generate audio file")
             
-            # Delete processing message
+            # Delete processing message with error handling for message already deleted
             if processing_msg:
-                await processing_msg.delete()
-                processing_msg = None
+                try:
+                    await processing_msg.delete()
+                except discord.errors.NotFound:
+                    # Message was already deleted or doesn't exist, continue anyway
+                    print("Processing message already deleted, continuing")
+                except Exception as e:
+                    print(f"Error deleting processing message: {e}")
+                finally:
+                    processing_msg = None
             
-            # Get or create voice client - don't disconnect if already connected
+            # Connect to voice channel if needed
             voice_client = ctx.voice_client
-            if not voice_client:
-                voice_client = await ctx.author.voice.channel.connect()
-                new_connection = True
-            elif voice_client.channel != ctx.author.voice.channel:
-                # If bot is in different channel, move to user's channel
-                await voice_client.move_to(ctx.author.voice.channel)
             
             # Stop any currently playing audio
-            if voice_client.is_playing():
+            if voice_client and voice_client.is_playing():
                 voice_client.stop()
+                await asyncio.sleep(0.2)  # Brief pause
             
-            # Configured FFmpeg options for better playback
-            ffmpeg_options = {
-                'options': '-loglevel error -vn -b:a 128k',
-                'before_options': '-y'
-            }
+            # Connect to voice channel if not already connected
+            if not voice_client:
+                try:
+                    voice_client = await ctx.author.voice.channel.connect()
+                except Exception as e:
+                    print(f"Connection error: {e}")
+                    for vc in self.bot.voice_clients:
+                        try:
+                            await vc.disconnect()
+                        except:
+                            pass
+                    voice_client = await ctx.author.voice.channel.connect()
+            elif voice_client.channel != ctx.author.voice.channel:
+                # Move to user's channel if needed
+                await voice_client.move_to(ctx.author.voice.channel)
             
-            # Create audio source
-            source = discord.FFmpegPCMAudio(source=temp_file, **ffmpeg_options)
-            audio_source = discord.PCMVolumeTransformer(source, volume=0.9)
+            # DIRECT AUDIO SOURCE: Use WAV format which works better with discord.py
+            audio_source = discord.PCMVolumeTransformer(
+                discord.FFmpegPCMAudio(source=temp_wav), 
+                volume=0.8
+            )
             
-            # Setup after-playing callback with improved error handling
+            # Simple file cleanup callback
             def after_playing(error):
-                # Log any playback errors
                 if error:
                     print(f"Audio playback error: {error}")
                 
-                # Clean up temp file
+                # Clean up temp files
                 try:
-                    if os.path.exists(temp_file):
-                        os.remove(temp_file)
-                        print(f"Temp file removed: {temp_file}")
-                except Exception as e:
-                    print(f"Failed to remove temp file: {e}")
+                    if os.path.exists(temp_wav):
+                        os.remove(temp_wav)
+                        print(f"File deleted: {temp_wav}")
+                except:
+                    pass
             
             # Play the audio
             voice_client.play(audio_source, after=after_playing)
             
-            # Set up safety disconnect for new connections
-            # Only disconnect if we made a new connection (preserving auto-joined connections)
-            if new_connection:
-                async def safety_disconnect():
-                    # Estimate audio duration (10 chars per second + buffer)
-                    est_duration = min(max(len(message) / 10, 3), 60) + 5
-                    await asyncio.sleep(est_duration)
-                    
-                    try:
-                        # Only disconnect if still in a voice channel and was a new connection
-                        if voice_client and voice_client.is_connected():
-                            print(f"Safety disconnect after {est_duration}s")
-                            await voice_client.disconnect(force=True)
-                    except Exception as e:
-                        print(f"Safety disconnect error: {e}")
-                
-                # Start safety disconnect task
-                self.bot.loop.create_task(safety_disconnect())
-            
-            # Send success message
+            # Send confirmation message
             await ctx.send(f"🔊 **SINABI KO NA:** {message}", delete_after=10)
+            
+            # THIS IS CRITICAL: We don't try to disconnect after playback 
+            # The audio callback will handle cleanup, and we'll let the auto-join 
+            # feature manage voice connections
             
         except Exception as e:
             error_msg = str(e)
             print(f"TTS ERROR: {error_msg}")
             
-            # Clean up processing message
+            # Clean up processing message with proper error handling
             if processing_msg:
                 try:
                     await processing_msg.delete()
-                except Exception:
-                    pass
+                except discord.errors.NotFound:
+                    # Message was already deleted or doesn't exist, continue anyway
+                    print("Processing message already deleted in error handler, continuing")
+                except Exception as e:
+                    print(f"Error deleting processing message in error handler: {e}")
+            
+            # Clean up temp files
+            try:
+                if os.path.exists(temp_wav):
+                    os.remove(temp_wav)
+                if os.path.exists(temp_mp3):
+                    os.remove(temp_mp3)
+            except:
+                pass
             
             # Send appropriate error message
             if "not found" in error_msg.lower() or "ffmpeg" in error_msg.lower():
-                await ctx.send("**ERROR:** Hindi ma-generate ang audio file. FFmpeg issue.", delete_after=15)
+                await ctx.send("**ERROR:** Hindi ma-generate ang audio file. Problem sa audio conversion.", delete_after=15)
             elif "lang" in error_msg.lower():
-                await ctx.send("**ERROR:** May problem sa language. Try speaking English.", delete_after=15)
+                await ctx.send("**ERROR:** Hindi supported ang language. Try mo mag-English.", delete_after=15)
             else:
                 await ctx.send(f"**PUTANGINA MAY ERROR:** {error_msg}", delete_after=15)
    

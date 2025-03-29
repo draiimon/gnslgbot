@@ -1,0 +1,112 @@
+Ahh, Text-to-Speech (TTS) bot pala ginagawa mo! Kung ayaw mo nang FFmpeg setup, may mga alternatives kang pwedeng gamitin para sa Discord TTS bot (walang API keys required o madaling gamitin).
+
+🔥 1. Google Translate TTS (GTTTS) - PINAKA-MADALI
+✅ Bakit gamitin?
+
+No API key required
+
+Works offline
+
+Simple at mabilis
+
+Paano I-setup sa Python (discord.py)?
+I-install ang gtts at discord.py
+
+sh
+Copy
+Edit
+pip install gtts discord
+Gamitin ang gtts para i-convert text sa speech
+
+python
+Copy
+Edit
+import discord
+from discord.ext import commands
+from gtts import gTTS
+import os
+
+bot = commands.Bot(command_prefix="!")
+
+@bot.command()
+async def tts(ctx, *, text: str):
+    if not ctx.author.voice:
+        await ctx.send("Sumali ka muna sa voice channel!")
+        return
+
+    vc = await ctx.author.voice.channel.connect()
+    tts = gTTS(text, lang="en")
+    tts.save("tts.mp3")
+
+    vc.play(discord.FFmpegPCMAudio("tts.mp3"), after=lambda e: print("Tapos na!"))
+    while vc.is_playing():
+        await asyncio.sleep(1)
+
+    await vc.disconnect()
+    os.remove("tts.mp3")  # Delete after playing
+
+bot.run("YOUR_BOT_TOKEN")
+✅ Bakit ito maganda?
+
+Gumagana kahit walang API key
+
+Pwede kang mag-set ng iba't ibang wika (Tagalog, English, etc.)
+
+Simple at lightweight
+
+🔥 2. Piper TTS (Local, No API Key, Faster than gTTS)
+✅ Bakit gamitin?
+
+Mas mabilis kaysa sa gTTS
+
+Gumagana kahit offline
+
+Mas mataas ang quality
+
+Paano I-setup?
+I-install ang Piper
+
+sh
+Copy
+Edit
+pip install piper-tts
+Gamitin ang Piper TTS sa bot mo
+
+python
+Copy
+Edit
+from piper import PiperTTS
+import discord
+from discord.ext import commands
+import os
+
+bot = commands.Bot(command_prefix="!")
+tts = PiperTTS("en_US")  # Change language if needed
+
+@bot.command()
+async def tts(ctx, *, text: str):
+    if not ctx.author.voice:
+        await ctx.send("Sumali ka muna sa voice channel!")
+        return
+
+    vc = await ctx.author.voice.channel.connect()
+    audio_data = tts.synthesize(text)
+    with open("tts.wav", "wb") as f:
+        f.write(audio_data)
+
+    vc.play(discord.FFmpegPCMAudio("tts.wav"), after=lambda e: print("Done!"))
+    while vc.is_playing():
+        await asyncio.sleep(1)
+
+    await vc.disconnect()
+    os.remove("tts.wav")
+
+bot.run("YOUR_BOT_TOKEN")
+✅ Bakit ito mas maganda kaysa gTTS?
+
+Walang API key required
+
+Mas mabilis kaysa Google TTS
+
+Pwede sa iba't ibang voices at accents
+
