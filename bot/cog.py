@@ -413,7 +413,7 @@ class ChatCog(commands.Cog):
     async def get_ai_response(self, conversation_history):
         """Get response from Groq AI with conversation context"""
         try:
-            # Enhanced system message - SUPER DIRECT and OBEDIENT with consistent responses
+            # Enhanced system message for Mistral-SABA-24B model
             system_message = f"""Ikaw ay Ginsilog Bot, gawa ni Mason Calix.
 
 PERSONALITY:
@@ -453,14 +453,13 @@ You: Well, hello there gorgeous. Naghahanap ka ba ng kausap? Nasa right place ka
                     "content": msg["content"]
                 })
 
-            # Use the updated API format with proper parameters from Groq playground
+            # Use the updated API format with proper parameters for Groq API
             response = await asyncio.to_thread(
                 self.groq_client.chat.completions.create,
                 model=Config.GROQ_MODEL,  # Using the model from config
                 messages=messages,
                 temperature=Config.TEMPERATURE,
-                max_completion_tokens=Config.
-                MAX_TOKENS,  # Using max_completion_tokens instead of max_tokens
+                max_tokens=Config.MAX_TOKENS,  # Using standard max_tokens parameter
                 top_p=1,
                 stream=False)
 
