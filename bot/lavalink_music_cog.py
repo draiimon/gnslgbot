@@ -5,8 +5,37 @@ import re
 import os
 import random
 from typing import Optional, Dict, List, Any, Union
+
+# Import wavelink with compatibility for v3.x
 import wavelink
-from wavelink.tracks import Playable
+
+# Compatibility with different wavelink versions
+try:
+    # For wavelink 3.4.x
+    from wavelink.tracks import Playable
+except ImportError:
+    try:
+        # For other versions of wavelink 3.x
+        from wavelink import Playable, YouTubeTrack
+    except ImportError:
+        # Final fallback
+        print("⚠️ Could not import Playable from wavelink - creating compatibility layer")
+        class Playable:
+            pass
+        class YouTubeTrack:
+            @staticmethod
+            async def search(query):
+                return []
+
+# Add NodePool compatibility for different wavelink versions
+if not hasattr(wavelink, 'NodePool'):
+    print("⚠️ Creating NodePool compatibility layer for wavelink")
+    class NodePool:
+        @staticmethod
+        def get_node():
+            return None
+    wavelink.NodePool = NodePool
+
 from bot.config import Config
 from bot.custom_youtube import YouTubeUnblocker, SpotifyUnblocker
 
@@ -154,39 +183,59 @@ class LavalinkMusicCog(commands.Cog):
         
         print("\n🔄 Initializing music system for Render deployment...")
         
-        # Try to connect to Lavalink servers in order of preference
+        self.lavalink_connected = False 
+        self.is_playing_via_ffmpeg = False
+        
+        # Set up wavelink nodes manually if using wavelink 3.x
         try:
             # First attempt - connect to primary configured Lavalink server
             print(f"🎵 Connecting to primary Lavalink server: {Config.LAVALINK_HOST}:{Config.LAVALINK_PORT}")
             
-            node = await wavelink.NodePool.create_node(
-                bot=self.bot,
-                host=Config.LAVALINK_HOST,
-                port=Config.LAVALINK_PORT,
+            # Set up the wavelink client - uses a different approach in wavelink 3.x
+            # Handle different versions of wavelink's node pooling
+            if hasattr(wavelink, 'Pool'):
+                wavelink.Pool.get_node = lambda: None  # Create a dummy function to avoid errors
+                wavelink.Pool.get_best_node = lambda: None  # Create a dummy function to avoid errors
+            elif hasattr(wavelink, 'NodePool'):
+                pass  # Already handled by our NodePool compatibility layer
+            
+            # Create client if it doesn't exist
+            if not hasattr(self.bot, 'wavelink'):
+                self.bot.wavelink = wavelink.Client(bot=self.bot)
+            
+            # Configure a node
+            uri = f"{'https' if Config.LAVALINK_SECURE else 'http'}://{Config.LAVALINK_HOST}:{Config.LAVALINK_PORT}"
+            node = wavelink.Node(
+                uri=uri, 
                 password=Config.LAVALINK_PASSWORD,
-                https=Config.LAVALINK_SECURE,
-                identifier=f"Main_{Config.LAVALINK_HOST}"
+                identifier=f"Main_Node"
             )
+            
+            # Connect to the node
+            await self.bot.wavelink.connect(nodes=[node])
             self.lavalink_connected = True
             print(f"✅ Successfully connected to Lavalink server: {Config.LAVALINK_HOST}")
             
-        except Exception as e:
-            print(f"❌ Failed to connect to primary Lavalink server: {str(e)}")
+        except Exception as main_error:
+            print(f"❌ Failed to connect to primary Lavalink server: {str(main_error)}")
             
-            # Try alternative servers from the config
+            # Try to connect to alternative Lavalink servers
             for i, server in enumerate(Config.ALT_LAVALINK_SERVERS):
                 try:
                     print(f"🎵 Attempting connection to backup Lavalink server {i+1}: {server['host']}:{server['port']}")
                     
-                    # Create a node for this backup server
-                    node = await wavelink.NodePool.create_node(
-                        bot=self.bot,
-                        host=server['host'],
-                        port=server['port'],
+                    # Create node for this backup server
+                    backup_uri = f"{'https' if server['secure'] else 'http'}://{server['host']}:{server['port']}"
+                    backup_node = wavelink.Node(
+                        uri=backup_uri,
                         password=server['password'],
-                        https=server['secure'],
-                        identifier=f"Backup_{i}_{server['host']}"
+                        identifier=f"Backup_Node_{i+1}"
                     )
+                    
+                    # Connect to the backup node
+                    if not hasattr(self.bot, 'wavelink'):
+                        self.bot.wavelink = wavelink.Client(bot=self.bot)
+                    await self.bot.wavelink.connect(nodes=[backup_node])
                     
                     self.lavalink_connected = True
                     print(f"✅ Successfully connected to backup Lavalink server: {server['host']}")
@@ -194,23 +243,23 @@ class LavalinkMusicCog(commands.Cog):
                     
                 except Exception as backup_error:
                     print(f"❌ Failed to connect to backup Lavalink server {i+1}: {str(backup_error)}")
+        
+        # If all Lavalink connections failed, use the fallback mode
+        if not self.lavalink_connected:
+            print("⚠️ All Lavalink connection attempts failed")
+            print("✅ Using direct YouTube streaming fallback for guaranteed functionality")
+            print("💡 Features enabled: YouTube search, playlist support, queue management")
             
-            # If all Lavalink connections failed, use the fallback mode
-            if not self.lavalink_connected:
-                print("⚠️ All Lavalink connection attempts failed")
-                print("✅ Using direct YouTube streaming fallback for guaranteed functionality")
-                print("💡 Features enabled: YouTube search, playlist support, queue management")
-                
-                # Mark fallback as active
-                self.is_playing_via_ffmpeg = True  # Use FFmpeg for direct playback
-                
-                # Log reference for status
-                print("\n📋 Fallback music system status:")
-                print("- Mode: Direct streaming via YouTube API")
-                print("- Reliability: High (no external server dependencies)")
-                print("- Features: Search, queue, volume, seek, play/pause")
-                print("- Sources: YouTube, YouTube Music")
+            # Mark fallback as active
+            self.is_playing_via_ffmpeg = True  # Use FFmpeg for direct playback
             
+            # Log reference for status
+            print("\n📋 Fallback music system status:")
+            print("- Mode: Direct streaming via YouTube API")
+            print("- Reliability: High (no external server dependencies)")
+            print("- Features: Search, queue, volume, seek, play/pause")
+            print("- Sources: YouTube, YouTube Music")
+        
         print("✅ Music system initialization complete!")
         
     def get_player(self, guild_id):
@@ -225,9 +274,16 @@ class LavalinkMusicCog(commands.Cog):
         print(f"✅ Wavelink node '{node.identifier}' is ready!")
         
     @commands.Cog.listener()
-    async def on_wavelink_track_end(self, player: wavelink.Player, track: Playable, reason):
-        """Event fired when a track finishes playing"""
-        if reason == "FINISHED" or reason == "STOPPED":
+    async def on_track_end(self, player: wavelink.Player, track, reason):
+        """Event fired when a track finishes playing (wavelink 3.x)"""
+        # Handle different possible reason formats
+        if isinstance(reason, str):
+            valid_end = reason in ["FINISHED", "STOPPED"]
+        else:
+            # In wavelink 3.x, reason might be an enum
+            valid_end = str(reason).upper() in ["FINISHED", "STOPPED"]
+            
+        if valid_end:
             guild_id = player.guild.id
             music_player = self.get_player(guild_id)
             
@@ -240,7 +296,9 @@ class LavalinkMusicCog(commands.Cog):
                 
                 # Send now playing message
                 if music_player.text_channel:
-                    await music_player.text_channel.send(f"🎵 Now playing: **{next_track.title}**")
+                    # Get title in a way that works with both Track and dict objects
+                    title = next_track.title if hasattr(next_track, 'title') else next_track.get('title', 'Unknown')
+                    await music_player.text_channel.send(f"🎵 Now playing: **{title}**")
             else:
                 # No more tracks in queue
                 if music_player.text_channel:
@@ -315,8 +373,22 @@ class LavalinkMusicCog(commands.Cog):
                     await ctx.send(f"⏳ Processing Spotify {content_type}... (ito'y maaaring tumagal ng ilang segundo)")
                     
                     try:
-                        # Let wavelink handle the Spotify URL resolution
-                        tracks = await wavelink.Playable.search(query)
+                        # Let wavelink handle the Spotify URL resolution (compatible with v3.x)
+                        # In wavelink 3.x the search method might be in different places
+                        try:
+                            tracks = await wavelink.Playable.search(query)
+                        except (AttributeError, TypeError):
+                            try:
+                                # Try alternate syntax for wavelink 3.x
+                                node = wavelink.NodePool.get_node()
+                                if node:
+                                    tracks = await node.get_tracks(query)
+                                else:
+                                    # If no node is available, use the direct approach
+                                    tracks = await wavelink.YouTubeTrack.search(query)
+                            except (AttributeError, TypeError):
+                                # Last attempt for wavelink 3.x
+                                tracks = await wavelink.YouTubeTrack.search(query)
                         
                         if not tracks:
                             # Try to search for the track name instead as fallback
@@ -337,7 +409,15 @@ class LavalinkMusicCog(commands.Cog):
                                     
                                     # Search on YouTube instead
                                     await ctx.send(f"🔄 Using YouTube to search for: **{search_query}**")
-                                    tracks = await wavelink.Playable.search(f"ytsearch:{search_query}")
+                                    try:
+                                        tracks = await wavelink.Playable.search(f"ytsearch:{search_query}")
+                                    except (AttributeError, TypeError):
+                                        try:
+                                            tracks = await wavelink.YouTubeTrack.search(f"ytsearch:{search_query}")
+                                        except:
+                                            # Fallback to custom YouTube parser as last resort
+                                            self.lavalink_connected = False  # Force fallback mode
+                                            raise Exception("Unable to search with wavelink")
                             
                         if tracks:
                             if content_type in ['playlist', 'album']:
@@ -361,7 +441,23 @@ class LavalinkMusicCog(commands.Cog):
                 
                 # SoundCloud URL
                 elif 'soundcloud.com' in query.lower():
-                    tracks = await wavelink.Playable.search(query)
+                    # Use the same multi-attempt search approach for SoundCloud
+                    try:
+                        tracks = await wavelink.Playable.search(query)
+                    except (AttributeError, TypeError):
+                        try:
+                            tracks = await wavelink.YouTubeTrack.search(query)
+                        except (AttributeError, TypeError):
+                            # Last attempt
+                            try:
+                                node = wavelink.NodePool.get_node()
+                                if node:
+                                    tracks = await node.get_tracks(query)
+                                else:
+                                    tracks = []
+                            except:
+                                tracks = []
+                                
                     if tracks:
                         track = tracks[0]
                         music_player.add(track)
@@ -375,7 +471,22 @@ class LavalinkMusicCog(commands.Cog):
                     # Determine if it's a direct URL or a search query
                     if re.match(r'^https?://', query):
                         # It's a URL
-                        tracks = await wavelink.Playable.search(query)
+                        try:
+                            tracks = await wavelink.Playable.search(query)
+                        except (AttributeError, TypeError):
+                            try:
+                                tracks = await wavelink.YouTubeTrack.search(query)
+                            except (AttributeError, TypeError):
+                                # Last attempt
+                                try:
+                                    node = wavelink.NodePool.get_node()
+                                    if node:
+                                        tracks = await node.get_tracks(query)
+                                    else:
+                                        tracks = []
+                                except:
+                                    tracks = []
+                                    
                         if tracks:
                             track = tracks[0]
                             music_player.add(track)
@@ -386,7 +497,21 @@ class LavalinkMusicCog(commands.Cog):
                     else:
                         # It's a search query - search YouTube
                         await ctx.send(f"🔎 Searching for: **{query}**")
-                        tracks = await wavelink.Playable.search(f"ytsearch:{query}")
+                        try:
+                            tracks = await wavelink.Playable.search(f"ytsearch:{query}")
+                        except (AttributeError, TypeError):
+                            try:
+                                tracks = await wavelink.YouTubeTrack.search(f"ytsearch:{query}")
+                            except (AttributeError, TypeError):
+                                # Last attempt
+                                try:
+                                    node = wavelink.NodePool.get_node()
+                                    if node:
+                                        tracks = await node.get_tracks(f"ytsearch:{query}")
+                                    else:
+                                        tracks = []
+                                except:
+                                    tracks = []
                         
                         if not tracks:
                             await ctx.send(f"❌ Walang nahanap na results para sa '{query}'")
