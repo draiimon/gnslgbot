@@ -312,7 +312,7 @@ class AudioCog(commands.Cog):
     
     @commands.command(name="vc")
     async def vc(self, ctx, *, message: str):
-        """Text-to-speech using Edge TTS API with Lavalink playback"""
+        """Text-to-speech using Edge TTS with direct Discord playback (2025 Method)"""
         # Check if user is in a voice channel
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
@@ -358,49 +358,89 @@ class AudioCog(commands.Cog):
                 audio_id = store_audio_tts(ctx.author.id, message, audio_data)
                 print(f"Stored Edge TTS in database with ID: {audio_id}")
             
-            # Connect to the voice channel with wavelink
+            # Connect to the voice channel
             voice_channel = ctx.author.voice.channel
             
             try:
-                # Get or create a wavelink player for this guild
-                player = ctx.voice_client
+                # Modern 2025 approach for Discord playback - using direct voice client
+                # We'll use the classic Discord voice client first for more reliability
                 
-                # Check if we need to create a new player
-                if not player:
-                    print(f"Attempting to join channel: {voice_channel.name} (ID: {voice_channel.id})")
-                    player = await voice_channel.connect(cls=wavelink.Player)
-                    print(f"Created new wavelink player...")
-                elif player.channel.id != voice_channel.id:
-                    print(f"Moving to channel: {voice_channel.name}")
-                    await player.move_to(voice_channel)
+                # Get existing voice client or create a new one
+                voice_client = ctx.voice_client
+                if not voice_client:
+                    print(f"Connecting to voice channel: {voice_channel.name}")
+                    voice_client = await voice_channel.connect()
+                elif voice_client.channel.id != voice_channel.id:
+                    print(f"Moving to different voice channel: {voice_channel.name}")
+                    await voice_client.move_to(voice_channel)
                 
-                print(f"Successfully connected to {voice_channel.name}")
+                # Create audio source from the MP3 file
+                audio_source = discord.FFmpegPCMAudio(mp3_filename)
                 
-                # Get track from local file using Lavalink
-                tracks = await wavelink.NodePool.get_node().get_tracks(wavelink.LocalTrack, mp3_filename)
+                # Apply volume transformer to normalize the audio
+                audio = discord.PCMVolumeTransformer(audio_source, volume=1.0)
                 
-                if not tracks:
-                    raise Exception("Failed to load audio track from Lavalink")
-                
-                # Play the track using wavelink
-                track = tracks[0]
-                await player.play(track)
-                print(f"Playing TTS audio using Lavalink: {mp3_filename}")
+                # Play the audio file
+                voice_client.play(audio)
+                print(f"Playing TTS audio directly through Discord voice client: {mp3_filename}")
                 
                 # Success message
                 await processing_msg.delete()
                 await ctx.send(f"🔊 **SPEAKING:** {message}", delete_after=10)
                 
-                # We don't disconnect after playing - wavelink player stays in channel
+                # Wait for the audio to finish playing
+                while voice_client.is_playing():
+                    await asyncio.sleep(0.5)
+                
+                # Don't disconnect - let the bot stay in channel 
+                # We purposely avoid disconnecting to minimize join/leave spam
                 
             except Exception as play_error:
-                print(f"Lavalink playback error: {play_error}")
+                print(f"Discord playback error: {play_error}")
                 import traceback
                 traceback.print_exc()
                 
-                # Even if playback fails, we've still generated the TTS
-                await processing_msg.delete()
-                await ctx.send(f"🔊 **TTS GENERATED:** {message}\n\n(Audio generated but couldn't be played. Error: {str(play_error)[:100]}...)", delete_after=15)
+                # If classic method fails, try with FFmpeg disabled (fallback)
+                try:
+                    # Fallback to using our PCMStream method
+                    voice_client = ctx.voice_client
+                    if not voice_client:
+                        voice_client = await voice_channel.connect()
+                    
+                    # Convert MP3 to WAV with proper format for Discord
+                    from pydub import AudioSegment
+                    wav_filename = f"{self.temp_dir}/tts_wav_{ctx.message.id}.wav"
+                    
+                    # Convert using pydub with optimized settings
+                    audio = AudioSegment.from_mp3(mp3_filename)
+                    audio = audio.set_frame_rate(48000).set_channels(2)
+                    audio.export(wav_filename, format="wav")
+                    
+                    # Use our custom PCM streaming
+                    source = self.PCMStream(wav_filename)
+                    voice_client.play(source)
+                    
+                    # Success message for fallback method
+                    await processing_msg.delete()
+                    await ctx.send(f"🔊 **SPEAKING (Fallback Mode):** {message}", delete_after=10)
+                    
+                    # Wait for playback to finish
+                    while voice_client.is_playing():
+                        await asyncio.sleep(0.5)
+                    
+                    # Clean up WAV file
+                    try:
+                        os.remove(wav_filename)
+                    except:
+                        pass
+                        
+                except Exception as fallback_error:
+                    # Both methods failed
+                    print(f"Fallback playback also failed: {fallback_error}")
+                    
+                    # Even if playback fails, we've still generated the TTS
+                    await processing_msg.delete()
+                    await ctx.send(f"🔊 **TTS GENERATED:** {message}\n\n(Audio generated but couldn't be played. Error: {str(play_error)[:100]}...)", delete_after=15)
                 
             # Clean up the files once we're done
             try:
@@ -430,7 +470,7 @@ class AudioCog(commands.Cog):
     
     @commands.command(name="replay")
     async def replay(self, ctx):
-        """Replay last TTS message from database using Lavalink"""
+        """Replay last TTS message from database using direct Discord playback (2025 Method)"""
         # Check if user is in a voice channel
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
@@ -454,49 +494,86 @@ class AudioCog(commands.Cog):
                 
             print(f"Saved replay audio to file: {mp3_filename}")
             
-            # Connect to the voice channel with wavelink
+            # Connect to the voice channel
             voice_channel = ctx.author.voice.channel
             
             try:
-                # Get or create a wavelink player for this guild
-                player = ctx.voice_client
+                # Modern 2025 approach for Discord playback - using direct voice client
+                # Get existing voice client or create a new one
+                voice_client = ctx.voice_client
+                if not voice_client:
+                    print(f"Connecting to voice channel: {voice_channel.name}")
+                    voice_client = await voice_channel.connect()
+                elif voice_client.channel.id != voice_channel.id:
+                    print(f"Moving to different voice channel: {voice_channel.name}")
+                    await voice_client.move_to(voice_channel)
                 
-                # Check if we need to create a new player
-                if not player:
-                    print(f"Attempting to join channel: {voice_channel.name} (ID: {voice_channel.id})")
-                    player = await voice_channel.connect(cls=wavelink.Player)
-                    print(f"Created new wavelink player...")
-                elif player.channel.id != voice_channel.id:
-                    print(f"Moving to channel: {voice_channel.name}")
-                    await player.move_to(voice_channel)
+                # Create audio source from the MP3 file
+                audio_source = discord.FFmpegPCMAudio(mp3_filename)
                 
-                print(f"Successfully connected to {voice_channel.name}")
+                # Apply volume transformer to normalize the audio
+                audio = discord.PCMVolumeTransformer(audio_source, volume=1.0)
                 
-                # Get track from local file using Lavalink
-                tracks = await wavelink.NodePool.get_node().get_tracks(wavelink.LocalTrack, mp3_filename)
-                
-                if not tracks:
-                    raise Exception("Failed to load audio track from Lavalink")
-                
-                # Play the track using wavelink
-                track = tracks[0]
-                await player.play(track)
-                print(f"Playing replay audio using Lavalink: {mp3_filename}")
+                # Play the audio file
+                voice_client.play(audio)
+                print(f"Playing replay audio directly through Discord voice client: {mp3_filename}")
                 
                 # Success message
                 await processing_msg.delete()
                 await ctx.send(f"🔊 **REPLAYING:** Last TTS message", delete_after=10)
                 
-                # We don't disconnect after playing - wavelink player stays in channel
+                # Wait for the audio to finish playing
+                while voice_client.is_playing():
+                    await asyncio.sleep(0.5)
+                
+                # Don't disconnect - let the bot stay in channel
                 
             except Exception as play_error:
-                print(f"Lavalink replay error: {play_error}")
+                print(f"Discord replay error: {play_error}")
                 import traceback
                 traceback.print_exc()
                 
-                # Even if playback fails, we've still retrieved the audio
-                await processing_msg.delete()
-                await ctx.send(f"🔊 **LAST TTS RETRIEVED**\n\n(Audio file found but couldn't be played. Error: {str(play_error)[:100]}...)", delete_after=15)
+                # If classic method fails, try with FFmpeg disabled (fallback)
+                try:
+                    # Fallback to using our PCMStream method
+                    voice_client = ctx.voice_client
+                    if not voice_client:
+                        voice_client = await voice_channel.connect()
+                    
+                    # Convert MP3 to WAV with proper format for Discord
+                    from pydub import AudioSegment
+                    wav_filename = f"{self.temp_dir}/replay_wav_{ctx.message.id}.wav"
+                    
+                    # Convert using pydub with optimized settings
+                    audio = AudioSegment.from_mp3(mp3_filename)
+                    audio = audio.set_frame_rate(48000).set_channels(2)
+                    audio.export(wav_filename, format="wav")
+                    
+                    # Use our custom PCM streaming
+                    source = self.PCMStream(wav_filename)
+                    voice_client.play(source)
+                    
+                    # Success message for fallback method
+                    await processing_msg.delete()
+                    await ctx.send(f"🔊 **REPLAYING (Fallback Mode):** Last TTS message", delete_after=10)
+                    
+                    # Wait for playback to finish
+                    while voice_client.is_playing():
+                        await asyncio.sleep(0.5)
+                    
+                    # Clean up WAV file
+                    try:
+                        os.remove(wav_filename)
+                    except:
+                        pass
+                        
+                except Exception as fallback_error:
+                    # Both methods failed
+                    print(f"Fallback replay also failed: {fallback_error}")
+                    
+                    # Even if playback fails, we've still retrieved the audio
+                    await processing_msg.delete()
+                    await ctx.send(f"🔊 **LAST TTS RETRIEVED**\n\n(Audio file found but couldn't be played. Error: {str(play_error)[:100]}...)", delete_after=15)
                 
             # Clean up the files
             try:
