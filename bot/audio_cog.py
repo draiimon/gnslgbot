@@ -258,15 +258,29 @@ class AudioCog(commands.Cog):
             
         # Use FFmpeg source as a fallback
         try:
-            # Create an FFmpeg audio source
-            source = discord.FFmpegPCMAudio(filename)
-            
-            # Play the audio - note: If this is a wavelink.Player, we need to await, 
-            # otherwise for a regular discord.VoiceClient we don't
+            # Different handling for Wavelink Player vs regular VoiceClient
             if isinstance(player, wavelink.Player):
-                await player.play(source)
+                # For Wavelink 2.6.3, we need to convert the file to a URL
+                # and let Lavalink handle it
+                abs_path = os.path.abspath(filename).replace('\\', '/')
+                file_url = f"file:///{abs_path}"
+                
+                # Get a node and tracks
+                node = wavelink.NodePool.get_node()
+                if not node:
+                    raise Exception("No Lavalink node available")
+                
+                tracks = await node.get_tracks(wavelink.tracks.Playable, file_url)
+                if not tracks:
+                    raise Exception("Could not load track from file")
+                
+                # Play the track
+                await player.play(tracks[0])
             else:
+                # Regular discord.py VoiceClient
+                source = discord.FFmpegPCMAudio(filename)
                 player.play(source)
+                
             return True
         except Exception as e:
             print(f"Direct playback failed: {e}")
@@ -274,7 +288,7 @@ class AudioCog(commands.Cog):
     
     @commands.command(name="vc")
     async def vc(self, ctx, *, message: str):
-        """Text-to-speech using gTTS and Wavelink/Lavalink"""
+        """Text-to-speech using gTTS with direct discord.py audio playback"""
         # Check if user is in a voice channel
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
@@ -315,105 +329,73 @@ class AudioCog(commands.Cog):
                 audio_id = store_audio_tts(ctx.author.id, message, audio_data)
                 print(f"Stored TTS in database with ID: {audio_id}")
             
-            # Get or create the player with comprehensive error handling
-            print("Getting or creating voice client...")
+            # Get or create voice client using ONLY discord.py voice client (not wavelink)
+            print("Getting or creating discord voice client...")
+            
+            # Check if we're already connected
+            voice_client = ctx.guild.voice_client
+            
+            # If we're connected with a wavelink player, disconnect it first
+            if voice_client and isinstance(voice_client, wavelink.Player):
+                channel = voice_client.channel  # Save the channel before disconnecting
+                await voice_client.disconnect()
+                voice_client = None  # Clear the reference
+            
+            # Connect if not connected
+            if not voice_client:
+                try:
+                    # Connect with REGULAR discord voice client (not wavelink)
+                    voice_client = await ctx.author.voice.channel.connect()
+                    print(f"Connected to {ctx.author.voice.channel.name} with discord.py voice client")
+                except Exception as connect_error:
+                    raise Exception(f"Failed to connect to voice channel: {connect_error}")
+            
+            # Play audio using discord.py FFmpeg
             try:
-                player = ctx.guild.voice_client
-                if not player or not player.channel:
-                    print(f"Not connected to voice, joining {ctx.author.voice.channel.name}")
-                    # Try to connect
-                    try:
-                        player = await ctx.author.voice.channel.connect(cls=wavelink.Player)
-                    except Exception as connect_error:
-                        print(f"Error connecting with wavelink.Player: {connect_error}")
-                        # Try regular connection if wavelink fails
-                        player = await ctx.author.voice.channel.connect()
-                        print("Connected with regular player instead of wavelink.Player")
-                else:
-                    print(f"Already connected to {player.channel.name}")
-            except Exception as vc_error:
-                raise Exception(f"Failed to connect to voice channel: {vc_error}")
-            
-            # Try playing using different methods
-            success = False
-            error_msg = ""
-            
-            # Method 1: Try using the direct file path method
-            if not success:
+                # Create audio source with explicit FFmpeg options to prevent errors
+                ffmpeg_options = {
+                    'before_options': '-nostdin',  # Disable stdin to avoid hangups
+                    'options': '-vn'               # Disable video
+                }
+                
+                # Create the audio source with proper options
+                source = discord.FFmpegPCMAudio(
+                    source=filename,
+                    executable="ffmpeg",
+                    **ffmpeg_options
+                )
+                
+                # Start playing
+                voice_client.play(
+                    source,
+                    after=lambda e: print(f"Playback finished: {e}" if e else "Playback finished successfully")
+                )
+                
+                print("Successfully playing audio using discord.py")
+                
+                # Delete the processing message
+                await processing_msg.delete()
+                
+                # Send success message
+                await ctx.send(f"🔊 **SPEAKING:** {message}", delete_after=10)
+                
+                # Wait for audio to finish (estimate based on file size - ~10KB = ~5 seconds)
+                estimated_duration = max(5, min(30, os.path.getsize(filename) / 2000))
+                await asyncio.sleep(estimated_duration)
+                
+                # Clean up the file
                 try:
-                    print("Method 1: Attempting to play using direct file path...")
-                    direct_play = await self.play_tts_directly(player, filename)
-                    if direct_play:
-                        success = True
-                        print("Successfully played using direct FFmpeg playback")
+                    os.remove(filename)
+                    print(f"Removed temporary file: {filename}")
                 except Exception as e:
-                    error_msg = f"Method 1 failed: {e}"
-                    print(error_msg)
-            
-            # Method 2: Try using Lavalink with built-in file handling
-            if not success:
-                try:
-                    print("Method 2: Attempting to play using Lavalink built-in...")
-                    
-                    # Build the proper file URL for Lavalink
-                    # Lavalink needs file:/// for local files, not local:/
-                    abs_path = os.path.abspath(filename).replace('\\', '/')
-                    file_url = f"file:///{abs_path}"
-                    print(f"File URL: {file_url}")
-                    
-                    # Get a node
-                    node = wavelink.NodePool.get_node()
-                    if not node:
-                        raise Exception("No Lavalink node available")
-                    
-                    # Get track
-                    track = await node.get_tracks(wavelink.tracks.Playable, file_url)
-                    
-                    if track:
-                        await player.play(track[0])
-                        success = True
-                        print("Successfully played using Lavalink built-in")
-                except Exception as e:
-                    error_msg += f"\nMethod 2 failed: {e}"
-                    print(f"Method 2 failed: {e}")
-            
-            # If all methods failed, try using pure discord.py
-            if not success:
-                try:
-                    print("Final method: Using pure discord.py...")
-                    # Try using discord.py audio
-                    source = discord.FFmpegPCMAudio(executable="ffmpeg", source=filename)
-                    # Check if it's a wavelink.Player or regular discord.VoiceClient
-                    if isinstance(player, wavelink.Player):
-                        await player.play(source)
-                    else:
-                        player.play(source)
-                    success = True
-                    print("Successfully played using pure discord.py")
-                except Exception as e:
-                    error_msg += f"\nFinal method failed: {e}"
-                    print(f"Final method failed: {e}")
-            
-            if not success:
-                raise Exception(f"All playback methods failed: {error_msg}")
-            
-            # Delete the processing message
-            await processing_msg.delete()
-            
-            # Send success message
-            await ctx.send(f"🔊 **SPEAKING:** {message}", delete_after=10)
-            
-            # Clean up the file after a delay (to ensure it's done playing)
-            await asyncio.sleep(5)
-            try:
-                os.remove(filename)
-                print(f"Removed temporary file: {filename}")
-            except Exception as e:
-                print(f"Error removing file: {e}")
-            
-            # Clean up old database entries
-            cleanup_old_audio_tts(keep_count=20)
-            print("Cleaned up old TTS entries")
+                    print(f"Error removing file: {e}")
+                
+                # Clean up old database entries
+                cleanup_old_audio_tts(keep_count=20)
+                print("Cleaned up old TTS entries")
+                
+            except Exception as play_error:
+                raise Exception(f"Failed to play audio: {play_error}")
                 
         except Exception as e:
             print(f"⚠️ TTS ERROR: {e}")
@@ -455,79 +437,70 @@ class AudioCog(commands.Cog):
                 
             print(f"Saved replay audio to file: {filename}")
             
-            # Get or create the player
+            # Get or create voice client using ONLY discord.py voice client (not wavelink)
+            print("Getting or creating discord voice client for replay...")
+            
+            # Check if we're already connected
+            voice_client = ctx.guild.voice_client
+            
+            # If we're connected with a wavelink player, disconnect it first
+            if voice_client and isinstance(voice_client, wavelink.Player):
+                channel = voice_client.channel  # Save the channel before disconnecting
+                await voice_client.disconnect()
+                voice_client = None  # Clear the reference
+            
+            # Connect if not connected
+            if not voice_client:
+                try:
+                    # Connect with REGULAR discord voice client (not wavelink)
+                    voice_client = await ctx.author.voice.channel.connect()
+                    print(f"Connected to {ctx.author.voice.channel.name} with discord.py voice client")
+                except Exception as connect_error:
+                    raise Exception(f"Failed to connect to voice channel: {connect_error}")
+            
+            # Play audio using discord.py FFmpeg
             try:
-                player = ctx.guild.voice_client
-                if not player or not player.channel:
-                    # Try to connect
-                    player = await ctx.author.voice.channel.connect(cls=wavelink.Player)
-            except Exception as vc_error:
-                raise Exception(f"Failed to connect to voice channel: {vc_error}")
-            
-            # Try playing using different methods (similar to vc command)
-            success = False
-            error_msg = ""
-            
-            # Method 1: Try direct playback
-            if not success:
-                try:
-                    direct_play = await self.play_tts_directly(player, filename)
-                    if direct_play:
-                        success = True
-                except Exception as e:
-                    error_msg = f"Method 1 failed: {e}"
-            
-            # Method 2: Try using Lavalink with built-in file handling
-            if not success:
-                try:
-                    # Build the proper file URL for Lavalink
-                    abs_path = os.path.abspath(filename).replace('\\', '/')
-                    file_url = f"file:///{abs_path}"
-                    
-                    # Get a node
-                    node = wavelink.NodePool.get_node()
-                    if not node:
-                        raise Exception("No Lavalink node available")
-                    
-                    # Get track
-                    track = await node.get_tracks(wavelink.tracks.Playable, file_url)
-                    
-                    if track:
-                        await player.play(track[0])
-                        success = True
-                except Exception as e:
-                    error_msg += f"\nMethod 2 failed: {e}"
-            
-            # If all methods failed, try using pure discord.py
-            if not success:
-                try:
-                    # Try using discord.py audio
-                    source = discord.FFmpegPCMAudio(executable="ffmpeg", source=filename)
-                    # Check if it's a wavelink.Player or regular discord.VoiceClient
-                    if isinstance(player, wavelink.Player):
-                        await player.play(source)
-                    else:
-                        player.play(source)
-                    success = True
-                except Exception as e:
-                    error_msg += f"\nFinal method failed: {e}"
-            
-            if not success:
-                raise Exception(f"All playback methods failed: {error_msg}")
-            
-            # Delete the processing message
-            await processing_msg.delete()
-            
-            # Send success message
-            await ctx.send(f"🔊 **REPLAYING:** Last message", delete_after=10)
-            
-            # Clean up the file after a delay
-            await asyncio.sleep(5)
-            try:
-                os.remove(filename)
-            except Exception as e:
-                print(f"Error removing file: {e}")
+                # Create audio source with explicit FFmpeg options to prevent errors
+                ffmpeg_options = {
+                    'before_options': '-nostdin',  # Disable stdin to avoid hangups
+                    'options': '-vn'               # Disable video
+                }
                 
+                # Create the audio source with proper options
+                source = discord.FFmpegPCMAudio(
+                    source=filename,
+                    executable="ffmpeg",
+                    **ffmpeg_options
+                )
+                
+                # Start playing
+                voice_client.play(
+                    source,
+                    after=lambda e: print(f"Replay finished: {e}" if e else "Replay finished successfully")
+                )
+                
+                print("Successfully playing replay audio using discord.py")
+                
+                # Delete the processing message
+                await processing_msg.delete()
+                
+                # Send success message
+                await ctx.send(f"🔊 **REPLAYING:** Last message", delete_after=10)
+                
+                # Wait for audio to finish (estimate based on file size - ~10KB = ~5 seconds)
+                estimated_duration = max(5, min(30, os.path.getsize(filename) / 2000))
+                await asyncio.sleep(estimated_duration)
+                
+                # Clean up the file
+                try:
+                    os.remove(filename)
+                    print(f"Removed temporary replay file: {filename}")
+                except Exception as e:
+                    print(f"Error removing replay file: {e}")
+                
+            except Exception as play_error:
+                raise Exception(f"Failed to play replay audio: {play_error}")
+            
         except Exception as e:
             # Try to delete processing message
             try:
