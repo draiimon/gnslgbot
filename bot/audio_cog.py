@@ -6,6 +6,7 @@ import os
 import asyncio
 import time
 import random
+import shutil
 import wavelink
 from wavelink.tracks import Playable, YouTubeTrack
 from wavelink.ext import spotify
@@ -329,9 +330,11 @@ class AudioCog(commands.Cog):
                 audio_id = store_audio_tts(ctx.author.id, message, audio_data)
                 print(f"Stored TTS in database with ID: {audio_id}")
             
-            # Create an absolute file path URL for Lavalink
-            abs_path = os.path.abspath(filename).replace('\\', '/')
-            file_url = f"file:///{abs_path}"
+            # Make sure to copy the file to a location accessible by Lavalink
+            temp_path = f"/tmp/tts_{ctx.message.id}.mp3"
+            shutil.copy2(filename, temp_path)
+            # Create a local file url for Lavalink (shorter path is more reliable)
+            file_url = f"file:///{temp_path}"
             print(f"File URL for Lavalink: {file_url}")
             
             # Get or create a Lavalink Player
@@ -441,9 +444,11 @@ class AudioCog(commands.Cog):
                 
             print(f"Saved replay audio to file: {filename}")
             
-            # Create an absolute file path URL for Lavalink
-            abs_path = os.path.abspath(filename).replace('\\', '/')
-            file_url = f"file:///{abs_path}"
+            # Make sure to copy the file to a location accessible by Lavalink
+            temp_path = f"/tmp/replay_{ctx.message.id}.mp3"
+            shutil.copy2(filename, temp_path)
+            # Create a local file url for Lavalink (shorter path is more reliable)
+            file_url = f"file:///{temp_path}"
             print(f"File URL for Lavalink (replay): {file_url}")
             
             # Get or create a Lavalink Player
