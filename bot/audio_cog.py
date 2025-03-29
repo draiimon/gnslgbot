@@ -289,9 +289,30 @@ class AudioCog(commands.Cog):
             print(f"Direct playback failed: {e}")
             return False
     
+    # Custom PCM audio source that directly reads from WAV file
+    class PCMStream(discord.AudioSource):
+        def __init__(self, filename):
+            import wave
+            self.file = wave.open(filename, "rb")
+            self.closed = False
+            
+        def read(self):
+            # Read smaller buffer size (1920 bytes) for lower memory usage
+            if self.closed:
+                return b''
+            return self.file.readframes(960)  # 960 samples = 1920 bytes for 16-bit stereo
+            
+        def is_opus(self):
+            return False  # This is PCM, not Opus
+            
+        def cleanup(self):
+            if not self.closed:
+                self.file.close()
+                self.closed = True
+    
     @commands.command(name="vc")
     async def vc(self, ctx, *, message: str):
-        """Text-to-speech using Edge TTS API with pydub conversion to PCM"""
+        """Text-to-speech using Edge TTS API with direct PCM streaming"""
         # Check if user is in a voice channel
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
@@ -308,49 +329,54 @@ class AudioCog(commands.Cog):
         try:
             # Generate TTS using edge_tts
             print(f"Generating Edge TTS for message: '{message}'")
-            mp3_filename = f"{self.temp_dir}/tts_{ctx.message.id}.mp3"
             wav_filename = f"{self.temp_dir}/tts_{ctx.message.id}.wav"
             
             # Import edge_tts here to avoid overhead if not used
             import edge_tts
             
-            # Import pydub for audio conversion
-            from pydub import AudioSegment
-            
             # Create Edge TTS communicator - use Tagalog/Filipino voice
             # Options: fil-PH-AngeloNeural (male), fil-PH-BlessicaNeural (female)
             # If these fail, fallback to en-US-JennyNeural or en-US-ChristopherNeural
-            tts = edge_tts.Communicate(text=message, voice="fil-PH-BlessicaNeural")
             
-            # Generate MP3 audio using Edge TTS API
-            await tts.save(mp3_filename)
-            print(f"Edge TTS file generated successfully: {mp3_filename}")
+            # Generate WAV directly with lower bitrate for better performance
+            tts = edge_tts.Communicate(
+                text=message, 
+                voice="fil-PH-BlessicaNeural",
+                output_format="audio/wav;codec=pcm;bitrate=16000"
+            )
+            
+            # Generate WAV audio directly using Edge TTS API
+            await tts.save(wav_filename)
+            print(f"Edge TTS WAV file generated successfully: {wav_filename}")
             
             # Verify file exists and has content
-            if not os.path.exists(mp3_filename):
+            if not os.path.exists(wav_filename):
                 raise Exception("Failed to generate Edge TTS file - file does not exist")
             
-            if os.path.getsize(mp3_filename) == 0:
+            if os.path.getsize(wav_filename) == 0:
                 raise Exception("Failed to generate Edge TTS file - file is empty")
                 
-            print(f"Edge TTS file saved: {mp3_filename} ({os.path.getsize(mp3_filename)} bytes)")
+            print(f"Edge TTS file saved: {wav_filename} ({os.path.getsize(wav_filename)} bytes)")
             
-            # Convert MP3 to WAV with PCM format using pydub
-            print("Converting MP3 to WAV with PCM format...")
-            audio = AudioSegment.from_mp3(mp3_filename)
-            
-            # Set parameters required for Discord playback
-            audio = audio.set_frame_rate(48000).set_channels(2).set_sample_width(2)
-            
-            # Export as WAV (PCM format)
-            audio.export(wav_filename, format="wav")
-            print(f"Converted to WAV: {wav_filename} ({os.path.getsize(wav_filename)} bytes)")
-            
-            # Store in database
-            with open(mp3_filename, "rb") as f:
-                audio_data = f.read()
-                audio_id = store_audio_tts(ctx.author.id, message, audio_data)
-                print(f"Stored Edge TTS in database with ID: {audio_id}")
+            # Store in database (as MP3 to save space)
+            try:
+                # Import pydub for conversion to MP3 for storage
+                from pydub import AudioSegment
+                
+                # Convert WAV to MP3 for storage
+                audio = AudioSegment.from_wav(wav_filename)
+                mp3_temp = f"{self.temp_dir}/tts_db_{ctx.message.id}.mp3"
+                audio.export(mp3_temp, format="mp3", bitrate="32k")
+                
+                with open(mp3_temp, "rb") as f:
+                    audio_data = f.read()
+                    audio_id = store_audio_tts(ctx.author.id, message, audio_data)
+                    print(f"Stored Edge TTS in database with ID: {audio_id}")
+                
+                # Clean up temp MP3
+                os.remove(mp3_temp)
+            except Exception as db_error:
+                print(f"Warning: Failed to store TTS in database: {db_error}")
             
             # Connect to the voice channel
             voice_channel = ctx.author.voice.channel
@@ -362,21 +388,17 @@ class AudioCog(commands.Cog):
                 await voice_client.disconnect()
                 voice_client = None
                 
-            # Try playing PCM audio with FFmpegPCMAudio (no opus needed)
+            # Try playing PCM audio with direct PCMStream (no FFmpeg needed)
             try:
                 # Connect to the voice channel
                 voice_client = await voice_channel.connect()
                 print(f"Connected to {voice_channel.name} for TTS playback")
                 
-                # Create audio source with FFmpegPCMAudio for raw PCM WAV
-                # No need for opus encoding with this approach
-                source = discord.PCMVolumeTransformer(
-                    discord.FFmpegPCMAudio(wav_filename), 
-                    volume=0.5
-                )
+                # Create our custom PCM audio source
+                source = self.PCMStream(wav_filename)
                 
-                print("Starting Edge TTS playback with PCM audio")
-                voice_client.play(source)
+                print("Starting Edge TTS playback with direct PCM streaming")
+                voice_client.play(source, after=lambda e: source.cleanup())
                 
                 # Success message
                 await processing_msg.delete()
@@ -406,11 +428,10 @@ class AudioCog(commands.Cog):
                 
             # Clean up the files
             try:
-                os.remove(mp3_filename)
                 os.remove(wav_filename)
-                print(f"Removed temporary files: {mp3_filename}, {wav_filename}")
+                print(f"Removed temporary file: {wav_filename}")
             except Exception as e:
-                print(f"Error removing files: {e}")
+                print(f"Error removing file: {e}")
             
             # Clean up old database entries
             cleanup_old_audio_tts(keep_count=20)
@@ -433,7 +454,7 @@ class AudioCog(commands.Cog):
     
     @commands.command(name="replay")
     async def replay(self, ctx):
-        """Replay last TTS message from database using pydub conversion to PCM"""
+        """Replay last TTS message from database using direct PCM streaming"""
         # Check if user is in a voice channel
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
@@ -465,8 +486,8 @@ class AudioCog(commands.Cog):
             print("Converting MP3 to WAV with PCM format...")
             audio = AudioSegment.from_mp3(mp3_filename)
             
-            # Set parameters required for Discord playback
-            audio = audio.set_frame_rate(48000).set_channels(2).set_sample_width(2)
+            # Set parameters required for Discord playback - lower bitrate for performance
+            audio = audio.set_frame_rate(16000).set_channels(1).set_sample_width(2)
             
             # Export as WAV (PCM format)
             audio.export(wav_filename, format="wav")
@@ -482,20 +503,17 @@ class AudioCog(commands.Cog):
                 await voice_client.disconnect()
                 voice_client = None
                 
-            # Try playing audio using PCM
+            # Try playing audio using direct PCMStream
             try:
                 # Connect to the voice channel
                 voice_client = await voice_channel.connect()
                 print(f"Connected to {voice_channel.name} for replay playback")
                 
-                # Create audio source with PCM WAV
-                source = discord.PCMVolumeTransformer(
-                    discord.FFmpegPCMAudio(wav_filename), 
-                    volume=0.5
-                )
+                # Create our custom PCM audio source
+                source = self.PCMStream(wav_filename)
                 
-                print("Starting replay with PCM audio")
-                voice_client.play(source)
+                print("Starting replay with direct PCM streaming")
+                voice_client.play(source, after=lambda e: source.cleanup())
                 
                 # Success message
                 await processing_msg.delete()
