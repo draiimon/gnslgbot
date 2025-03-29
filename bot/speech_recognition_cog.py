@@ -277,19 +277,11 @@ class SpeechRecognitionCog(commands.Cog):
             print(f"❌ ERROR: Could not find guild with ID {guild_id}")
             return
         
-        # Find a suitable text channel to send response
+        # Don't send logs to any channel for voice commands (g!ask)
+        # Only log to console and speak the response
         text_channel = None
-        for channel in guild.text_channels:
-            # Try to find a suitable channel with bot permissions
-            perms = channel.permissions_for(guild.me)
-            if perms.send_messages:
-                text_channel = channel
-                break
         
-        if not text_channel:
-            print("❌ ERROR: Could not find a suitable text channel to respond in")
-            await self.speak_message(guild_id, "I can't find a text channel to respond in.")
-            return
+        # Skip the error for having no text channel - we deliberately don't want one here
         
         # Get the member
         member = guild.get_member(int(user_id))
@@ -297,15 +289,13 @@ class SpeechRecognitionCog(commands.Cog):
             print(f"❌ ERROR: Could not find member with ID {user_id}")
             return
         
-        # Send compact acknowledgment without unnecessary text
-        # Just show what the user asked to provide confirmation
-        # Just show the original command
-        await text_channel.send(f"🎤 **{member.display_name}:** {command}")
-        
         # Create conversation context for AI
         conversation = [
             {"is_user": True, "content": command}
         ]
+        
+        # Only log to console what the user asked - no channel message
+        print(f"🎤 User {member.display_name}: {command}")
         
         # Get AI response
         try:
@@ -313,17 +303,13 @@ class SpeechRecognitionCog(commands.Cog):
             response = await self.get_ai_response(conversation)
             print(f"✅ AI response generated: '{response[:50]}...'")
             
-            # Send response to text channel - CLEAN FORMAT
-            await text_channel.send(f"🤖 **GINSLOG BOT:** {response}")
-            
-            # Speak the response
+            # No text channel logging - only speak the response
             await self.speak_message(guild_id, response)
         except Exception as e:
             error_message = f"Error generating response: {str(e)}"
             print(f"❌ AI ERROR: {error_message}")
             import traceback
             traceback.print_exc()
-            await text_channel.send(f"❌ **ERROR:** {error_message}")
             await self.speak_message(guild_id, "Sorry, I encountered an error processing your request.")
     
     async def speak_message(self, guild_id, message):

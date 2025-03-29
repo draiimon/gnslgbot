@@ -369,6 +369,7 @@ class ChatCog(commands.Cog):
         categories = {
             "🤖 AI CHAT": {
                 "g!usap <message>": "Chat with the AI assistant",
+                "g!asklog <message>": "Chat with the AI assistant (logs to channel)",
                 "@Ginsilog BOT <message>": "Mention the bot to chat",
                 "g!clear": "Clear chat history"
             },
@@ -472,7 +473,35 @@ class ChatCog(commands.Cog):
             # Send AI response as plain text (no embed)
             await ctx.send(response)
 
-# Removed g!ask command as requested, g!usap is now the only AI chat command
+    @commands.command(name="asklog")
+    async def asklog(self, ctx, *, message: str):
+        """Chat with GROQ AI and log to specific channel"""
+        if self.is_rate_limited(ctx.author.id):
+            await ctx.send(
+                f"**Huy {ctx.author.mention}!** Ang bilis mo naman magtype! Sandali lang muna, naglo-load pa ako. Parang text blast ka eh! 😅"
+            )
+            return
+
+        # Add timestamp to rate limiting
+        self.user_message_timestamps[ctx.author.id].append(time.time())
+
+        # Prepare conversation history
+        channel_history = list(self.conversation_history[ctx.channel.id])
+        channel_history.append({"is_user": True, "content": message})
+
+        # Get AI response with typing indicator
+        async with ctx.typing():
+            response = await self.get_ai_response(channel_history)
+            self.add_to_conversation(ctx.channel.id, True, message)
+            self.add_to_conversation(ctx.channel.id, False, response)
+
+            # Send AI response to the current channel
+            await ctx.send(response)
+            
+            # Log the conversation to the designated channel ID
+            log_channel = self.bot.get_channel(1345733998357512215)
+            if log_channel:
+                await log_channel.send(f"**User {ctx.author.name}**: {message}\n**Bot**: {response}")
 
     @commands.command(name="clear")
     async def clear_history(self, ctx):
@@ -483,7 +512,7 @@ class ChatCog(commands.Cog):
         clear_embed = discord.Embed(
             title="**Conversation Cleared**",
             description=
-            "Ang conversation history ay na-clear na. Pwede na tayong mag-usap muli.\n\nGamit ang `g!usap <message>` o i-mention mo ako para magsimula ng bagong conversation.",
+            "Ang conversation history ay na-clear na. Pwede na tayong mag-usap muli.\n\nGamit ang `g!usap <message>`, `g!asklog <message>`, `g!ask <message>` o i-mention mo ako para magsimula ng bagong conversation.",
             color=Config.EMBED_COLOR_INFO)
         clear_embed.set_footer(text="Ginsilog Bot | Fresh Start")
 
@@ -947,6 +976,8 @@ Thank you for your cooperation!""",
             "Ipakita ang basic admin commands",
             "g!commandslist":
             "Ipakita ang lahat ng commands (ito mismo)",
+            "g!asklog <message>":
+            "Chat with AI at ilagay ang logs sa channel 1345733998357512215",
             "g!sagad <amount> <@user>":
             "Dagdagan ang pera ng isang user",
             "g!bawas <amount> <@user>":
@@ -982,6 +1013,7 @@ Thank you for your cooperation!""",
 
         chat_commands = {
             "g!usap <message>": "Chat with the AI assistant",
+            "g!asklog <message>": "Chat with AI and log to channel 1345733998357512215",
             "@Ginsilog BOT <message>": "Mention the bot to chat",
             "g!clear": "Clear chat history"
         }
@@ -1071,6 +1103,8 @@ Thank you for your cooperation!""",
             "Ipakita ang lahat ng admin commands (ito mismo)",
             "g!commandslist":
             "Ipakita ang master list ng lahat ng commands",
+            "g!asklog <message>":
+            "Chat with AI at ilagay ang logs sa channel 1345733998357512215",
             "g!sagad <amount> <@user>":
             "Dagdagan ang pera ng isang user",
             "g!bawas <amount> <@user>":
