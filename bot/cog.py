@@ -960,7 +960,9 @@ Thank you for your cooperation!""",
             "g!g <channel_id> <message>":
             "Mag-send ng message sa ibang channel nang patago",
             "g!vc <message>":
-            "Text-to-speech sa voice channel (lalaki sa voice channel)"
+            "Text-to-speech sa voice channel (lalaki sa voice channel)",
+            "g!clear_messages [channel_id]":
+            "Burahin lahat ng messages ng bot sa isang channel"
         }
 
         # Regular commands that admins can also use
@@ -1082,7 +1084,9 @@ Thank you for your cooperation!""",
             "g!g <channel_id> <message>":
             "Mag-send ng message sa ibang channel nang patago",
             "g!vc <message>":
-            "Text-to-speech sa voice channel (lalaki sa voice channel)"
+            "Text-to-speech sa voice channel (lalaki sa voice channel)",
+            "g!clear_messages [channel_id]":
+            "Burahin lahat ng messages ng bot sa isang channel"
         }
 
         command_text = ""
