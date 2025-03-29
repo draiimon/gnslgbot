@@ -988,7 +988,7 @@ class ChatCog(commands.Cog):
         """Admin command panel - comprehensive list of all commands for admins"""
         # Get owner's avatar for the footer
         owner = ctx.guild.get_member(705770837399306332)  # Mason's ID
-        owner_avatar = owner.avatar_url if owner else None
+        owner_avatar = owner.avatar.url if owner and owner.avatar else None if owner else None
         
         # Main header embed
         header_embed = discord.Embed(
@@ -999,12 +999,12 @@ class ChatCog(commands.Cog):
             color=Config.EMBED_COLOR_PRIMARY)
             
         # Set thumbnail image with bot's avatar
-        header_embed.set_thumbnail(url=self.bot.user.avatar_url)
+        header_embed.set_thumbnail(url=self.bot.user.avatar.url if self.bot.user and self.bot.user.avatar else None)
         
         # Set author information
         header_embed.set_author(
             name="Ginsilog Master Commands", 
-            icon_url=self.bot.user.avatar_url
+            icon_url=self.bot.user.avatar.url if self.bot.user and self.bot.user.avatar else None
         )
             
         # Set footer with owner's avatar
@@ -1192,7 +1192,7 @@ class ChatCog(commands.Cog):
             
         # Get owner's avatar for the footer
         owner = ctx.guild.get_member(705770837399306332)  # Mason's ID
-        owner_avatar = owner.avatar_url if owner else None
+        owner_avatar = owner.avatar.url if owner and owner.avatar else None if owner else None
 
         # Create a beautiful styled admin panel embed
         admin_embed = discord.Embed(
@@ -1202,12 +1202,12 @@ class ChatCog(commands.Cog):
             color=discord.Color.red())  # Red color for admin panel
             
         # Set thumbnail image with bot's avatar
-        admin_embed.set_thumbnail(url=self.bot.user.avatar_url)
+        admin_embed.set_thumbnail(url=self.bot.user.avatar.url if self.bot.user and self.bot.user.avatar else None)
         
         # Set author information
         admin_embed.set_author(
             name="Admin Control Panel", 
-            icon_url=ctx.author.avatar_url  # Use the admin's avatar here
+            icon_url=ctx.author.avatar.url if ctx.author and ctx.author.avatar else None  # Use the admin's avatar here
         )
 
         # List all admin commands with improved formatting
