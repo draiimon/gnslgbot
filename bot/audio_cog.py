@@ -191,7 +191,7 @@ class AudioCog(commands.Cog):
 
     @commands.command(name="joinvc")
     async def joinvc(self, ctx):
-        """Join a voice channel using Wavelink"""
+        """Join a voice channel using direct Discord voice client (2025 Method)"""
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
         
@@ -200,39 +200,38 @@ class AudioCog(commands.Cog):
         print(f"Attempting to join channel: {channel.name} (ID: {channel.id})")
         
         try:
-            # Check if wavelink is working
-            if not self.wavelink_connected:
-                return await ctx.send("**ERROR:** Wavelink/Lavalink is not connected! Please try again later.")
-                
             # Check if already in a voice channel
-            player = ctx.guild.voice_client
-            if player and player.channel and player.channel.id == channel.id:
+            voice_client = ctx.guild.voice_client
+            if voice_client and voice_client.channel and voice_client.channel.id == channel.id:
                 return await ctx.send("**BOBO!** NASA VOICE CHANNEL MO NA AKO!")
-            elif player:
-                print(f"Already connected to a different channel, disconnecting from {player.channel.name}")
-                await player.disconnect()
+            elif voice_client:
+                print(f"Already connected to a different channel, disconnecting from {voice_client.channel.name}")
+                await voice_client.disconnect()
             
-            print("Creating new wavelink player...")
-            # Connect to the user's channel with more debug info
+            # First try direct Discord connection (2025 method)
+            print("Connecting with direct Discord voice client...")
             try:
-                # Special handling for wavelink 2.6.3
-                player = await channel.connect(cls=wavelink.Player)
+                voice_client = await channel.connect()
                 await ctx.send(f"**SIGE!** PAPASOK NA KO SA {channel.name}!")
-                print(f"Successfully connected to {channel.name}")
+                print(f"Successfully connected to {channel.name} with direct Discord voice client")
                 return
-            except Exception as connect_error:
-                print(f"Detailed connect error: {connect_error}")
-                # Try alternative method
-                try:
-                    print("Trying alternative connection method...")
-                    # Try direct connection without wavelink
-                    player = await channel.connect()
-                    await ctx.send(f"**CONNECTED!** But not using Wavelink. Some features may not work.")
-                    print(f"Connected to {channel.name} without Wavelink")
-                    return
-                except Exception as alt_error:
-                    print(f"Alternative connection failed: {alt_error}")
-                    raise Exception(f"Failed to connect: {connect_error} | Alt error: {alt_error}")
+            except Exception as direct_error:
+                print(f"Direct connection error: {direct_error}")
+                
+                # Only if Wavelink is available, try it as a fallback
+                if self.wavelink_connected:
+                    try:
+                        print("Trying Wavelink connection as fallback...")
+                        player = await channel.connect(cls=wavelink.Player)
+                        await ctx.send(f"**SIGE!** PAPASOK NA KO SA {channel.name}! (Wavelink mode)")
+                        print(f"Connected to {channel.name} with Wavelink")
+                        return
+                    except Exception as wavelink_error:
+                        print(f"Wavelink connection also failed: {wavelink_error}")
+                        raise Exception(f"Failed to connect: {direct_error} | Wavelink error: {wavelink_error}")
+                else:
+                    # Re-raise the direct connection error since Wavelink isn't available
+                    raise direct_error
             
         except Exception as e:
             error_message = f"**ERROR:** {str(e)}"
