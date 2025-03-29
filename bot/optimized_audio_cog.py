@@ -231,12 +231,82 @@ class AudioCog(commands.Cog):
             # - zh-CN-YunxiNeural (Chinese)
             # - ja-JP-KenjiNeural (Japanese)
             
-            # Using reliable voices (confirmed working)
-            # Use a reliable voice that we know works
-            voice = "fil-PH-AngeloNeural"  # Filipino male voice - works well for Tagalog
+            # INTELLIGENT VOICE SELECTION BY LANGUAGE DETECTION
+            # Choose the most appropriate voice based on the message content
+            
+            def detect_language(text):
+                """
+                Simple language detection based on common words and patterns
+                Returns the most likely language code for the best voice
+                """
+                text = text.lower()
+                
+                # Check for Filipino/Tagalog words and patterns
+                tagalog_words = ['ako', 'ikaw', 'siya', 'tayo', 'kami', 'kayo', 'sila', 
+                                 'ng', 'sa', 'ang', 'mga', 'naman', 'talaga', 'lang',
+                                 'po', 'opo', 'salamat', 'kamusta', 'kumain', 'mahal',
+                                 'gago', 'putang', 'tangina', 'bobo', 'tanga']
+                
+                # Check for English words and patterns
+                english_words = ['i', 'you', 'he', 'she', 'we', 'they', 'the', 'a', 'an',
+                                'is', 'are', 'was', 'were', 'have', 'has', 'had',
+                                'will', 'would', 'could', 'should', 'hello', 'please', 'thank']
+                
+                # Check for Chinese characters
+                chinese_chars = ['的', '一', '是', '不', '了', '在', '人', '有', '我',
+                              '他', '这', '中', '大', '来', '上', '国', '个', '到', '说']
+                
+                # Check for Japanese characters (hiragana, katakana range)
+                japanese_pattern = any(
+                    ('\u3040' <= char <= '\u309f') or  # Hiragana
+                    ('\u30a0' <= char <= '\u30ff')      # Katakana
+                    for char in text
+                )
+                
+                # Check for Korean characters
+                korean_pattern = any('\uac00' <= char <= '\ud7a3' for char in text)
+                
+                # Count language indicators
+                tagalog_count = sum(word in text for word in tagalog_words)
+                english_count = sum(word in text.split() for word in english_words)
+                chinese_count = sum(char in text for char in chinese_chars)
+                
+                # Determine primary language
+                language_scores = {
+                    "fil": tagalog_count * 2,  # Give Filipino higher weight for our use case
+                    "en": english_count,
+                    "zh": chinese_count * 3,   # Chinese needs fewer characters to be detected
+                    "ja": 10 if japanese_pattern else 0,
+                    "ko": 10 if korean_pattern else 0
+                }
+                
+                # Get language with highest score
+                primary_language = max(language_scores.items(), key=lambda x: x[1])
+                
+                # If no strong language detected, default to Filipino
+                if primary_language[1] <= 1:
+                    return "fil"
+                    
+                return primary_language[0]
+            
+            # Detect language
+            detected_lang = detect_language(message)
+            
+            # Choose appropriate voice based on detected language
+            voices = {
+                "fil": "fil-PH-AngeloNeural",     # Filipino male
+                "en": "en-US-GuyNeural",          # English male (premium quality)
+                "zh": "zh-CN-YunxiNeural",        # Chinese male (high quality)
+                "ja": "ja-JP-KenjiNeural",        # Japanese male
+                "ko": "ko-KR-InJoonNeural"        # Korean male
+            }
+            
+            # Get voice based on detected language
+            voice = voices.get(detected_lang, "fil-PH-AngeloNeural")  # Default to Filipino if language not supported
+            
+            print(f"Detected language: {detected_lang}, using voice: {voice}")
             
             # Use direct text without SSML to ensure compatibility
-            # We'll use the default voice parameters
             tts = edge_tts.Communicate(text=message, voice=voice)
             
             # Generate MP3 audio using Edge TTS API
