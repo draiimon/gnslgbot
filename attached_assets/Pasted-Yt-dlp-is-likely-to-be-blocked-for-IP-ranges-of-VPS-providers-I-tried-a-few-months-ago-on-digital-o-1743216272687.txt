@@ -1,0 +1,134 @@
+Yt-dlp is likely to be blocked for IP ranges of VPS providers, I tried a few months ago on digital ocean and it didnt work, but you may try others. I just ended up self hosting it on a minipc I have running 24/7 at home with minimum power consumption
+
+
+
+Upvote
+2
+
+Downvote
+
+Reply
+reply
+
+Share
+Share
+
+u/FitCurve3491 avatar
+FitCurve3491
+OP
+•
+4mo ago
+Same here. Did you end up using yt_dlp??
+
+
+Upvote
+1
+
+Downvote
+
+Reply
+reply
+
+Share
+Share
+
+
+1 more reply
+u/Ninjabob0521 avatar
+Ninjabob0521
+•
+4mo ago
+Commenting here because I am running into the same exact issue for my new bot.
+
+2024-12-10T04:21:56.168Z: BobbyHertz issued command "!play acdc thunderstruck"
+2024-12-10T04:22:00.173Z: Playing song: AC/DC - Thunderstruck (Official Video) - 04:53
+2024-12-10T04:22:00.547Z: Finished song queue
+It can hit YouTube just fine to search for and queue up the song, but then the song playback immediately ends.
+
+I resolved my ffmpeg issues by using the ffmpeg-static package and passing in the ffmpegPath, requiring no installation beyond npm install. However, I suspect that there is still an ffmpeg issue that is just occurring silently.
+
+I also tried exposing a TCP port, but I don't think that is necessary for a Discord music bot, nor did I see any changed behavior by doing that.
+
+Here is the Dockerfile I am using as a reference. I had to start with a non-alpine version of Node.js, otherwise I was getting catastrophic FFMPEG errors. With the version in this file, I get no error, but no music plays for me either.
+
+# Use a Node.js base image
+FROM node:22
+
+# Set the working directory in the container
+WORKDIR /harmonibot
+
+# Copy package.json and package-lock.json into the container
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy the rest of the application files into the container
+COPY . .
+
+# Define the default command to run your app
+CMD ["node", "index.js"]
+I'm going to keep digging into this and will reply back if I find anything. Keep me posted if you manage to find anything as well!
+
+
+
+Upvote
+2
+
+Downvote
+
+Reply
+reply
+
+Share
+Share
+
+u/Ninjabob0521 avatar
+Ninjabob0521
+•
+4mo ago
+•
+Edited 4mo ago
+UPDATE:
+
+Use node:22-bullseye as your base image (so your first line of your Dockerfile would be FROM node:22-bullseye). That's the latest base image I've found so far that gets ffmpeg working (and actually playing) with the ffmpeg-static library.
+
+Let me know if this helps!
+
+
+Upvote
+2
+
+Downvote
+
+Reply
+reply
+
+Share
+Share
+
+u/Immediate-Frame9498 avatar
+Immediate-Frame9498
+•
+4mo ago
+hey wouldn't it be better to use lavalink server which has up to 28 sources and a local database mondodb or mysql
+
+
+
+Upvote
+1
+
+Downvote
+
+Reply
+reply
+
+Share
+Share
+
+u/FitCurve3491 avatar
+FitCurve3491
+OP
+•
+4mo ago
+I did not know about this one. Thanks for your comment. I would definitely look into it. I did the both with python and now I have it constantly running in a old desktop i had. It’s been working successfully for the past 24 hours!!!
