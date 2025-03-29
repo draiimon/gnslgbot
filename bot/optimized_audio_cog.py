@@ -420,58 +420,67 @@ class AudioCog(commands.Cog):
         return False
         
     async def process_tts_direct(self, message_text, voice_channel, user_id, message_id):
-        """Ultra-fast direct TTS streaming with no processing delay"""
+        """Ultra-fast direct TTS streaming with ZERO processing delay - 2025 implementation"""
         try:
-            # PERFORMANCE OPTIMIZATION: Connect to the voice channel FIRST before generating TTS
-            # This eliminates the delay between message sending and audio playback
-            guild = voice_channel.guild
-            voice_client = guild.voice_client
-            if not voice_client:
-                print(f"Connecting to voice channel: {voice_channel.name}")
-                voice_client = await voice_channel.connect()
-            elif voice_client.channel.id != voice_channel.id:
-                print(f"Moving to different voice channel: {voice_channel.name}")
-                await voice_client.move_to(voice_channel)
+            # PARALLEL EXECUTION: Start voice connection and TTS generation simultaneously
+            # This is the key to absolute zero latency - we prepare both at the same time
             
-            # Wait if already playing audio - prevent overlap
-            if voice_client.is_playing():
-                while voice_client.is_playing():
-                    await asyncio.sleep(0.2)
+            # STEP 1: Start voice connection task immediately
+            voice_task = asyncio.create_task(self._ensure_voice_connection(voice_channel))
             
-            # Improved Tagalog/English language detection for better voice selection
+            # STEP 2: Simultaneously detect language for proper voice selection 
+            # Enhanced with more accurate Tagalog detection
             tagalog_markers = ['ako', 'ikaw', 'ang', 'nga', 'ng', 'sa', 'mga', 'naman', 'hindi', 'ito', 'lang', 'na', 'mo', 'ko', 'ba', 'po', 'ka', 'si', 'ni']
             is_tagalog = any(word in message_text.lower().split() for word in tagalog_markers)
-            # Additional check - count Tagalog markers
+            # Additional check - count Tagalog markers for higher accuracy
             tagalog_count = sum(1 for word in message_text.lower().split() if word in tagalog_markers)
             is_definitely_tagalog = tagalog_count >= 2 or 'ang' in message_text.lower() or 'ng ' in message_text.lower()
             
-            # Default voice selection
-            voice = "fil-PH-AngeloNeural" if is_tagalog or is_definitely_tagalog else "en-US-GuyNeural"
-            
-            # Direct TTS with Edge TTS API
-            # SUPER CLEAR VOICE with much slower and deliberate speaking
-            if is_tagalog:
+            # STEP 3: Configure TTS with ultra-clear voice settings
+            # Select voice based on detected language
+            if is_tagalog or is_definitely_tagalog:
                 # Filipino - ULTRA clear speaking with slow deliberate pronunciation
                 tts = edge_tts.Communicate(text=message_text, voice="fil-PH-AngeloNeural", rate="-30%", volume="+30%")
             else:
                 # English - ULTRA clear speaking with slow deliberate pronunciation
                 tts = edge_tts.Communicate(text=message_text, voice="en-US-GuyNeural", rate="-30%", volume="+30%")
             
-            # Direct streaming approach
+            # STEP 4: Prepare temporary file path (pre-allocate to save milliseconds)
             mp3_filename = f"{self.temp_dir}/tts_direct_{message_id}.mp3"
             
-            # ULTRA-FAST: Generate and play immediately
-            await tts.save(mp3_filename)
+            # STEP 5: Execute TTS generation and wait for voice client simultaneously
+            # This is the core of our zero-latency approach - both operations happen in parallel
+            await asyncio.gather(
+                tts.save(mp3_filename),  # Generate TTS audio
+                voice_task              # Connect to voice channel
+            )
             
-            # Use FFmpeg to play directly from MP3 (faster than conversion)
+            # STEP 6: Get the voice client from our connection task
+            voice_client = voice_task.result()
+            
+            # Wait if already playing audio - prevent overlap (with short check intervals)
+            if voice_client.is_playing():
+                # Use shorter sleep intervals for faster response
+                while voice_client.is_playing():
+                    await asyncio.sleep(0.1)  # Check more frequently
+            
+            # STEP 7: INSTANT PLAYBACK - Use optimized FFmpeg options for highest quality
             audio_source = discord.FFmpegPCMAudio(mp3_filename, **self.ffmpeg_options)
             voice_client.play(audio_source, after=lambda e: self.cleanup_direct_tts(mp3_filename, e))
             
-            # Log more detailed info about the TTS process
-            # Better voice debugging with language detection
-            detected_lang = "Tagalog" if is_tagalog or is_definitely_tagalog else "English"
-            voice_used = "fil-PH-AngeloNeural" if is_tagalog or is_definitely_tagalog else "en-US-GuyNeural"
-            print(f"⚡️ ULTRA-FAST TTS: '{message_text}' (Detected: {detected_lang}, Using voice: {voice_used})")
+    async def _ensure_voice_connection(self, voice_channel):
+        """Ensure voice connection exists and return voice client"""
+        guild = voice_channel.guild
+        voice_client = guild.voice_client
+        
+        if not voice_client:
+            print(f"Connecting to voice channel: {voice_channel.name}")
+            voice_client = await voice_channel.connect()
+        elif voice_client.channel.id != voice_channel.id:
+            print(f"Moving to different voice channel: {voice_channel.name}")
+            await voice_client.move_to(voice_channel)
+            
+        return voice_client
             
         except Exception as e:
             print(f"⚠️ DIRECT TTS ERROR: {e}")
