@@ -3,6 +3,8 @@ import discord
 from discord.ext import commands, tasks
 from bot.config import Config
 from bot.cog import ChatCog
+from bot.optimized_audio_cog import AudioCog
+from bot.speech_recognition_cog import SpeechRecognitionCog
 from flask import Flask
 import threading
 import datetime
@@ -39,11 +41,17 @@ async def on_ready():
         print("ChatCog initialized")
         print("✅ ChatCog loaded")
         
-    # Import and load the OPTIMIZED audio cog (No Lavalink required, low memory usage)
-    from bot.optimized_audio_cog import AudioCog
+    # Load audio cog if not already loaded
     if not bot.get_cog("AudioCog"):
-        await bot.add_cog(AudioCog(bot))
-        print("✅ OPTIMIZED AudioCog loaded (No Lavalink, low memory usage)")
+        audio_cog = AudioCog(bot)
+        await bot.add_cog(audio_cog)
+        print("✅ Audio Cog loaded with 2025 TTS implementation (Optimized for Replit)")
+        
+    # Load new speech recognition cog
+    if not bot.get_cog("SpeechRecognitionCog"):
+        speech_cog = SpeechRecognitionCog(bot)
+        await bot.add_cog(speech_cog)
+        print("✅ Speech Recognition Cog loaded with voice command support")
         
     # Start the greetings scheduler
     check_greetings.start()

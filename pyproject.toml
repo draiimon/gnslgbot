@@ -20,6 +20,9 @@ pydub = "^0.25.1"
 psycopg2-binary = "^2.9.10"
 edge-tts = "^7.0.0"
 # Removed lavalink and wavelink dependencies
+pyaudio = "^0.2.14"
+pocketsphinx = "^5.0.4"
+speechrecognition = "^3.14.2"
 
 [build-system]
 requires = ["poetry-core"]
