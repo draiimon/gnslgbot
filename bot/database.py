@@ -295,11 +295,11 @@ def get_latest_audio_tts():
     """Get the most recent TTS audio data
     
     Returns:
-        tuple: (id, audio_data) or None if no audio exists
+        tuple: (id, audio_data, message) or None if no audio exists
     """
     with get_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT id, audio_data FROM audio_tts ORDER BY created_at DESC LIMIT 1")
+            cur.execute("SELECT id, audio_data, message FROM audio_tts ORDER BY created_at DESC LIMIT 1")
             result = cur.fetchone()
             return result if result else None
 

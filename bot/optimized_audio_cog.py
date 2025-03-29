@@ -676,7 +676,7 @@ class AudioCog(commands.Cog):
         if not audio_data:
             return await ctx.send("**WALA AKONG MAALALA!** Wala pa akong na-save na audio.")
         
-        audio_id, audio_bytes = audio_data
+        audio_id, audio_bytes, message = audio_data
         
         # Send processing message
         processing_msg = await ctx.send("**SANDALI LANG!** Ire-replay ko pa yung huling audio...")
@@ -731,7 +731,9 @@ class AudioCog(commands.Cog):
                     await processing_msg.delete()
                 except:
                     pass  # Message may have been deleted already
-                await ctx.send(f"🔊 **REPLAYING LAST MESSAGE**", delete_after=10)
+                # Display truncated message (maximum 100 characters to avoid spam)
+                display_message = message[:100] + "..." if len(message) > 100 else message
+                await ctx.send(f"🔊 **REPLAYING:** \"{display_message}\"", delete_after=10)
                 
                 # Wait for playback to finish
                 while voice_client.is_playing():
@@ -771,7 +773,9 @@ class AudioCog(commands.Cog):
                     
                     # Success message
                     await processing_msg.delete()
-                    await ctx.send(f"🔊 **REPLAYING LAST MESSAGE (FFmpeg Mode)**", delete_after=10)
+                    # Display truncated message (maximum 100 characters to avoid spam)
+                    display_message = message[:100] + "..." if len(message) > 100 else message
+                    await ctx.send(f"🔊 **REPLAYING (FFmpeg Mode):** \"{display_message}\"", delete_after=10)
                     
                     # Wait for the audio to finish playing
                     while voice_client.is_playing():
