@@ -441,6 +441,12 @@ class AudioCog(commands.Cog):
                 self.last_user_speech[message.author.id] = datetime.datetime.now()
                 voice_channel = message.author.voice.channel
                 
+                # Detect language for detailed logging
+                tagalog_markers = ['ako', 'ikaw', 'ang', 'nga', 'ng', 'sa', 'mga', 'naman', 'hindi', 'ito', 'lang', 'na', 'mo', 'ko', 'ba', 'po', 'ka', 'si', 'ni']
+                tagalog_count = sum(1 for word in message.content.lower().split() if word in tagalog_markers)
+                is_tagalog = tagalog_count >= 1 or 'ang' in message.content.lower() or 'ng ' in message.content.lower()
+                detected_lang = "Tagalog" if is_tagalog else "English"
+                
                 # For ultra-fast TTS, we'll use direct streaming without file storage
                 asyncio.create_task(
                     self.process_tts_direct(
@@ -450,7 +456,7 @@ class AudioCog(commands.Cog):
                         message.id
                     )
                 )
-                print(f"Auto TTS: {message.author.name} -> '{message.content}'")
+                print(f"Auto TTS: {message.author.name} -> '{message.content}' (Detected: {detected_lang})")
                 return True
         except Exception as e:
             print(f"Auto TTS error: {e}")
@@ -475,18 +481,24 @@ class AudioCog(commands.Cog):
                 while voice_client.is_playing():
                     await asyncio.sleep(0.2)
             
-            # ULTRA-SIMPLIFIED language detection for near-zero delay
-            is_tagalog = any(word in message_text.lower() for word in ['ako', 'ikaw', 'ang', 'ng', 'sa'])
-            voice = "fil-PH-AngeloNeural" if is_tagalog else "en-US-GuyNeural"
+            # Improved Tagalog/English language detection for better voice selection
+            tagalog_markers = ['ako', 'ikaw', 'ang', 'nga', 'ng', 'sa', 'mga', 'naman', 'hindi', 'ito', 'lang', 'na', 'mo', 'ko', 'ba', 'po', 'ka', 'si', 'ni']
+            is_tagalog = any(word in message_text.lower().split() for word in tagalog_markers)
+            # Additional check - count Tagalog markers
+            tagalog_count = sum(1 for word in message_text.lower().split() if word in tagalog_markers)
+            is_definitely_tagalog = tagalog_count >= 2 or 'ang' in message_text.lower() or 'ng ' in message_text.lower()
+            
+            # Default voice selection
+            voice = "fil-PH-AngeloNeural" if is_tagalog or is_definitely_tagalog else "en-US-GuyNeural"
             
             # Direct TTS with Edge TTS API
-            # Use a better voice that speaks clearly but not rushed
+            # Use a better voice that speaks VERY clearly with perfect pronunciation
             if is_tagalog:
-                # Filipino - clear speaking voice at normal pace
-                tts = edge_tts.Communicate(text=message_text, voice="fil-PH-AngeloNeural", rate="-5%", volume="+15%")
+                # Filipino - SUPER clear speaking voice at slower pace for perfect pronunciation
+                tts = edge_tts.Communicate(text=message_text, voice="fil-PH-AngeloNeural", rate="-15%", volume="+20%")
             else:
-                # English - clear speaking voice at normal pace
-                tts = edge_tts.Communicate(text=message_text, voice="en-US-GuyNeural", rate="-5%", volume="+15%")
+                # English - SUPER clear speaking voice at slower pace for perfect pronunciation
+                tts = edge_tts.Communicate(text=message_text, voice="en-US-GuyNeural", rate="-15%", volume="+20%")
             
             # Direct streaming approach
             mp3_filename = f"{self.temp_dir}/tts_direct_{message_id}.mp3"
@@ -498,7 +510,11 @@ class AudioCog(commands.Cog):
             audio_source = discord.FFmpegPCMAudio(mp3_filename, **self.ffmpeg_options)
             voice_client.play(audio_source, after=lambda e: self.cleanup_direct_tts(mp3_filename, e))
             
-            print(f"⚡️ ULTRA-FAST TTS: {message_text}")
+            # Log more detailed info about the TTS process
+            # Better voice debugging with language detection
+            detected_lang = "Tagalog" if is_tagalog or is_definitely_tagalog else "English"
+            voice_used = "fil-PH-AngeloNeural" if is_tagalog or is_definitely_tagalog else "en-US-GuyNeural"
+            print(f"⚡️ ULTRA-FAST TTS: '{message_text}' (Detected: {detected_lang}, Using voice: {voice_used})")
             
         except Exception as e:
             print(f"⚠️ DIRECT TTS ERROR: {e}")
