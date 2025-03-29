@@ -67,6 +67,10 @@ class AudioCog(commands.Cog):
         # Dictionary to store voice clients and queues per guild
         self.guild_audio_data = {}
         
+        # Dictionary to store user voice gender preferences (m = male, f = female)
+        # Default is male (m)
+        self.user_voice_preferences = {}
+        
         # ZERO-LATENCY FFMPEG SETTINGS WITH NORMAL VOICE QUALITY
         # Balances instant response with natural sounding voice
         self.ffmpeg_options = {
@@ -87,6 +91,8 @@ class AudioCog(commands.Cog):
         self.last_user_speech = {}
         # Track voice inactivity for auto-disconnect
         self.voice_inactivity_timers = {}
+        # Store user voice gender preferences ('m' or 'f')
+        self.user_voice_preferences = {}
     
     def get_guild_data(self, guild_id):
         """Get or create guild audio data"""
@@ -300,19 +306,42 @@ class AudioCog(commands.Cog):
             # Detect language
             detected_lang = detect_language(message_text)
             
-            # Choose appropriate voice based on detected language
+            # Choose appropriate voice based on detected language and user preference
+            # Define male and female voices for each language
             voices = {
-                "fil": "fil-PH-AngeloNeural",     # Filipino male
-                "en": "en-US-GuyNeural",          # English male (premium quality)
-                "zh": "zh-CN-YunxiNeural",        # Chinese male (high quality)
-                "ja": "ja-JP-KenjiNeural",        # Japanese male
-                "ko": "ko-KR-InJoonNeural"        # Korean male
+                "fil": {
+                    "m": "fil-PH-AngeloNeural",    # Filipino male
+                    "f": "fil-PH-BlessicaNeural"   # Filipino female
+                },
+                "en": {
+                    "m": "en-US-GuyNeural",        # English male
+                    "f": "en-US-JennyNeural"       # English female
+                },
+                "zh": {
+                    "m": "zh-CN-YunxiNeural",      # Chinese male
+                    "f": "zh-CN-XiaoxiaoNeural"    # Chinese female
+                },
+                "ja": {
+                    "m": "ja-JP-KenjiNeural",      # Japanese male
+                    "f": "ja-JP-NanamiNeural"      # Japanese female
+                },
+                "ko": {
+                    "m": "ko-KR-InJoonNeural",     # Korean male
+                    "f": "ko-KR-SunHiNeural"       # Korean female
+                }
             }
             
-            # Get voice based on detected language
-            voice = voices.get(detected_lang, "fil-PH-AngeloNeural")  # Default to Filipino if language not supported
+            # Get user preference (default to male if not set)
+            gender_preference = self.user_voice_preferences.get(user_id, "m")
             
-            print(f"Detected language: {detected_lang}, using voice: {voice}")
+            # Get voice based on detected language and gender preference
+            if detected_lang in voices:
+                voice = voices[detected_lang][gender_preference]
+            else:
+                # Default to Filipino if language not supported
+                voice = voices["fil"][gender_preference]
+            
+            print(f"Detected language: {detected_lang}, using {gender_preference} voice: {voice}")
             
             # Use direct text without SSML to ensure compatibility
             tts = edge_tts.Communicate(text=message_text, voice=voice)
@@ -459,13 +488,20 @@ class AudioCog(commands.Cog):
             is_definitely_tagalog = tagalog_count >= 2 or 'ang' in message_text.lower() or 'ng ' in message_text.lower()
             
             # STEP 3: Configure TTS with ultra-clear voice settings
-            # Select voice based on detected language
+            # Select voice based on detected language and user preference
+            # Get user preference (default to male if not set)
+            gender_preference = self.user_voice_preferences.get(user_id, "m")
+            
+            # Choose voice based on language and gender preference
             if is_tagalog or is_definitely_tagalog:
-                # Filipino - ULTRA clear speaking with slow deliberate pronunciation
-                tts = edge_tts.Communicate(text=message_text, voice="fil-PH-AngeloNeural", rate="-30%", volume="+30%")
+                # Filipino voices
+                voice = "fil-PH-AngeloNeural" if gender_preference == "m" else "fil-PH-BlessicaNeural"
             else:
-                # English - ULTRA clear speaking with slow deliberate pronunciation
-                tts = edge_tts.Communicate(text=message_text, voice="en-US-GuyNeural", rate="-30%", volume="+30%")
+                # English voices
+                voice = "en-US-GuyNeural" if gender_preference == "m" else "en-US-JennyNeural"
+            
+            # Configure TTS with the selected voice and enhanced settings
+            tts = edge_tts.Communicate(text=message_text, voice=voice, rate="-30%", volume="+30%")
             
             # STEP 4: Prepare temporary file path (pre-allocate to save milliseconds)
             mp3_filename = f"{self.temp_dir}/tts_direct_{message_id}.mp3"
@@ -489,8 +525,8 @@ class AudioCog(commands.Cog):
             # STEP 7: STREAMING PLAYBACK - Real-time pipe-based FFmpeg streaming
             # This is revolutionary compared to normal playback - no waiting for conversion
             detected_lang = "Tagalog" if is_tagalog or is_definitely_tagalog else "English"
-            voice_used = "fil-PH-AngeloNeural" if is_tagalog or is_definitely_tagalog else "en-US-GuyNeural"
-            print(f"⚡️ ULTRA-FAST TTS: '{message_text}' (Detected: {detected_lang}, Using voice: {voice_used})")
+            gender_type = "male" if gender_preference == "m" else "female"
+            print(f"⚡️ ULTRA-FAST TTS: '{message_text}' (Detected: {detected_lang}, Using {gender_type} voice: {voice})")
             
             # The magic: Set up FFmpeg pipe command for real-time streaming
             # BUT keeping original voice quality (avoiding chipmunk effect)
@@ -664,6 +700,21 @@ class AudioCog(commands.Cog):
             await ctx.send(f"**ERROR:** {str(e)}", delete_after=10)
             print(f"Error resetting voice connections: {e}")
         
+    @commands.command(name="change", aliases=["voice"])
+    async def change_voice(self, ctx, voice_type: str):
+        """Change your TTS voice gender (f = female, m = male)"""
+        voice_type = voice_type.lower()
+        if voice_type not in ["f", "m"]:
+            return await ctx.send("**INVALID!** Use 'f' for female voice or 'm' for male voice.")
+        
+        # Update user preference
+        self.user_voice_preferences[ctx.author.id] = voice_type
+        
+        # Confirm the change
+        gender_name = "female" if voice_type == "f" else "male"
+        await ctx.send(f"**VOICE CHANGED!** Your TTS voice is now set to **{gender_name}**.")
+        print(f"User {ctx.author.name} changed voice preference to {gender_name}")
+    
     @commands.command(name="replay")
     async def replay(self, ctx):
         """Replay last TTS message from database using direct Discord playback (2025 Method)"""

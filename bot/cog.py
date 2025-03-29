@@ -329,6 +329,7 @@ class ChatCog(commands.Cog):
             "🔧 UTILITY": {
                 "g!joinvc/leavevc": "Voice channel management",
                 "g!vc <message>": "Text-to-speech sa voice channel",
+                "g!change f/m": "Change TTS voice gender (f=female, m=male)",
                 "g!autotts": "Toggle real-time Auto TTS sa channel",
                 "g!replay": "Replay last TTS message",
                 "g!resetvc": "Fix voice channel connection issues",
