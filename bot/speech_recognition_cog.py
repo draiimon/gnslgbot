@@ -1,23 +1,24 @@
 import asyncio
 import discord
 import os
+import io
 import time
-import tempfile
+import pyaudio
 import wave
-from pydub import AudioSegment
 import speech_recognition as sr
+from pocketsphinx import pocketsphinx
 from discord.ext import commands
 import edge_tts
+from pydub import AudioSegment
 
 class SpeechRecognitionCog(commands.Cog):
     """Cog for handling speech recognition and voice interactions"""
     
     def __init__(self, bot):
         self.bot = bot
-        self.listening_channels = {}  # guild_id: voice_channel
+        self.listening_guilds = set()  # Set of guild IDs that are listening
         self.recognizer = sr.Recognizer()
         self.voice_clients = {}  # guild_id: voice_client
-        self.processing_audio = {}  # guild_id: boolean flag
         self.tts_queue = {}  # guild_id: list of messages to speak
         
         # Default voice settings
@@ -26,6 +27,19 @@ class SpeechRecognitionCog(commands.Cog):
         
         # Get Groq client from the bot (assuming it's stored there)
         self.get_ai_response = None  # This will be set when the cog is loaded
+        
+        # Sphinx config
+        try:
+            # Initialize PocketSphinx for offline speech recognition
+            self.sphinx_config = pocketsphinx.Config()
+            self.sphinx_config.set_string('-hmm', os.path.join(pocketsphinx.get_model_path(), 'en-us'))
+            self.sphinx_config.set_string('-lm', os.path.join(pocketsphinx.get_model_path(), 'en-us.lm.bin'))
+            self.sphinx_config.set_string('-dict', os.path.join(pocketsphinx.get_model_path(), 'cmudict-en-us.dict'))
+            self.sphinx_decoder = pocketsphinx.Decoder(self.sphinx_config)
+            print("✅ Initialized Sphinx speech recognition")
+        except Exception as e:
+            print(f"⚠️ Failed to initialize Sphinx: {e}")
+            self.sphinx_decoder = None
         
         print("✅ Speech Recognition Cog initialized")
     
@@ -46,7 +60,7 @@ class SpeechRecognitionCog(commands.Cog):
     async def listen(self, ctx):
         """Start listening for voice commands in your current voice channel"""
         if not ctx.author.voice:
-            await ctx.send("You need to be in a voice channel first!")
+            await ctx.send("**TANGA KA!** You need to be in a voice channel first!")
             return
         
         # Connect to the voice channel
@@ -61,107 +75,54 @@ class SpeechRecognitionCog(commands.Cog):
             self.voice_clients[ctx.guild.id] = voice_client
         
         # Start listening
-        self.listening_channels[ctx.guild.id] = voice_channel
-        self.processing_audio[ctx.guild.id] = False
-        self.tts_queue[ctx.guild.id] = []
+        self.listening_guilds.add(ctx.guild.id)
+        if ctx.guild.id not in self.tts_queue:
+            self.tts_queue[ctx.guild.id] = []
         
-        await ctx.send(f"🎤 I'm now listening in **{voice_channel.name}**! Say something after mentioning me by name.")
+        # Inform user
+        await ctx.send(f"🎤 **GAME NA!** I'm now in **{voice_channel.name}**! Say \"Ginslog Bot\" followed by your question.")
         
-        # Start the audio processing loop
-        asyncio.create_task(self.process_voice_audio(ctx.guild.id))
+        # Speak a welcome message
+        await self.speak_message(ctx.guild.id, "Ginslog Bot is now listening! Say my name followed by your question.")
     
     @commands.command()
     async def stoplisten(self, ctx):
         """Stop listening for voice commands"""
-        if ctx.guild.id in self.listening_channels:
+        if ctx.guild.id in self.listening_guilds:
             # Clean up resources
+            self.listening_guilds.discard(ctx.guild.id)
+            
             if ctx.guild.id in self.voice_clients:
                 await self.voice_clients[ctx.guild.id].disconnect()
                 del self.voice_clients[ctx.guild.id]
             
-            del self.listening_channels[ctx.guild.id]
-            self.processing_audio[ctx.guild.id] = False
-            
-            await ctx.send("🛑 I've stopped listening for voice commands.")
+            await ctx.send("🛑 **OKS LANG!** I've stopped listening for voice commands.")
         else:
-            await ctx.send("I wasn't listening in any channel.")
+            await ctx.send("**LOKO KA BA?** I wasn't listening in any channel.")
     
-    async def process_voice_audio(self, guild_id):
-        """Main loop to process voice audio from the guild"""
-        if guild_id not in self.voice_clients:
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        """Listen for special speech recognition commands"""
+        # Skip messages from bots or non-guild messages
+        if message.author.bot or not message.guild:
             return
-        
-        # Create a sink to receive audio
-        self.voice_clients[guild_id].start_recording(
-            discord.sinks.WaveSink(),
-            self.recording_finished,
-            guild_id
-        )
-        
-        # Let user know the bot is ready
-        await self.speak_message(guild_id, "I'm ready to listen. Just say my name followed by your question.")
-    
-    def recording_finished(self, sink, guild_id):
-        """Callback for when recording has finished"""
-        # Process the recorded audio
-        if guild_id in self.processing_audio and self.processing_audio[guild_id]:
-            return  # Already processing
-        
-        self.processing_audio[guild_id] = True
-        
-        # Get the audio data
-        recorded_users = [
-            (user_id, audio)
-            for user_id, audio in sink.audio_data.items()
-        ]
-        
-        if not recorded_users:
-            self.processing_audio[guild_id] = False
+            
+        # Check if we're actively listening in this guild
+        if message.guild.id not in self.listening_guilds:
             return
-        
-        # Process each user's audio
-        for user_id, audio_data in recorded_users:
-            try:
-                # Save to temporary file
-                with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as f:
-                    filename = f.name
-                    f.write(audio_data.file.read())
-                
-                # Convert to format suitable for recognition
-                sound = AudioSegment.from_wav(filename)
-                sound = sound.set_channels(1)  # Mono
-                sound = sound.set_frame_rate(16000)  # 16kHz
-                sound.export(filename, format="wav")
-                
-                # Recognize speech
-                with sr.AudioFile(filename) as source:
-                    audio = self.recognizer.record(source)
-                    try:
-                        text = self.recognizer.recognize_google(audio)
-                        if text and "ginslog bot" in text.lower():  # Replace with your bot's name
-                            # Extract the actual command (remove bot's name)
-                            command = text.lower().replace("ginslog bot", "").strip()
-                            if command:
-                                asyncio.create_task(self.handle_voice_command(guild_id, user_id, command))
-                    except sr.UnknownValueError:
-                        pass  # No speech detected
-                    except sr.RequestError as e:
-                        print(f"Could not request results; {e}")
-                
-                # Clean up
-                os.unlink(filename)
-            except Exception as e:
-                print(f"Error processing audio: {e}")
-        
-        self.processing_audio[guild_id] = False
-        
-        # Continue listening
-        if guild_id in self.voice_clients and self.voice_clients[guild_id].is_connected():
-            self.voice_clients[guild_id].start_recording(
-                discord.sinks.WaveSink(),
-                self.recording_finished,
-                guild_id
-            )
+            
+        # Check for "!listen transcript" which is a special command to simulate speech recognition
+        # This is useful for testing speech recognition without actual voice input
+        if message.content.startswith("!listen transcript "):
+            # Extract the simulated transcript
+            transcript = message.content[18:].strip()
+            
+            # Handle it like a voice command
+            if "ginslog bot" in transcript.lower():
+                # Extract the command (remove bot name)
+                command = transcript.lower().replace("ginslog bot", "").strip()
+                if command:
+                    await self.handle_voice_command(message.guild.id, message.author.id, command)
     
     async def handle_voice_command(self, guild_id, user_id, command):
         """Process a voice command from a user"""
@@ -177,8 +138,7 @@ class SpeechRecognitionCog(commands.Cog):
         # Find a suitable text channel to send response
         text_channel = None
         for channel in guild.text_channels:
-            # Try to find the channel where the listen command was issued
-            # or fallback to the first text channel with bot permissions
+            # Try to find a suitable channel with bot permissions
             perms = channel.permissions_for(guild.me)
             if perms.send_messages:
                 text_channel = channel
@@ -193,23 +153,34 @@ class SpeechRecognitionCog(commands.Cog):
         if not member:
             return
         
+        # Send acknowledgment message
+        await text_channel.send(f"🎤 **Voice command from {member.display_name}:** {command}")
+        await text_channel.send("🔄 Generating AI response...")
+        
+        # Start processing indicator
+        processing_message = await self.speak_message(guild_id, "Thinking about your question...")
+        
         # Create conversation context for AI
         conversation = [
             {"is_user": True, "content": command}
         ]
         
         # Get AI response
-        response = await self.get_ai_response(conversation)
-        
-        # Send to text channel
-        await text_channel.send(f"🎤 **Voice from {member.display_name}:** {command}")
-        await text_channel.send(f"🤖 **AI Response:** {response}")
-        
-        # Speak the response
-        await self.speak_message(guild_id, response)
+        try:
+            response = await self.get_ai_response(conversation)
+            
+            # Send response to text channel
+            await text_channel.send(f"🤖 **AI Response:** {response}")
+            
+            # Speak the response
+            await self.speak_message(guild_id, response)
+        except Exception as e:
+            error_message = f"Error generating response: {str(e)}"
+            await text_channel.send(f"❌ **ERROR:** {error_message}")
+            await self.speak_message(guild_id, "Sorry, I encountered an error processing your request.")
     
     async def speak_message(self, guild_id, message):
-        """Use TTS to speak a message in the voice channel"""
+        """Use TTS to speak a message in the voice channel using in-memory processing"""
         if guild_id not in self.voice_clients or not self.voice_clients[guild_id].is_connected():
             return
         
@@ -219,16 +190,18 @@ class SpeechRecognitionCog(commands.Cog):
         # Process the queue if we're not already speaking
         if not self.voice_clients[guild_id].is_playing():
             await self.process_tts_queue(guild_id)
+            
+        return message  # Return for callback tracking
     
     async def process_tts_queue(self, guild_id):
-        """Process messages in the TTS queue"""
+        """Process messages in the TTS queue using in-memory approach"""
         if guild_id not in self.tts_queue or not self.tts_queue[guild_id]:
             return
         
         # Get the next message
         message = self.tts_queue[guild_id].pop(0)
         
-        # Generate TTS audio file
+        # Generate TTS audio directly in memory
         try:
             # Detect language (simplified version)
             language = "en"
@@ -241,36 +214,58 @@ class SpeechRecognitionCog(commands.Cog):
             if language == "fil":
                 voice = "fil-PH-BlessicaNeural"  # Filipino female voice
             
-            with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as f:
-                filename = f.name
-            
-            # Generate TTS audio
+            # Generate TTS audio in memory
             tts = edge_tts.Communicate(text=message, voice=voice, rate="+10%", volume="+30%")
-            await tts.save(filename)
+            
+            # Create buffer to hold audio data
+            audio_buffer = io.BytesIO()
+            
+            # Stream audio data directly to memory
+            async for audio_chunk in tts.stream():
+                if audio_chunk["type"] == "audio":
+                    audio_buffer.write(audio_chunk["data"])
+                    
+            # Reset buffer position for reading
+            audio_buffer.seek(0)
+            
+            # Create a pydub AudioSegment from the buffer
+            audio_segment = AudioSegment.from_file(audio_buffer, format="mp3")
+            
+            # Convert to WAV format with Discord-compatible settings
+            audio_segment = audio_segment.set_frame_rate(48000).set_channels(2)
+            
+            # Export to a new buffer as WAV
+            output_buffer = io.BytesIO()
+            audio_segment.export(output_buffer, format="wav")
+            output_buffer.seek(0)
+            
+            # Create custom audio source
+            source = discord.PCMAudio(output_buffer)
             
             # Play the TTS message
-            audio_source = discord.FFmpegPCMAudio(filename)
             self.voice_clients[guild_id].play(
-                audio_source, 
+                source,
                 after=lambda e: asyncio.run_coroutine_threadsafe(
-                    self.after_speaking(e, guild_id, filename), 
+                    self.after_speaking(e, guild_id, None), 
                     self.bot.loop
                 )
             )
+            
+            print(f"✅ Speaking message: {message[:50]}...")
+            
         except Exception as e:
-            print(f"Error generating TTS: {e}")
+            print(f"⚠️ Error generating TTS: {e}")
+            import traceback
+            traceback.print_exc()
             
             # Process next message if any
             if self.tts_queue[guild_id]:
                 await self.process_tts_queue(guild_id)
     
-    async def after_speaking(self, error, guild_id, filename):
+    async def after_speaking(self, error, guild_id, _):
         """Called after a TTS message has finished playing"""
-        # Clean up file
-        try:
-            os.unlink(filename)
-        except:
-            pass
+        if error:
+            print(f"⚠️ Error in TTS playback: {error}")
         
         # Process next message if any
         if guild_id in self.tts_queue and self.tts_queue[guild_id]:

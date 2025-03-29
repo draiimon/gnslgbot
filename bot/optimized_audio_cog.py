@@ -505,18 +505,9 @@ class AudioCog(commands.Cog):
             # Using faster speech rate with slightly increased volume
             tts = edge_tts.Communicate(text=message_text, voice=voice, rate="+10%", volume="+30%")
             
-            # STEP 4: Prepare temporary file path (pre-allocate to save milliseconds)
-            mp3_filename = f"{self.temp_dir}/tts_direct_{message_id}.mp3"
-            
-            # STEP 5: Execute TTS generation and wait for voice client simultaneously
-            # This is the core of our zero-latency approach - both operations happen in parallel
-            await asyncio.gather(
-                tts.save(mp3_filename),  # Generate TTS audio
-                voice_task              # Connect to voice channel
-            )
-            
-            # STEP 6: Get the voice client from our connection task
-            voice_client = voice_task.result()
+            # STEP 4: IN-MEMORY TTS PROCESSING - No temporary files!
+            # Get voice client from connection task first to avoid delays
+            voice_client = await voice_task
             
             # Wait if already playing audio - prevent overlap (with short check intervals)
             if voice_client.is_playing():
@@ -524,29 +515,47 @@ class AudioCog(commands.Cog):
                 while voice_client.is_playing():
                     await asyncio.sleep(0.1)  # Check more frequently
             
-            # STEP 7: STREAMING PLAYBACK - Real-time pipe-based FFmpeg streaming
-            # This is revolutionary compared to normal playback - no waiting for conversion
+            # STEP 5: DIRECT STREAMING - Generate audio and pipe directly to Discord
+            # Log what we're doing for debugging
             detected_lang = "Tagalog" if is_tagalog or is_definitely_tagalog else "English"
             gender_type = "male" if gender_preference == "m" else "female"
             print(f"⚡️ ULTRA-FAST TTS: '{message_text}' (Detected: {detected_lang}, Using {gender_type} voice: {voice})")
             
-            # The magic: Set up FFmpeg pipe command for real-time streaming
-            # BUT keeping original voice quality (avoiding chipmunk effect)
+            # Create a buffer to hold audio data in memory
+            import io
+            audio_buffer = io.BytesIO()
+            
+            # Stream the TTS data directly to our buffer
+            async for audio_chunk in tts.stream():
+                if audio_chunk["type"] == "audio":
+                    audio_buffer.write(audio_chunk["data"])
+            
+            # Reset buffer position for reading
+            audio_buffer.seek(0)
+            
+            # Set up FFmpeg to process the in-memory audio data
             import subprocess
-            ffmpeg_cmd = ["ffmpeg", "-i", mp3_filename, "-ac", "2", "-ar", "48000", "-f", "wav", "pipe:1"]
+            ffmpeg_cmd = ["ffmpeg", "-i", "pipe:0", "-ac", "2", "-ar", "48000", "-f", "wav", "pipe:1"]
             
-            # Execute FFmpeg process with pipe to stdout
-            ffmpeg_process = subprocess.Popen(ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            # Execute FFmpeg process with both stdin and stdout as pipes
+            ffmpeg_process = subprocess.Popen(
+                ffmpeg_cmd, 
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.DEVNULL
+            )
             
-            # Create audio source directly from pipe for instant playback
-            # This eliminates file writing delay completely while keeping normal voice
-            audio_source = discord.FFmpegPCMAudio(ffmpeg_process.stdout, pipe=True, **{
-                'options': '-ac 2 -ar 48000',  # Restored to normal values for voice
-                'before_options': '-nostdin'
-            })
+            # Feed our audio buffer to FFmpeg's stdin and get processed audio from stdout
+            processed_audio, _ = ffmpeg_process.communicate(audio_buffer.read())
+            
+            # Create a BytesIO object for the processed audio
+            processed_buffer = io.BytesIO(processed_audio)
+            
+            # Create a custom audio source from the processed data
+            audio_source = discord.PCMAudio(processed_buffer)
             
             # Play the audio with minimal buffering for instant response
-            voice_client.play(audio_source, after=lambda e: self.cleanup_direct_tts(mp3_filename, e))
+            voice_client.play(audio_source, after=lambda e: self.start_inactivity_timer(voice_client.guild.id, e))
             
         except Exception as e:
             print(f"⚠️ DIRECT TTS ERROR: {e}")
@@ -568,60 +577,64 @@ class AudioCog(commands.Cog):
         return voice_client
     
     def cleanup_direct_tts(self, filename, error):
-        """Clean up temporary file after direct TTS playback"""
+        """Clean up temporary file after direct TTS playback - LEGACY function kept for backward compatibility"""
         if error:
             print(f"Error in direct TTS playback: {error}")
         
-        # Remove the temporary file
+        # If filename exists, remove it
         try:
-            if os.path.exists(filename):
+            if filename and os.path.exists(filename):
                 os.remove(filename)
                 print(f"Removed direct TTS file: {filename}")
         except Exception as e:
             print(f"Error removing direct TTS file: {e}")
             
-        # Start inactivity timer to disconnect after a period of inactivity
-        # Extract guild ID from filename (using message ID which has guild context)
+        # Start inactivity timer - extract guild id if possible
         try:
             # Get all voice clients
             for guild in self.bot.guilds:
                 if guild.voice_client and guild.voice_client.is_connected():
                     guild_id = guild.id
-                    
-                    # Cancel any existing timer
-                    if guild_id in self.voice_inactivity_timers:
-                        try:
-                            self.voice_inactivity_timers[guild_id].cancel()
-                        except:
-                            pass
-                    
-                    # Create and start a simple timer to disconnect after 120 seconds
+                    self.start_inactivity_timer(guild_id, error)
+        except Exception as e:
+            print(f"Error setting up auto-disconnect: {e}")
+            
+    def start_inactivity_timer(self, guild_id, error=None):
+        """Start timer to disconnect after period of inactivity"""
+        if error:
+            print(f"Error in direct TTS playback: {error}")
+        
+        try:
+            # Cancel any existing timer
+            if guild_id in self.voice_inactivity_timers:
+                try:
+                    self.voice_inactivity_timers[guild_id].cancel()
+                except:
+                    pass
+            
+            # Create and start a simple timer to disconnect after 120 seconds
+            try:
+                # Use a safer way to start the timer
+                async def auto_disconnect_task():
                     try:
-                        # Cancel any existing timer task to avoid duplicate tasks
-                        if guild_id in self.voice_inactivity_timers and self.voice_inactivity_timers[guild_id]:
-                            self.voice_inactivity_timers[guild_id].cancel()
-                            
-                        # Use a safer way to start the timer
-                        async def auto_disconnect_task():
-                            try:
-                                # Wait 2 minutes before disconnecting
-                                await asyncio.sleep(120)
-                                
-                                # Get the current guild and voice client state at disconnect time
-                                current_guild = self.bot.get_guild(guild_id)
-                                if current_guild and current_guild.voice_client:
-                                    if current_guild.voice_client.is_connected() and not current_guild.voice_client.is_playing():
-                                        await current_guild.voice_client.disconnect()
-                                        print(f"Auto-disconnected from voice in {current_guild.name} due to 2 minutes of inactivity")
-                            except Exception as e:
-                                print(f"Error in auto-disconnect task: {e}")
-                                
-                        # Schedule using the bot's loop instead of trying to get the current loop
-                        # This is safer and prevents threading issues
-                        self.voice_inactivity_timers[guild_id] = self.bot.loop.create_task(auto_disconnect_task())
-                        print(f"Started inactivity timer for guild: {guild.name}")
-                    except Exception as timer_error:
-                        print(f"Error starting disconnect timer: {timer_error}")
+                        # Wait 2 minutes before disconnecting
+                        await asyncio.sleep(120)
+                        
+                        # Get the current guild and voice client state at disconnect time
+                        current_guild = self.bot.get_guild(guild_id)
+                        if current_guild and current_guild.voice_client:
+                            if current_guild.voice_client.is_connected() and not current_guild.voice_client.is_playing():
+                                await current_guild.voice_client.disconnect()
+                                print(f"Auto-disconnected from voice in {current_guild.name} due to 2 minutes of inactivity")
+                    except Exception as e:
+                        print(f"Error in auto-disconnect task: {e}")
+                        
+                # Schedule using the bot's loop instead of trying to get the current loop
+                # This is safer and prevents threading issues
+                self.voice_inactivity_timers[guild_id] = self.bot.loop.create_task(auto_disconnect_task())
+                print(f"Started inactivity timer for guild ID: {guild_id}")
+            except Exception as timer_error:
+                print(f"Error starting disconnect timer: {timer_error}")
         except Exception as e:
             print(f"Error setting up auto-disconnect: {e}")
     
