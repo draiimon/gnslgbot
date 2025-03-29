@@ -22,6 +22,7 @@ class SpeechRecognitionCog(commands.Cog):
         self.tts_queue = {}  # guild_id: list of messages to speak
         self.listening_tasks = {}  # guild_id: asyncio task
         self.temp_dir = "temp_audio"
+        self.connection_monitors = {}  # guild_id: task monitoring connection status
         
         # Make sure temp directory exists
         os.makedirs(self.temp_dir, exist_ok=True)
@@ -32,6 +33,9 @@ class SpeechRecognitionCog(commands.Cog):
         
         # Get Groq client from the bot (assuming it's stored there)
         self.get_ai_response = None  # This will be set when the cog is loaded
+        
+        # Start our connection monitor task
+        self.bot.loop.create_task(self.monitor_voice_connections())
         
         print("✅ Speech Recognition Cog initialized with voice command support")
     
@@ -247,10 +251,32 @@ class SpeechRecognitionCog(commands.Cog):
     
     async def speak_message(self, guild_id, message):
         """Use TTS to speak a message in the voice channel using in-memory processing"""
+        # Check if we're connected to voice and try to reconnect if needed
         if guild_id not in self.voice_clients or not self.voice_clients[guild_id].is_connected():
-            return
+            # Try to reconnect if we know the channel
+            try:
+                # Find the guild
+                guild = self.bot.get_guild(guild_id)
+                if guild:
+                    # Try to find any voice channel with members in it
+                    for voice_channel in guild.voice_channels:
+                        if len(voice_channel.members) > 0:
+                            # Found a channel with users, try to connect
+                            print(f"🔄 Auto-reconnecting to {voice_channel.name} in {guild.name}")
+                            await self._ensure_voice_connection(voice_channel)
+                            break
+            except Exception as e:
+                print(f"⚠️ Error auto-reconnecting: {e}")
+                return
+            
+            # If we still don't have a connection, return
+            if guild_id not in self.voice_clients or not self.voice_clients[guild_id].is_connected():
+                print(f"⚠️ Cannot speak message in guild {guild_id} - no voice connection")
+                return
         
         # Add to the queue
+        if guild_id not in self.tts_queue:
+            self.tts_queue[guild_id] = []
         self.tts_queue[guild_id].append(message)
         
         # Process the queue if we're not already speaking
@@ -336,6 +362,95 @@ class SpeechRecognitionCog(commands.Cog):
         # Process next message if any
         if guild_id in self.tts_queue and self.tts_queue[guild_id]:
             await self.process_tts_queue(guild_id)
+    
+    async def _ensure_voice_connection(self, voice_channel):
+        """Ensure we have a voice connection to the specified channel"""
+        guild_id = voice_channel.guild.id
+        
+        if guild_id in self.voice_clients:
+            # Already connected, just move to the new channel if needed
+            if self.voice_clients[guild_id].channel.id != voice_channel.id:
+                await self.voice_clients[guild_id].move_to(voice_channel)
+        else:
+            # Connect to new channel
+            voice_client = await voice_channel.connect()
+            self.voice_clients[guild_id] = voice_client
+            # Initialize TTS queue if needed
+            if guild_id not in self.tts_queue:
+                self.tts_queue[guild_id] = []
+        
+        return self.voice_clients[guild_id]
+    
+    @commands.command(name="ask")
+    async def ask(self, ctx, *, question: str):
+        """Quick voice response to a question (no need for g!joinvc first)"""
+        try:
+            # Check if user is in a voice channel
+            if not ctx.author.voice:
+                await ctx.send("**TANGA KA!** You need to be in a voice channel first!")
+                return
+                
+            voice_channel = ctx.author.voice.channel
+            
+            # Connect to voice channel using our helper
+            await self._ensure_voice_connection(voice_channel)
+            
+            # Process and answer the question directly
+            await self.handle_voice_command(ctx.guild.id, ctx.author.id, question)
+            
+        except Exception as e:
+            await ctx.send(f"❌ **ERROR:** {str(e)}")
+            import traceback
+            traceback.print_exc()
+            
+    async def monitor_voice_connections(self):
+        """Background task to monitor voice connections and ensure they stay active"""
+        await self.bot.wait_until_ready()
+        
+        while not self.bot.is_closed():
+            try:
+                # Check all active voice connections
+                for guild_id, voice_client in list(self.voice_clients.items()):
+                    # Check if connection is still valid
+                    if not voice_client.is_connected():
+                        print(f"🔍 Detected disconnected voice client in guild {guild_id}")
+                        
+                        # Try to recover by finding a voice channel to reconnect to
+                        guild = self.bot.get_guild(guild_id)
+                        if guild:
+                            reconnected = False
+                            
+                            # First, look for channels with members
+                            for voice_channel in guild.voice_channels:
+                                if len(voice_channel.members) > 0:
+                                    try:
+                                        # Try to reconnect to this channel
+                                        print(f"🔄 Auto-reconnecting to {voice_channel.name} in {guild.name}")
+                                        await self._ensure_voice_connection(voice_channel)
+                                        reconnected = True
+                                        
+                                        # If this guild was in listening mode, send a message
+                                        if guild_id in self.listening_guilds:
+                                            for text_channel in guild.text_channels:
+                                                if text_channel.permissions_for(guild.me).send_messages:
+                                                    await text_channel.send("🔄 **Reconnected to voice channel!** I was disconnected but now I'm back.")
+                                                    break
+                                        
+                                        break
+                                    except Exception as e:
+                                        print(f"⚠️ Error during auto-reconnect: {e}")
+                            
+                            if not reconnected:
+                                print(f"❌ Could not find a suitable voice channel to reconnect to in guild {guild_id}")
+                                # Remove from listening guilds if we couldn't reconnect
+                                self.listening_guilds.discard(guild_id)
+                
+                # Sleep for a bit to avoid constant checking
+                await asyncio.sleep(10)
+                
+            except Exception as e:
+                print(f"⚠️ Error in voice connection monitor: {e}")
+                await asyncio.sleep(30)  # Longer sleep on error
 
 def setup(bot):
     """Add the cog to the bot"""
