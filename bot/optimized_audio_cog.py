@@ -731,7 +731,7 @@ class AudioCog(commands.Cog):
                     await processing_msg.delete()
                 except:
                     pass  # Message may have been deleted already
-                # Display truncated message (maximum 100 characters to avoid spam)
+                # Display the original message that was converted to speech
                 display_message = message[:100] + "..." if len(message) > 100 else message
                 await ctx.send(f"🔊 **REPLAYING:** \"{display_message}\"", delete_after=10)
                 
@@ -773,7 +773,7 @@ class AudioCog(commands.Cog):
                     
                     # Success message
                     await processing_msg.delete()
-                    # Display truncated message (maximum 100 characters to avoid spam)
+                    # Display the original message that was converted to speech
                     display_message = message[:100] + "..." if len(message) > 100 else message
                     await ctx.send(f"🔊 **REPLAYING (FFmpeg Mode):** \"{display_message}\"", delete_after=10)
                     
