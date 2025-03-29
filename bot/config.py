@@ -29,7 +29,7 @@ class Config:
     MAX_CONTEXT_MESSAGES = 10  # Increased for better conversation memory and coherence
 
     # Groq API settings
-    GROQ_MODEL = "gemma2-9b-it"  # Using Gemma 2 9B instruct model through Groq (correct model name)
+    GROQ_MODEL = "mistral-7b-instruct"  # Changed to Mistral model (Mistral-SABA-24B not available in Groq, using closest alternative)
     MAX_TOKENS = 200  # Keep this to ensure concise responses
     TEMPERATURE = 0.7  # Lowered to be much more coherent and human-like
 
