@@ -98,7 +98,7 @@ class AudioCog(commands.Cog):
     
     @commands.command(name="vc")
     async def vc(self, ctx, *, message: str):
-        """Text-to-speech in voice channel using direct FFmpeg with improved stability"""
+        """Text-to-speech in voice channel with simplified direct audio playback"""
         # Check if the user is in a voice channel
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
@@ -110,10 +110,9 @@ class AudioCog(commands.Cog):
         # Add to rate limit
         add_rate_limit_entry(ctx.author.id)
         
-        # Generate unique filename
+        # Generate unique filename - Use .mp3 directly instead of converting to WAV
         unique_id = f"{ctx.author.id}_{int(time.time())}"
         temp_mp3 = f"{self.temp_dir}/tts_{unique_id}.mp3"
-        temp_wav = f"{self.temp_dir}/tts_{unique_id}.wav"
         
         # Processing message
         processing_msg = None
@@ -147,18 +146,12 @@ class AudioCog(commands.Cog):
             if len(words) > 3 and tagalog_count < 2:
                 lang = 'en'
             
-            # Generate TTS file (directly to memory to avoid file issues)
+            # Generate TTS file DIRECTLY to disk (simplified approach)
             tts = gTTS(text=message, lang=lang, slow=False)
-            mp3_fp = io.BytesIO()
-            tts.write_to_fp(mp3_fp)
-            mp3_fp.seek(0)
-            
-            # Convert MP3 to WAV using pydub (avoids FFmpeg process issues)
-            sound = AudioSegment.from_mp3(mp3_fp)
-            sound.export(temp_wav, format="wav")
+            tts.save(temp_mp3)
             
             # Verify file exists
-            if not os.path.exists(temp_wav) or os.path.getsize(temp_wav) == 0:
+            if not os.path.exists(temp_mp3) or os.path.getsize(temp_mp3) == 0:
                 raise Exception("Failed to generate audio file")
             
             # Delete processing message with error handling for message already deleted
@@ -166,11 +159,12 @@ class AudioCog(commands.Cog):
                 try:
                     await processing_msg.delete()
                 except discord.errors.NotFound:
-                    # Message was already deleted or doesn't exist, continue anyway
                     print("Processing message already deleted, continuing")
                 except Exception as e:
                     print(f"Error deleting processing message: {e}")
-                
+                finally:
+                    processing_msg = None
+            
             # Connect to voice channel
             try:
                 voice_client = ctx.voice_client
@@ -178,7 +172,6 @@ class AudioCog(commands.Cog):
                 # Stop any currently playing audio
                 if voice_client and voice_client.is_playing():
                     voice_client.stop()
-                    await asyncio.sleep(0.2)  # Brief pause
                 
                 # Connect to voice channel if not already connected
                 if not voice_client:
@@ -186,31 +179,35 @@ class AudioCog(commands.Cog):
                 elif voice_client.channel != ctx.author.voice.channel:
                     # Move to user's channel if needed
                     await voice_client.disconnect()
+                    await asyncio.sleep(0.5)  # Wait a bit before reconnecting
                     voice_client = await ctx.author.voice.channel.connect()
                 
-                # Create standard discord.py FFmpeg PCM audio source
-                audio_source = discord.PCMVolumeTransformer(
-                    discord.FFmpegPCMAudio(source=temp_wav),
-                    volume=0.8
-                )
-                
-                # Play the audio using standard discord.py
-                voice_client.play(audio_source, after=lambda e: print(f'Player error: {e}' if e else 'File finished playing'))
-                
-                # Send confirmation message
-                await ctx.send(f"🔊 **SINABI KO NA:** {message}", delete_after=10)
-                
-                # Schedule file deletion after playing
-                def delete_after_play():
+                # Define cleanup function
+                def after_playing(error):
+                    if error:
+                        print(f"Audio playback error: {error}")
                     try:
-                        if os.path.exists(temp_wav):
-                            os.remove(temp_wav)
-                            print(f"Deleted temp WAV file: {temp_wav}")
+                        if os.path.exists(temp_mp3):
+                            os.remove(temp_mp3)
+                            print(f"Deleted temp MP3 file: {temp_mp3}")
                     except Exception as e:
                         print(f"Error deleting temp file: {e}")
                 
-                # Schedule file deletion after the track length
-                self.bot.loop.call_later(30, delete_after_play)
+                # Use MP3 directly with proper options to avoid FFmpeg termination
+                audio_source = discord.FFmpegPCMAudio(
+                    source=temp_mp3,
+                    before_options="-nostdin",  # Avoid stdin interactions
+                    options="-vn"  # Skip video processing
+                )
+                
+                # Play the audio with volume transformer
+                voice_client.play(
+                    discord.PCMVolumeTransformer(audio_source, volume=0.8),
+                    after=after_playing
+                )
+                
+                # Send confirmation message
+                await ctx.send(f"🔊 **SINABI KO NA:** {message}", delete_after=10)
                 
             except Exception as e:
                 print(f"Voice client error: {e}")
@@ -225,15 +222,12 @@ class AudioCog(commands.Cog):
                 try:
                     await processing_msg.delete()
                 except discord.errors.NotFound:
-                    # Message was already deleted or doesn't exist, continue anyway
                     print("Processing message already deleted in error handler, continuing")
                 except Exception as e:
                     print(f"Error deleting processing message in error handler: {e}")
             
             # Clean up temp files
             try:
-                if os.path.exists(temp_wav):
-                    os.remove(temp_wav)
                 if os.path.exists(temp_mp3):
                     os.remove(temp_mp3)
             except:
