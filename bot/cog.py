@@ -369,7 +369,7 @@ class ChatCog(commands.Cog):
         categories = {
             "🤖 AI CHAT": {
                 "g!usap <message>": "Chat with the AI assistant",
-                "g!asklog <message>": "Chat with the AI assistant (logs to channel)",
+                "g!ask <message>": "Voice-only AI response (no text logging)",
                 "@Ginsilog BOT <message>": "Mention the bot to chat",
                 "g!clear": "Clear chat history"
             },
@@ -407,7 +407,7 @@ class ChatCog(commands.Cog):
                             value="\n".join(formatted_commands),
                             inline=False)
 
-        embed.set_footer(text=f"Bot created by {self.creator}")
+        embed.set_footer(text=f"Ginsilog Bot | Gawa ni Mason Calix")
         await ctx.send(embed=embed)
 
     # ========== AI CHAT COMMANDS ==========
@@ -514,7 +514,7 @@ class ChatCog(commands.Cog):
             description=
             "Ang conversation history ay na-clear na. Pwede na tayong mag-usap muli.\n\nGamit ang `g!usap <message>`, `g!asklog <message>`, `g!ask <message>` o i-mention mo ako para magsimula ng bagong conversation.",
             color=Config.EMBED_COLOR_INFO)
-        clear_embed.set_footer(text="Ginsilog Bot | Fresh Start")
+        clear_embed.set_footer(text="Ginsilog Bot | Fresh Start | Gawa ni Mason Calix")
 
         await ctx.send(embed=clear_embed)
 
@@ -731,13 +731,10 @@ class ChatCog(commands.Cog):
         if not rules_channel:
             await ctx.send("**TANGA!** WALA AKONG MAHANAP NA RULES CHANNEL!")
             return
-        if ctx.channel.id != Config.RULES_CHANNEL_ID:
-            await ctx.send(
-                f"**BOBO!** PUMUNTA KA SA <#{Config.RULES_CHANNEL_ID}> PARA MAKITA MO ANG RULES!"
-            )
-            return
-        rules = discord.Embed(title="Server Rules",
-                              description="""Please follow these rules:
+            
+        # Show rules in any channel
+        rules = discord.Embed(title="**SERVER RULES**",
+                             description="""**BASAHIN MO MABUTI ANG MGA RULES NA ITO!**
 
 1. Be respectful to all members
 2. No illegal content
@@ -748,8 +745,15 @@ class ChatCog(commands.Cog):
 7. Follow Discord Terms of Service
 8. Listen to admins and moderators
 
-Thank you for your cooperation!""",
-                              color=Config.EMBED_COLOR_PRIMARY)
+**Kung may tanong ka, pumunta ka sa <#{}> channel!**
+
+[**CLICK HERE TO GO TO RULES CHANNEL**](https://discord.com/channels/{}/{})""".format(
+                                Config.RULES_CHANNEL_ID, 
+                                ctx.guild.id, 
+                                Config.RULES_CHANNEL_ID),
+                             color=Config.EMBED_COLOR_PRIMARY)
+        
+        rules.set_footer(text="Ginsilog Bot | Rules Command | Gawa ni Mason Calix")
         await ctx.send(embed=rules)
 
     @commands.command(name="announcement")
@@ -1013,6 +1017,7 @@ Thank you for your cooperation!""",
 
         chat_commands = {
             "g!usap <message>": "Chat with the AI assistant",
+            "g!ask <message>": "Voice-only AI response (console log only)",
             "g!asklog <message>": "Chat with AI and log to channel 1345733998357512215",
             "@Ginsilog BOT <message>": "Mention the bot to chat",
             "g!clear": "Clear chat history"
@@ -1068,7 +1073,7 @@ Thank you for your cooperation!""",
 
         embed.set_footer(
             text=
-            "MASTER LIST! PARA SA MODERATOR LANG! | Ginsilog Command System")
+            "MASTER LIST! PARA SA MODERATOR LANG! | Ginsilog Command System | Gawa ni Mason Calix")
 
         # Send the embed in the channel
         await ctx.send(embed=embed)
@@ -1103,6 +1108,8 @@ Thank you for your cooperation!""",
             "Ipakita ang lahat ng admin commands (ito mismo)",
             "g!commandslist":
             "Ipakita ang master list ng lahat ng commands",
+            "g!ask <message>":
+            "Voice-only AI response (console log only, walang Discord log)",
             "g!asklog <message>":
             "Chat with AI at ilagay ang logs sa channel 1345733998357512215",
             "g!sagad <amount> <@user>":
@@ -1132,7 +1139,7 @@ Thank you for your cooperation!""",
                         inline=False)
 
         embed.set_footer(
-            text="ADMIN LANG PWEDE GUMAMIT NITO! | Ginsilog Admin Panel")
+            text="ADMIN LANG PWEDE GUMAMIT NITO! | Ginsilog Admin Panel | Gawa ni Mason Calix")
 
         # Send the embed in the channel
         await ctx.send(embed=embed)
