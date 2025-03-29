@@ -202,34 +202,13 @@ class AudioCog(commands.Cog):
                 self.file.close()
                 self.closed = True
     
-    @commands.command(name="vc")
-    async def vc(self, ctx, *, message: str):
-        """Text-to-speech using Edge TTS with direct Discord playback (2025 Method)"""
-        # Check if user is in a voice channel
-        if not ctx.author.voice:
-            return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
-        
-        # Check rate limiting
-        if is_rate_limited(ctx.author.id):
-            return await ctx.send(f"**TEKA LANG {ctx.author.mention}!** Ang bilis mo mag-type! Hinay-hinay lang!")
-        
-        add_rate_limit_entry(ctx.author.id)
-        
-        # Send processing message
-        processing_msg = await ctx.send("**SANDALI LANG!** Ginagawa ko pa yung audio...")
-        
+    # Fast TTS processing method, reused for both vc command and auto-tts
+    async def process_tts(self, message_text, voice_channel, user_id, message_id, notify_channel=None):
+        """Shared TTS processing logic for faster responses"""
         try:
             # Generate TTS using edge_tts
-            print(f"Generating Edge TTS for message: '{message}'")
-            mp3_filename = f"{self.temp_dir}/tts_{ctx.message.id}.mp3"
-            
-            # Create Edge TTS communicator - using the newest highest quality multilingual voice model
-            # Best voices 2025:
-            # - fil-PH-AngeloNeural (Filipino male)
-            # - fil-PH-BlessicaNeural (Filipino female)
-            # - en-US-GuyNeural (English premium)
-            # - zh-CN-YunxiNeural (Chinese)
-            # - ja-JP-KenjiNeural (Japanese)
+            print(f"Generating Edge TTS for message: '{message_text}'")
+            mp3_filename = f"{self.temp_dir}/tts_{message_id}.mp3"
             
             # INTELLIGENT VOICE SELECTION BY LANGUAGE DETECTION
             # Choose the most appropriate voice based on the message content
@@ -290,7 +269,7 @@ class AudioCog(commands.Cog):
                 return primary_language[0]
             
             # Detect language
-            detected_lang = detect_language(message)
+            detected_lang = detect_language(message_text)
             
             # Choose appropriate voice based on detected language
             voices = {
@@ -307,7 +286,7 @@ class AudioCog(commands.Cog):
             print(f"Detected language: {detected_lang}, using voice: {voice}")
             
             # Use direct text without SSML to ensure compatibility
-            tts = edge_tts.Communicate(text=message, voice=voice)
+            tts = edge_tts.Communicate(text=message_text, voice=voice)
             
             # Generate MP3 audio using Edge TTS API
             await tts.save(mp3_filename)
@@ -325,132 +304,123 @@ class AudioCog(commands.Cog):
             # Store in database
             with open(mp3_filename, "rb") as f:
                 audio_data = f.read()
-                audio_id = store_audio_tts(ctx.author.id, message, audio_data)
+                audio_id = store_audio_tts(user_id, message_text, audio_data)
                 print(f"Stored Edge TTS in database with ID: {audio_id}")
             
             # Connect to the voice channel
-            voice_channel = ctx.author.voice.channel
+            # Get existing voice client or create a new one
+            guild = voice_channel.guild
+            voice_client = guild.voice_client
+            if not voice_client:
+                print(f"Connecting to voice channel: {voice_channel.name}")
+                voice_client = await voice_channel.connect()
+            elif voice_client.channel.id != voice_channel.id:
+                print(f"Moving to different voice channel: {voice_channel.name}")
+                await voice_client.move_to(voice_channel)
             
-            # FALLBACK METHOD FIRST - Use our PCMStream method directly
-            # This works even without opus library loaded
-            try:
-                # Get existing voice client or create a new one
-                voice_client = ctx.voice_client
-                if not voice_client:
-                    print(f"Connecting to voice channel: {voice_channel.name}")
-                    voice_client = await voice_channel.connect()
-                elif voice_client.channel.id != voice_channel.id:
-                    print(f"Moving to different voice channel: {voice_channel.name}")
-                    await voice_client.move_to(voice_channel)
-                
-                # Convert MP3 to WAV with proper format for Discord
-                from pydub import AudioSegment
-                wav_filename = f"{self.temp_dir}/tts_wav_{ctx.message.id}.wav"
-                
-                # Convert using pydub with HIGH QUALITY settings (stereo, highest quality)
-                audio = AudioSegment.from_mp3(mp3_filename)
-                audio = audio.set_frame_rate(48000).set_channels(2)  # HIGH QUALITY: stereo, highest sample rate
-                audio.export(wav_filename, format="wav", parameters=["-q:a", "0"])
-                
-                # Use our custom PCM streaming
-                source = self.PCMStream(wav_filename)
-                
-                # Check if already playing and wait for it to finish
-                if voice_client.is_playing():
-                    print("Audio already playing, waiting for it to finish first...")
-                    await ctx.send("**SANDALI LANG!** May pinapatugtog pa ako!", delete_after=5)
-                    while voice_client.is_playing():
-                        await asyncio.sleep(0.5)
-                
-                voice_client.play(source)
-                
-                # Success message for direct PCM method
-                try:
-                    await processing_msg.delete()
-                except:
-                    pass  # Message may have been deleted already
-                await ctx.send(f"🔊 **SPEAKING:** {message}", delete_after=10)
-                
-                # Wait for playback to finish
+            # Convert MP3 to WAV with proper format for Discord
+            from pydub import AudioSegment
+            wav_filename = f"{self.temp_dir}/tts_wav_{message_id}.wav"
+            
+            # Convert using pydub with HIGH QUALITY settings (stereo, highest quality)
+            audio = AudioSegment.from_mp3(mp3_filename)
+            audio = audio.set_frame_rate(48000).set_channels(2)  # HIGH QUALITY: stereo, highest sample rate
+            audio.export(wav_filename, format="wav", parameters=["-q:a", "0"])
+            
+            # Use our custom PCM streaming
+            source = self.PCMStream(wav_filename)
+            
+            # Check if already playing and wait for it to finish
+            if voice_client.is_playing():
+                print("Audio already playing, waiting for it to finish first...")
+                if notify_channel:
+                    await notify_channel.send("**SANDALI LANG!** May pinapatugtog pa ako!", delete_after=5)
                 while voice_client.is_playing():
                     await asyncio.sleep(0.5)
-                
-                # Clean up WAV file
-                try:
-                    os.remove(wav_filename)
-                except:
-                    pass
-                    
-            except Exception as pcm_error:
-                # If PCM method fails, try FFmpeg with optimized settings
-                try:
-                    print(f"PCM method failed: {pcm_error}, trying FFmpeg with optimized settings...")
-                    voice_client = ctx.voice_client
-                    if not voice_client:
-                        voice_client = await voice_channel.connect()
-                    
-                    # Create audio source from the MP3 file with HIGH QUALITY settings
-                    # Stereo audio, high bitrate, optimal buffer - for crisp clear audio
-                    audio_source = discord.FFmpegPCMAudio(mp3_filename, **self.ffmpeg_options)
-                    
-                    # Apply volume transformer with lower volume to reduce processing
-                    audio = discord.PCMVolumeTransformer(audio_source, volume=1.0)
-                    
-                    # Check if already playing and wait for it to finish
-                    if voice_client.is_playing():
-                        print("Audio already playing, waiting for it to finish first...")
-                        await ctx.send("**SANDALI LANG!** May pinapatugtog pa ako!", delete_after=5)
-                        while voice_client.is_playing():
-                            await asyncio.sleep(0.5)
-                            
-                    # Play the audio file
-                    voice_client.play(audio)
-                    print(f"Playing TTS audio with optimized FFmpeg settings: {mp3_filename}")
-                    
-                    # Success message
-                    try:
-                        await processing_msg.delete()
-                    except:
-                        pass  # Message may have been deleted already
-                    await ctx.send(f"🔊 **SPEAKING (FFmpeg Mode):** {message}", delete_after=10)
-                    
-                    # Wait for the audio to finish playing
-                    while voice_client.is_playing():
-                        await asyncio.sleep(0.5)
-                    
-                except Exception as ffmpeg_error:
-                    # Both methods failed
-                    print(f"Both PCM and FFmpeg playback failed: {ffmpeg_error}")
-                    
-                    # Even if playback fails, we've still generated the TTS
-                    await processing_msg.delete()
-                    await ctx.send(f"🔊 **TTS GENERATED:** {message}\n\n(Audio generated but couldn't be played. Error: {str(pcm_error)[:100]}...)", delete_after=15)
             
-            # Clean up the files once we're done
+            # Play the audio
+            voice_client.play(source)
+            print(f"Playing TTS audio: {message_text}")
+            
+            # Send confirmation if requested
+            if notify_channel:
+                await notify_channel.send(f"🔊 **SPEAKING:** {message_text}", delete_after=10)
+            
+            # Wait for playback to finish
+            while voice_client.is_playing():
+                await asyncio.sleep(0.5)
+            
+            # Clean up files
             try:
                 os.remove(mp3_filename)
-                print(f"Removed temporary file: {mp3_filename}")
+                os.remove(wav_filename)
+                print(f"Removed temporary files for TTS ID: {audio_id}")
             except Exception as e:
-                print(f"Error removing file: {e}")
+                print(f"Error removing files: {e}")
             
             # Clean up old database entries
             cleanup_old_audio_tts(keep_count=20)
-            print("✅ Cleaned up old TTS audio data, keeping 20 recent entries")
             
+            return True
         except Exception as e:
-            print(f"⚠️ EDGE TTS ERROR: {e}")
+            print(f"⚠️ TTS PROCESSING ERROR: {e}")
             import traceback
             traceback.print_exc()
             
-            # Try to delete processing message
-            try:
-                await processing_msg.delete()
-            except:
-                pass
+            if notify_channel:
+                error_msg = f"**ERROR:** {str(e)}"
+                await notify_channel.send(error_msg[:1900], delete_after=15)
             
-            # Send error message (truncate if too long)
-            error_msg = f"**ERROR:** {str(e)}"
-            await ctx.send(error_msg[:1900], delete_after=15)
+            return False
+            
+    # Added for auto TTS functionality
+    async def process_auto_tts(self, message):
+        """Process TTS message automatically when user types in chat"""
+        try:
+            # Only process if all conditions are met
+            if message.author.voice and len(message.content) > 0 and len(message.content) <= 200:
+                voice_channel = message.author.voice.channel
+                # Create a background task to process the TTS without blocking
+                asyncio.create_task(
+                    self.process_tts(
+                        message.content, 
+                        voice_channel, 
+                        message.author.id,
+                        message.id,
+                        None  # Don't send confirmation messages for auto-TTS
+                    )
+                )
+                return True
+        except Exception as e:
+            print(f"Auto TTS error: {e}")
+        return False
+    
+    @commands.command(name="vc", aliases=["say", "speak"])
+    async def vc(self, ctx, *, message: str):
+        """Text-to-speech using Edge TTS with instant Discord playback (2025 Method)"""
+        # Check if user is in a voice channel
+        if not ctx.author.voice:
+            return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
+        
+        # Check rate limiting
+        if is_rate_limited(ctx.author.id):
+            return await ctx.send(f"**TEKA LANG {ctx.author.mention}!** Ang bilis mo mag-type! Hinay-hinay lang!")
+        
+        add_rate_limit_entry(ctx.author.id)
+        
+        # Send quick acknowledgment - immediately add reaction to show we're working
+        await ctx.message.add_reaction("🔊")
+        
+        # Process TTS in background to avoid blocking
+        asyncio.create_task(
+            self.process_tts(
+                message, 
+                ctx.author.voice.channel, 
+                ctx.author.id,
+                ctx.message.id,
+                ctx.channel  # Send confirmation messages to the channel
+            )
+        )
     
     @commands.command(name="replay")
     async def replay(self, ctx):
