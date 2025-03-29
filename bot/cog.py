@@ -465,29 +465,16 @@ LAGING TANDAAN:
         # Check if user is in a voice channel
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
-            
-        # Connect to voice channel if not already connected
-        if not ctx.voice_client or ctx.voice_client.channel != ctx.author.voice.channel:
-            if ctx.voice_client:
-                await ctx.voice_client.disconnect()
-            await ctx.author.voice.channel.connect(timeout=60, reconnect=True)
-            await asyncio.sleep(1)  # Wait for connection to stabilize
         
-        # Generate TTS audio
+        # Create a temporary file path for the TTS audio
+        temp_file = "temp_tts.mp3"
+        
         try:
             # Send "processing" message
             processing_msg = await ctx.send("**ANTAY KA MUNA!** Ginagawa ko pa yung audio...")
             
-            # Create a temporary file path with unique name to avoid conflicts
-            temp_dir = "temp_audio"
-            # Create directory if it doesn't exist
-            if not os.path.exists(temp_dir):
-                os.makedirs(temp_dir)
-                
-            temp_file = f"{temp_dir}/tts_{ctx.author.id}_{int(time.time())}.mp3"
-            
             # Determine language based on content (simple heuristic)
-            # If message contains more English words than Tagalog words, use 'en'
+            # If message contains common Tagalog words, use 'tl'
             import re
             words = re.findall(r'\w+', message.lower())
             tagalog_markers = ['ang', 'mga', 'na', 'ng', 'sa', 'ko', 'mo', 'siya', 'naman', 'po', 'tayo', 'kami']
@@ -502,37 +489,37 @@ LAGING TANDAAN:
             tts = gTTS(text=message, lang=lang, slow=False)
             tts.save(temp_file)
             
-            # Delete processing message
             await processing_msg.delete()
             
-            # Log for debugging
-            print(f"✅ TTS file generated at {temp_file}, language: {lang}")
+            # Connect to voice channel if not already connected
+            if not ctx.voice_client:
+                await ctx.author.voice.channel.connect()
+            elif ctx.voice_client.channel != ctx.author.voice.channel:
+                await ctx.voice_client.disconnect()
+                await ctx.author.voice.channel.connect()
             
-            try:
-                # Create audio source for playback
-                audio_source = discord.FFmpegPCMAudio(executable="ffmpeg", source=temp_file)
-                
-                # Add volume adjustment to make it louder and clearer
-                audio_source = discord.PCMVolumeTransformer(audio_source, volume=1.5)
-                
-                # Play the audio
-                if ctx.voice_client.is_playing():
-                    ctx.voice_client.stop()
-                    
-                ctx.voice_client.play(
-                    audio_source, 
-                    after=lambda e: print(f'Player error: {e}' if e else 'Audio playback finished successfully!')
-                )
-            except Exception as audio_error:
-                await ctx.send(f"**ERROR SA AUDIO PLAYBACK:** {str(audio_error)}")
-                print(f"Audio playback error: {str(audio_error)}")
+            # Stop any currently playing audio
+            if ctx.voice_client and ctx.voice_client.is_playing():
+                ctx.voice_client.stop()
             
-            # Send confirmation
+            # Play the audio
+            source = discord.FFmpegPCMAudio(source=temp_file)
+            ctx.voice_client.play(source)
+            
+            # Send confirmation message
             await ctx.send(f"🔊 **SINABI KO NA:** {message}", delete_after=10)
             
         except Exception as e:
+            # Clean up processing message if it exists
+            if 'processing_msg' in locals():
+                try:
+                    await processing_msg.delete()
+                except:
+                    pass
+                    
+            # Send error message
+            await ctx.send(f"**ERROR:** {str(e)}", delete_after=15)
             print(f"TTS ERROR: {str(e)}")
-            await ctx.send(f"**ERROR:** {str(e)}")
    
    
     # ========== SERVER MANAGEMENT COMMANDS ==========
