@@ -29,7 +29,7 @@ class Config:
     MAX_CONTEXT_MESSAGES = 10  # Increased for better conversation memory and coherence
 
     # Groq API settings
-    GROQ_MODEL = "mistral-7b-instruct"  # Changed to Mistral model (Mistral-SABA-24B not available in Groq, using closest alternative)
+    GROQ_MODEL = "mistral-large-latest"  # Using Mistral Large as closest to Mistral-SABA-24B available on Groq
     MAX_TOKENS = 200  # Keep this to ensure concise responses
     TEMPERATURE = 0.7  # Lowered to be much more coherent and human-like
 
