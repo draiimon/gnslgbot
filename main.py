@@ -8,7 +8,6 @@ import threading
 import datetime
 import random
 import pytz  # For timezone support
-import wavelink  # For music playback with Lavalink
 import subprocess
 import asyncio
 from bot.database import init_db, init_audio_tts_table
@@ -67,15 +66,19 @@ async def on_ready():
         print("ChatCog initialized")
         print("✅ ChatCog loaded")
     
-    # Load our all-in-one audio cog (TTS + Music without Lavalink)
+    # Load the optimized audio cog for TTS
+    # Ibalik natin yung dating setup
     from bot.optimized_audio_cog import AudioCog
     if not bot.get_cog("AudioCog"):
         await bot.add_cog(AudioCog(bot))
-        print("✅ AudioCog loaded (TTS + Direct Music Playback)")
-        
-    # Start the greetings scheduler
-    check_greetings.start()
-    print("✅ Greetings scheduler started")
+        print("✅ AudioCog loaded (Edge TTS Direct Playback)")
+    
+    # Start the greetings scheduler task
+    try:
+        check_greetings.start()
+        print("✅ Greetings scheduler started")
+    except Exception as e:
+        print(f"❌ Error starting greetings scheduler: {e}")
     
     # Send welcome message to a channel if it exists - COMMENTED OUT DURING MAINTENANCE
     # if Config.AUTO_MESSAGE_CHANNEL_ID:

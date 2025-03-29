@@ -380,6 +380,97 @@ class AudioCog(commands.Cog):
             error_msg = f"**ERROR:** {str(e)}"
             await ctx.send(error_msg[:1900], delete_after=15)
     
+    @commands.command(name="play")
+    async def play(self, ctx, *, query: str):
+        """Play audio from a YouTube URL or search query"""
+        # Check if user is in a voice channel
+        if not ctx.author.voice:
+            return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
+        
+        # Connect to voice channel if not already connected
+        voice_client = ctx.voice_client
+        if not voice_client:
+            voice_channel = ctx.author.voice.channel
+            voice_client = await voice_channel.connect()
+            print(f"Connected to voice channel: {voice_channel.name}")
+        
+        # Send processing message
+        processing_msg = await ctx.send(f"**SANDALI LANG!** Hinahanap ko pa yang `{query}`...")
+        
+        # Check if the query is a URL or a search term
+        is_url = "youtube.com" in query or "youtu.be" in query or "spotify.com" in query
+        
+        # For direct URL playback with FFmpeg
+        try:
+            # Create high quality FFmpeg options for best audio quality
+            ffmpeg_options = {
+                'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+                'options': '-vn -af "bass=g=2.5,equalizer=f=110:width_type=h:width=100:g=4" -b:a 192k'
+            }
+            
+            # Create audio source
+            audio = discord.FFmpegPCMAudio(query if is_url else f"ytsearch:{query}", **ffmpeg_options)
+            
+            # Apply volume transformer
+            audio = discord.PCMVolumeTransformer(audio, volume=0.8)
+            
+            # Wait if something is already playing
+            if voice_client.is_playing():
+                await processing_msg.edit(content="**SANDALI LANG!** May pinapatugtog pa ako...")
+                voice_client.stop()
+            
+            # Play the audio
+            voice_client.play(audio)
+            
+            # Success message with different response based on URL or search
+            if is_url:
+                await processing_msg.edit(content=f"**TUMUTUGTOG NA!** 🎵 Playing from URL: {query}")
+            else:
+                await processing_msg.edit(content=f"**TUMUTUGTOG NA!** 🎵 Playing result for: {query}")
+            
+        except Exception as e:
+            await processing_msg.edit(content=f"**ERROR!** Hindi mahanap o ma-play yang {query}.\nError: {str(e)[:100]}")
+            print(f"Error playing audio: {e}")
+    
+    @commands.command(name="stop")
+    async def stop(self, ctx):
+        """Stop playback and clear queue"""
+        voice_client = ctx.voice_client
+        if not voice_client or not voice_client.is_connected():
+            return await ctx.send("**BOBO!** Wala naman ako sa voice channel!")
+        
+        if voice_client.is_playing():
+            voice_client.stop()
+            await ctx.send("**INIHINTO KO NA!** Cancelled playback.")
+        else:
+            await ctx.send("**TANGA!** Wala naman akong pinapatugtog!")
+    
+    @commands.command(name="pause")
+    async def pause(self, ctx):
+        """Pause current playback"""
+        voice_client = ctx.voice_client
+        if not voice_client or not voice_client.is_playing():
+            return await ctx.send("**TANGA!** Wala naman akong pinapatugtog!")
+        
+        if voice_client.is_paused():
+            return await ctx.send("**BOBO!** Naka-pause na nga eh!")
+        
+        voice_client.pause()
+        await ctx.send("**PAUSE MUNA!** Music paused.")
+    
+    @commands.command(name="resume")
+    async def resume(self, ctx):
+        """Resume paused playback"""
+        voice_client = ctx.voice_client
+        if not voice_client or not voice_client.is_connected():
+            return await ctx.send("**TANGA!** Wala naman ako sa voice channel!")
+        
+        if not voice_client.is_paused():
+            return await ctx.send("**BOBO!** Hindi naman naka-pause eh!")
+        
+        voice_client.resume()
+        await ctx.send("**TULOY ANG TUGTUGAN!** Music resumed.")
+    
     @commands.command(name="replay")
     async def replay(self, ctx):
         """Replay last TTS message from database using direct Discord playback (2025 Method)"""
