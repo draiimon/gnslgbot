@@ -98,7 +98,7 @@ class AudioCog(commands.Cog):
     
     @commands.command(name="vc")
     async def vc(self, ctx, *, message: str):
-        """Text-to-speech in voice channel with simplified direct audio playback"""
+        """Text-to-speech in voice channel with extremely simplified approach"""
         # Check if the user is in a voice channel
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
@@ -110,136 +110,91 @@ class AudioCog(commands.Cog):
         # Add to rate limit
         add_rate_limit_entry(ctx.author.id)
         
-        # Generate unique filename - Use .mp3 directly instead of converting to WAV
-        unique_id = f"{ctx.author.id}_{int(time.time())}"
-        temp_mp3 = f"{self.temp_dir}/tts_{unique_id}.mp3"
+        # Create a simple random filename - Use the current directory to avoid path issues
+        unique_id = f"{int(time.time())}_{random.randint(1000, 9999)}"
+        temp_mp3 = f"temp_tts.mp3"  # Use a fixed filename to avoid path issues
         
         # Processing message
         processing_msg = None
         
         try:
-            # Send processing message
-            processing_msg = await ctx.send("**ANTAY KA MUNA!** Ginagawa ko pa yung audio...")
-            
-            # Clean up old files (keep only latest 5)
+            # First make sure we're connected to voice
             try:
-                files = sorted([f for f in os.listdir(self.temp_dir) if f.startswith("tts_")], 
-                             key=lambda x: os.path.getmtime(os.path.join(self.temp_dir, x)))
-                if len(files) > 5:
-                    for old_file in files[:-5]:
-                        try:
-                            os.remove(os.path.join(self.temp_dir, old_file))
-                            print(f"Cleaned up old file: {old_file}")
-                        except Exception as e:
-                            print(f"Failed to clean up file {old_file}: {e}")
-            except Exception as e:
-                print(f"Error during file cleanup: {e}")
-            
-            # Determine language (default Tagalog, switch to English if needed)
-            import re
-            words = re.findall(r'\w+', message.lower())
-            tagalog_words = ['ang', 'mga', 'na', 'ng', 'sa', 'ko', 'mo', 'siya', 'naman', 'po', 'tayo', 'kami']
-            tagalog_count = sum(1 for word in words if word in tagalog_words)
-            
-            # Use English if message appears to be mostly English
-            lang = 'tl'  # Default to Tagalog
-            if len(words) > 3 and tagalog_count < 2:
-                lang = 'en'
-            
-            # Generate TTS file DIRECTLY to disk (simplified approach)
-            tts = gTTS(text=message, lang=lang, slow=False)
-            tts.save(temp_mp3)
-            
-            # Verify file exists
-            if not os.path.exists(temp_mp3) or os.path.getsize(temp_mp3) == 0:
-                raise Exception("Failed to generate audio file")
-            
-            # Delete processing message with error handling for message already deleted
-            if processing_msg:
+                # Always disconnect first to ensure a clean connection
+                if ctx.voice_client:
+                    await ctx.voice_client.disconnect()
+                    await asyncio.sleep(1)  # Longer wait to ensure complete disconnection
+                
+                # Connect to the user's channel - this must succeed before continuing
+                voice_client = await ctx.author.voice.channel.connect()
+                if not voice_client:
+                    raise Exception("Failed to connect to voice channel")
+                
+                # Send processing message
+                processing_msg = await ctx.send("**ANTAY KA MUNA!** Ginagawa ko pa yung audio...")
+                
+                # Generate TTS with explicit lang setting
+                tts = gTTS(text=message, lang='tl', slow=False)  # Default to Tagalog
+                
+                # Save directly to the main directory (avoid subdirectories)
+                tts.save(temp_mp3)
+                
+                # Verify file exists and has content
+                if not os.path.exists(temp_mp3):
+                    raise Exception("Audio file not found after generation")
+                
+                if os.path.getsize(temp_mp3) == 0:
+                    raise Exception("Generated audio file is empty")
+                    
+                # Report successful file creation
+                print(f"✅ Created TTS file: {temp_mp3} (size: {os.path.getsize(temp_mp3)} bytes)")
+                
+                # Remove processing message if it exists
                 try:
-                    await processing_msg.delete()
-                except discord.errors.NotFound:
-                    print("Processing message already deleted, continuing")
-                except Exception as e:
-                    print(f"Error deleting processing message: {e}")
+                    if processing_msg:
+                        await processing_msg.delete()
+                except Exception:
+                    pass
                 finally:
                     processing_msg = None
-            
-            # Connect to voice channel
-            try:
-                voice_client = ctx.voice_client
-                
-                # Stop any currently playing audio
-                if voice_client and voice_client.is_playing():
-                    voice_client.stop()
-                
-                # Connect to voice channel if not already connected
-                if not voice_client:
-                    voice_client = await ctx.author.voice.channel.connect()
-                elif voice_client.channel != ctx.author.voice.channel:
-                    # Move to user's channel if needed
-                    await voice_client.disconnect()
-                    await asyncio.sleep(0.5)  # Wait a bit before reconnecting
-                    voice_client = await ctx.author.voice.channel.connect()
                 
                 # Define cleanup function
                 def after_playing(error):
                     if error:
                         print(f"Audio playback error: {error}")
-                    try:
-                        if os.path.exists(temp_mp3):
-                            os.remove(temp_mp3)
-                            print(f"Deleted temp MP3 file: {temp_mp3}")
-                    except Exception as e:
-                        print(f"Error deleting temp file: {e}")
+                    
+                # Simple FFmpeg source with minimal options
+                audio_source = discord.FFmpegPCMAudio(temp_mp3)
                 
-                # Use MP3 directly with proper options to avoid FFmpeg termination
-                audio_source = discord.FFmpegPCMAudio(
-                    source=temp_mp3,
-                    before_options="-nostdin",  # Avoid stdin interactions
-                    options="-vn"  # Skip video processing
-                )
-                
-                # Play the audio with volume transformer
-                voice_client.play(
-                    discord.PCMVolumeTransformer(audio_source, volume=0.8),
-                    after=after_playing
-                )
+                # Play the audio
+                voice_client.play(audio_source, after=after_playing)
                 
                 # Send confirmation message
                 await ctx.send(f"🔊 **SINABI KO NA:** {message}", delete_after=10)
                 
             except Exception as e:
-                print(f"Voice client error: {e}")
-                raise e
+                print(f"Voice connection error: {e}")
+                # Try to always clean up the voice connection
+                try:
+                    if ctx.voice_client:
+                        await ctx.voice_client.disconnect()
+                except:
+                    pass
+                raise Exception(f"Voice connection error: {str(e)}")
             
         except Exception as e:
             error_msg = str(e)
-            print(f"TTS ERROR: {error_msg}")
+            print(f"⚠️ TTS ERROR: {error_msg}")
             
             # Clean up processing message with proper error handling
             if processing_msg:
                 try:
                     await processing_msg.delete()
-                except discord.errors.NotFound:
-                    print("Processing message already deleted in error handler, continuing")
-                except Exception as e:
-                    print(f"Error deleting processing message in error handler: {e}")
-            
-            # Clean up temp files
-            try:
-                if os.path.exists(temp_mp3):
-                    os.remove(temp_mp3)
-            except:
-                pass
+                except:
+                    pass
             
             # Send appropriate error message
-            if "not found" in error_msg.lower() or "ffmpeg" in error_msg.lower():
-                await ctx.send("**ERROR:** Hindi ma-generate ang audio file. Problem sa audio conversion.", delete_after=15)
-            elif "lang" in error_msg.lower():
-                await ctx.send("**ERROR:** Hindi supported ang language. Try mo mag-English.", delete_after=15)
-            else:
-                await ctx.send(f"**PUTANGINA MAY ERROR:** {error_msg}", delete_after=15)
+            await ctx.send(f"**PUTANGINA MAY ERROR:** {error_msg}", delete_after=15)
 
 def setup(bot):
     """Add cog to bot"""
