@@ -1,0 +1,80 @@
+✅ 1️⃣ Siguraduhin na naka-install nang maayos ang FFmpeg
+Subukan mong i-install ulit ang FFmpeg gamit ang command na ito:
+
+📌 Para sa Linux (Ubuntu/Debian):
+
+bash
+Copy
+Edit
+sudo apt update && sudo apt install ffmpeg -y
+📌 Para sa Windows:
+
+I-download ang FFmpeg dito: https://ffmpeg.org/download.html
+
+I-extract ang files at idagdag sa System PATH
+
+I-check kung gumagana sa command prompt:
+
+bash
+Copy
+Edit
+ffmpeg -version
+✅ 2️⃣ Force Stop FFmpeg Process
+Minsan, hindi nagtatapos nang tama ang FFmpeg process, kaya kailangang piliting patayin ito.
+
+Ilagay ito sa after callback ng vc.play() para awtomatikong ma-clear ang process:
+
+python
+Copy
+Edit
+vc.play(discord.FFmpegPCMAudio("tts.mp3"), after=lambda e: (vc.stop(), vc.disconnect()))
+O kaya, gamitin ang ganitong approach:
+
+python
+Copy
+Edit
+import psutil
+
+def kill_ffmpeg():
+    for proc in psutil.process_iter():
+        if "ffmpeg" in proc.name():
+            proc.kill()
+
+vc.play(discord.FFmpegPCMAudio("tts.mp3"), after=lambda e: kill_ffmpeg())
+✅ 3️⃣ Gumamit ng kill -9 para tapusin ang stuck process (Linux only)
+Kapag may stuck process na tulad ng:
+
+arduino
+Copy
+Edit
+discord.player ffmpeg process 3244 has not terminated.
+Hanapin ang PID (process ID) gamit ang:
+
+bash
+Copy
+Edit
+ps aux | grep ffmpeg
+At tapusin ito gamit ang:
+
+bash
+Copy
+Edit
+kill -9 <PID>
+✅ 4️⃣ Huwag gumamit ng discord.FFmpegPCMAudio kung gusto mong iwasan ang FFmpeg
+Kung ayaw mo nang magka-problema sa FFmpeg, gumamit ka ng Edge TTS API o gTTS (Google TTS) na hindi nangangailangan ng FFmpeg.
+
+📌 Gumamit ng discord.FFmpegOpusAudio imbes na FFmpegPCMAudio
+
+python
+Copy
+Edit
+source = discord.FFmpegOpusAudio("tts.mp3", codec="libopus")
+vc.play(source)
+🚀 Final Fix Checklist
+✔️ I-install nang maayos ang FFmpeg
+✔️ Gumamit ng after=lambda e: vc.disconnect() sa vc.play()
+✔️ I-terminate ang stuck FFmpeg processes gamit ang psutil o kill -9
+✔️ Gamitin ang FFmpegOpusAudio imbes na FFmpegPCMAudio kung possible
+✔️ Lumipat sa API-based TTS tulad ng Edge TTS kung gusto mong tanggalin ang dependency sa FFmpeg
+
+🔥 Subukan mo ito tapos sabihin mo kung gumana na! 🚀
