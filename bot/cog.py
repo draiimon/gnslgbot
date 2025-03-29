@@ -494,15 +494,20 @@ class ChatCog(commands.Cog):
 
             utility_embed.description += f"\n\n{utility_text}"
 
-            # Only add footer to the last embed (economy is now the last one)
-            economy_embed.set_footer(
+            # Only add footer to the last embed (games is now the last one)
+            games_embed.set_footer(
                 text="⚡ GINSILOG BOT 2025 EDITION ⚡ | Gawa ni Mason Calix",
                 icon_url=owner_avatar)
 
-            # Send all embeds in ONE message (following requested order)
+            # Send all embeds in ONE message (following requested order for g!tulong)
+            # TANGINA MO! GUSTO MO MALAMAN MGA COMMANDS?
+            # AI CHAT COMMANDS
+            # ECONOMY COMMAND
+            # UTILITY COMMANDS 🔧
+            # GAMES COMMANDS
             await ctx.send(embeds=[
-                header_embed, utility_embed, ai_embed, games_embed,
-                economy_embed
+                header_embed, ai_embed, economy_embed, utility_embed,
+                games_embed
             ])
 
         except Exception as e:
@@ -1240,20 +1245,20 @@ class ChatCog(commands.Cog):
             utility_embed.description += f"\n\n{utility_text}"
 
             # Only add footer to the last embed
-            utility_embed.set_footer(
+            game_embed.set_footer(
                 text=
                 "⚡ GINSILOG BOT 2025 MASTER COMMAND LIST ⚡ | Gawa ni Mason Calix",
                 icon_url=owner_avatar)
 
             # Send all embeds in ONE message according to requested order
             # GINSILOG BOT MASTER COMMAND LIST
-            # UTILITY COMMANDS 
-            # AI CHAT COMMANDS 
-            # GAME COMMANDS
+            # AI CHAT COMMANDS
             # ECONOMY COMMANDS
+            # UTILITY COMMANDS
+            # GAMES COMMANDS
             await ctx.send(embeds=[
-                header_embed, utility_embed, chat_embed, game_embed,
-                economy_embed
+                header_embed, chat_embed, economy_embed, utility_embed,
+                game_embed
             ])
 
         except Exception as e:
