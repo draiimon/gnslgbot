@@ -1772,11 +1772,16 @@ class ChatCog(commands.Cog):
             
             # Format the name
             original_name = member.display_name
-            # Remove any existing emoji suffix before converting
+            
+            # More thorough emoji cleanup - remove any trailing emoji
             clean_name = original_name
+            # First check for duplicated emojis (like "☁️ ☁️")
             for emoji_value in role_emoji_map.values():
-                if clean_name.endswith(emoji_value):
-                    clean_name = clean_name[:-len(emoji_value)].strip()
+                while True:
+                    if clean_name.endswith(emoji_value):
+                        clean_name = clean_name[:-len(emoji_value)].strip()
+                    else:
+                        break
             
             # Convert to Unicode bold style
             formatted_name = to_unicode_bold(clean_name)
