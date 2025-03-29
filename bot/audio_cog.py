@@ -358,10 +358,16 @@ class AudioCog(commands.Cog):
                 
             # Try direct playback with discord.py (no opus needed with this approach)
             try:
-                # Create audio source directly - no PCM conversion needed for Edge TTS
-                source = discord.FFmpegOpusAudio(source=filename)
+                # Create audio source - try the standard PCMAudio approach
+                source = discord.PCMVolumeTransformer(
+                    discord.FFmpegPCMAudio(
+                        source=filename,
+                        options="-loglevel info"
+                    ),
+                    volume=0.8
+                )
                 
-                print("Starting Edge TTS playback")
+                print("Starting Edge TTS playback with PCMAudio")
                 voice_client.play(source)
                 
                 # Success message
@@ -466,10 +472,16 @@ class AudioCog(commands.Cog):
             
             # Try direct playback with discord.py (no opus needed with this approach)
             try:
-                # Create audio source directly - no PCM conversion needed
-                source = discord.FFmpegOpusAudio(source=filename)
+                # Create audio source - try the standard PCMAudio approach
+                source = discord.PCMVolumeTransformer(
+                    discord.FFmpegPCMAudio(
+                        source=filename,
+                        options="-loglevel info"
+                    ),
+                    volume=0.8
+                )
                 
-                print("Starting replay playback")
+                print("Starting replay playback with PCMAudio")
                 voice_client.play(source)
                 
                 # Success message
