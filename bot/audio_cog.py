@@ -6,9 +6,15 @@ import os
 import asyncio
 import time
 import random
-from pydub import AudioSegment
 from .config import Config
-from .database import add_rate_limit_entry, is_rate_limited
+from .database import (
+    add_rate_limit_entry, 
+    is_rate_limited, 
+    store_audio_tts, 
+    get_latest_audio_tts, 
+    get_audio_tts_by_id,
+    cleanup_old_audio_tts
+)
 
 class AudioCog(commands.Cog):
     """Cog for handling voice channel interactions and TTS"""
@@ -95,10 +101,10 @@ class AudioCog(commands.Cog):
         except Exception as e:
             await ctx.send(f"**ERROR:** {str(e)}")
             print(f"Error leaving voice channel: {e}")
-    
-    @commands.command(name="vc")
-    async def vc(self, ctx, *, message: str):
-        """Text-to-speech in voice channel with extremely simplified approach"""
+            
+    @commands.command(name="replay")
+    async def replay(self, ctx):
+        """Replay the last TTS message from database"""
         # Check if the user is in a voice channel
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
@@ -110,9 +116,8 @@ class AudioCog(commands.Cog):
         # Add to rate limit
         add_rate_limit_entry(ctx.author.id)
         
-        # Create a simple random filename - Use the current directory to avoid path issues
-        unique_id = f"{int(time.time())}_{random.randint(1000, 9999)}"
-        temp_mp3 = f"temp_tts.mp3"  # Use a fixed filename to avoid path issues
+        # Temporary file for FFmpeg playback
+        temp_mp3 = "temp_tts.mp3"
         
         # Processing message
         processing_msg = None
@@ -123,7 +128,113 @@ class AudioCog(commands.Cog):
                 # Always disconnect first to ensure a clean connection
                 if ctx.voice_client:
                     await ctx.voice_client.disconnect()
-                    await asyncio.sleep(1)  # Longer wait to ensure complete disconnection
+                    await asyncio.sleep(1)  # Wait for disconnection to complete
+                
+                # Connect to the user's channel - this must succeed before continuing
+                voice_client = await ctx.author.voice.channel.connect()
+                if not voice_client:
+                    raise Exception("Failed to connect to voice channel")
+                
+                # Send processing message
+                processing_msg = await ctx.send("**ANTAY KA MUNA!** Kinukuha ko yung last audio...")
+                
+                # Get latest audio from database
+                latest_audio = get_latest_audio_tts()
+                
+                if not latest_audio or not latest_audio[1]:
+                    raise Exception("No previous TTS audio found in database")
+                
+                audio_id = latest_audio[0]
+                audio_data = latest_audio[1]
+                
+                # Save to temporary file for playback
+                with open(temp_mp3, "wb") as f:
+                    f.write(audio_data)
+                
+                # Verify file exists and has content
+                if not os.path.exists(temp_mp3) or os.path.getsize(temp_mp3) == 0:
+                    raise Exception("Failed to create audio file from database")
+                
+                print(f"✅ Loaded TTS audio from database with ID: {audio_id}")
+                
+                # Remove processing message if it exists
+                try:
+                    if processing_msg:
+                        await processing_msg.delete()
+                except Exception:
+                    pass
+                finally:
+                    processing_msg = None
+                
+                # Define cleanup function - no need to delete the file as we'll reuse it
+                def after_playing(error):
+                    if error:
+                        print(f"Audio playback error: {error}")
+                
+                # Simple FFmpeg source with minimal options
+                audio_source = discord.FFmpegPCMAudio(
+                    temp_mp3,
+                    before_options="-nostdin",  # Avoid stdin interactions
+                    options="-vn"  # Skip video processing
+                )
+                
+                # Play the audio
+                voice_client.play(audio_source, after=after_playing)
+                
+                # Send confirmation message
+                await ctx.send(f"🔊 **REPLAY:** Audio ID: {audio_id}", delete_after=10)
+                
+            except Exception as e:
+                print(f"Voice connection error: {e}")
+                # Try to always clean up the voice connection
+                try:
+                    if ctx.voice_client:
+                        await ctx.voice_client.disconnect()
+                except:
+                    pass
+                raise Exception(f"Voice connection error: {str(e)}")
+            
+        except Exception as e:
+            error_msg = str(e)
+            print(f"⚠️ REPLAY ERROR: {error_msg}")
+            
+            # Clean up processing message with proper error handling
+            if processing_msg:
+                try:
+                    await processing_msg.delete()
+                except:
+                    pass
+            
+            # Send appropriate error message
+            await ctx.send(f"**PUTANGINA MAY ERROR:** {error_msg}", delete_after=15)
+    
+    @commands.command(name="vc")
+    async def vc(self, ctx, *, message: str):
+        """Text-to-speech in voice channel using database storage"""
+        # Check if the user is in a voice channel
+        if not ctx.author.voice:
+            return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
+        
+        # Check rate limiting
+        if is_rate_limited(ctx.author.id, limit=Config.RATE_LIMIT_MESSAGES, period_seconds=Config.RATE_LIMIT_PERIOD):
+            return await ctx.send(f"**Huy {ctx.author.mention}!** Ang bilis mo naman magtype! Sandali lang muna, naglo-load pa ako!")
+        
+        # Add to rate limit
+        add_rate_limit_entry(ctx.author.id)
+        
+        # Temporary file for FFmpeg playback (required by Discord.py)
+        temp_mp3 = "temp_tts.mp3"
+        
+        # Processing message
+        processing_msg = None
+        
+        try:
+            # First make sure we're connected to voice
+            try:
+                # Always disconnect first to ensure a clean connection
+                if ctx.voice_client:
+                    await ctx.voice_client.disconnect()
+                    await asyncio.sleep(1)  # Wait for disconnection to complete
                 
                 # Connect to the user's channel - this must succeed before continuing
                 voice_client = await ctx.author.voice.channel.connect()
@@ -136,18 +247,28 @@ class AudioCog(commands.Cog):
                 # Generate TTS with explicit lang setting
                 tts = gTTS(text=message, lang='tl', slow=False)  # Default to Tagalog
                 
-                # Save directly to the main directory (avoid subdirectories)
-                tts.save(temp_mp3)
+                # Create a BytesIO object to get the binary data directly
+                audio_io = io.BytesIO()
+                tts.write_to_fp(audio_io)
+                audio_data = audio_io.getvalue()
+                
+                # Store the audio in the database
+                audio_id = store_audio_tts(ctx.author.id, message, audio_data)
+                
+                if not audio_id:
+                    raise Exception("Failed to store audio in database")
+                
+                print(f"✅ Stored TTS audio in database with ID: {audio_id}")
+                
+                # Save a temporary copy for FFmpeg to use
+                with open(temp_mp3, "wb") as f:
+                    f.write(audio_data)
                 
                 # Verify file exists and has content
-                if not os.path.exists(temp_mp3):
-                    raise Exception("Audio file not found after generation")
+                if not os.path.exists(temp_mp3) or os.path.getsize(temp_mp3) == 0:
+                    raise Exception("Generated audio file is empty or missing")
                 
-                if os.path.getsize(temp_mp3) == 0:
-                    raise Exception("Generated audio file is empty")
-                    
-                # Report successful file creation
-                print(f"✅ Created TTS file: {temp_mp3} (size: {os.path.getsize(temp_mp3)} bytes)")
+                print(f"✅ Created temporary TTS file: {temp_mp3} (size: {os.path.getsize(temp_mp3)} bytes)")
                 
                 # Remove processing message if it exists
                 try:
@@ -158,19 +279,26 @@ class AudioCog(commands.Cog):
                 finally:
                     processing_msg = None
                 
-                # Define cleanup function
+                # Define cleanup function - no need to delete the file as we'll reuse it
                 def after_playing(error):
                     if error:
                         print(f"Audio playback error: {error}")
-                    
+                
                 # Simple FFmpeg source with minimal options
-                audio_source = discord.FFmpegPCMAudio(temp_mp3)
+                audio_source = discord.FFmpegPCMAudio(
+                    temp_mp3,
+                    before_options="-nostdin",  # Avoid stdin interactions
+                    options="-vn"  # Skip video processing
+                )
                 
                 # Play the audio
                 voice_client.play(audio_source, after=after_playing)
                 
-                # Send confirmation message
-                await ctx.send(f"🔊 **SINABI KO NA:** {message}", delete_after=10)
+                # Send confirmation message with database ID for reference
+                await ctx.send(f"🔊 **SINABI KO NA** (ID: {audio_id}): {message}", delete_after=10)
+                
+                # Periodically clean up old audio files
+                cleanup_old_audio_tts(keep_count=20)
                 
             except Exception as e:
                 print(f"Voice connection error: {e}")

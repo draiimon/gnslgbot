@@ -8,7 +8,7 @@ import threading
 import datetime
 import random
 import pytz  # For timezone support
-from bot.database import init_db
+from bot.database import init_db, init_audio_tts_table
 
 # Initialize bot with command prefix and remove default help command
 intents = discord.Intents.all()
@@ -26,8 +26,9 @@ async def on_ready():
     print(f'✅ Logged in as {bot.user.name} ({bot.user.id})')
     print('------')
 
-    # Initialize the database
+    # Initialize the database and audio TTS table
     init_db()
+    init_audio_tts_table()
     
     # Remove Lavalink node connection for now since we don't have Java installed
     # Will use direct FFmpeg approach instead

@@ -1,0 +1,35 @@
+de of -9.
+Automated greetings disabled during maintenance
+2025-03-29 02:30:23 INFO     discord.voice_state Connecting to voice...
+2025-03-29 02:30:23 INFO     discord.voice_state Starting voice handshake... (connection attempt 1)
+2025-03-29 02:30:24 INFO     discord.voice_state Voice handshake complete. Endpoint found: hongkong11014.discord.media
+2025-03-29 02:30:24 INFO     discord.voice_state Voice connection complete.
+2025-03-29 02:30:37 INFO     discord.voice_state The voice handshake is being terminated for Channel ID 1345727363341746196 (Guild ID 1345727357612195881)
+2025-03-29 02:30:38 INFO     discord.voice_state Connecting to voice...
+2025-03-29 02:30:38 INFO     discord.voice_state Starting voice handshake... (connection attempt 1)
+2025-03-29 02:30:38 INFO     discord.voice_state Voice handshake complete. Endpoint found: hongkong11014.discord.media
+2025-03-29 02:30:39 INFO     discord.voice_state Voice connection complete.
+✅ Created TTS file: temp_tts.mp3 (size: 15168 bytes)
+Voice connection error: 
+2025-03-29 02:30:41 INFO     discord.voice_state The voice handshake is being terminated for Channel ID 1345727363341746196 (Guild ID 1345727357612195881)
+[mp3 @ 0x2390240] Estimating duration from bitrate, this may be inaccurate
+⚠️ TTS ERROR: Voice connection error: 
+2025-03-29 02:30:42 INFO     discord.player ffmpeg process 6800 has not terminated. Waiting to terminate...
+2025-03-29 02:30:42 INFO     discord.player ffmpeg process 6800 should have terminated with a return code of -9.
+2025-03-29 02:30:51 INFO     discord.voice_state Connecting to voice...
+2025-03-29 02:30:51 INFO     discord.voice_state Starting voice handshake... (connection attempt 1)
+2025-03-29 02:30:52 INFO     discord.voice_state Voice handshake complete. Endpoint found: hongkong11014.discord.media
+2025-03-29 02:30:53 INFO     discord.voice_state Voice connection complete.
+2025-03-29 02:31:03 INFO     discord.voice_state The voice handshake is being terminated for Channel ID 1345727363341746196 (Guild ID 1345727357612195881)
+2025-03-29 02:31:04 INFO     discord.voice_state Connecting to voice...
+2025-03-29 02:31:04 INFO     discord.voice_state Starting voice handshake... (connection attempt 1)
+2025-03-29 02:31:05 INFO     discord.voice_state Voice handshake complete. Endpoint found: hongkong11014.discord.media
+2025-03-29 02:31:05 INFO     discord.voice_state Voice connection complete.
+✅ Created TTS file: temp_tts.mp3 (size: 14592 bytes)
+Voice connection error: 
+2025-03-29 02:31:07 INFO     discord.voice_state The voice handshake is being terminated for Channel ID 1345727363341746196 (Guild ID 1345727357612195881)
+[mp3 @ 0xc3d240] Estimating duration from bitrate, this may be inaccurate
+⚠️ TTS ERROR: Voice connection error: 
+2025-03-29 02:31:08 INFO     discord.player ffmpeg process 6872 has not terminated. Waiting to terminate...
+2025-03-29 02:31:08 INFO     discord.player ffmpeg process 6872 should have terminated with a return code of -9.
+Automated greetings disabled during maintenance

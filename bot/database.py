@@ -58,6 +58,17 @@ def init_db():
                 )
             ''')
             
+            # Create audio_tts table for storing TTS audio data
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS audio_tts (
+                    id SERIAL PRIMARY KEY,
+                    user_id BIGINT,
+                    message TEXT,
+                    audio_data BYTEA,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
             conn.commit()
             print("✅ Database initialized successfully")
 
@@ -241,3 +252,83 @@ def get_leaderboard(limit=10):
                 (limit,)
             )
             return cur.fetchall()
+
+# Audio TTS Functions
+def init_audio_tts_table():
+    """Initialize the audio_tts table"""
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS audio_tts (
+                    id SERIAL PRIMARY KEY,
+                    user_id BIGINT,
+                    message TEXT,
+                    audio_data BYTEA,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            conn.commit()
+            print("✅ Audio TTS table initialized")
+
+def store_audio_tts(user_id, message, audio_data):
+    """Store TTS audio data in the database
+    
+    Args:
+        user_id (int): Discord user ID
+        message (str): The message that was converted to speech
+        audio_data (bytes): Binary audio data
+        
+    Returns:
+        int: The ID of the stored audio
+    """
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO audio_tts (user_id, message, audio_data) VALUES (%s, %s, %s) RETURNING id",
+                (user_id, message, psycopg2.Binary(audio_data))
+            )
+            result = cur.fetchone()
+            conn.commit()
+            return result[0] if result else None
+
+def get_latest_audio_tts():
+    """Get the most recent TTS audio data
+    
+    Returns:
+        tuple: (id, audio_data) or None if no audio exists
+    """
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, audio_data FROM audio_tts ORDER BY created_at DESC LIMIT 1")
+            result = cur.fetchone()
+            return result if result else None
+
+def get_audio_tts_by_id(audio_id):
+    """Get TTS audio data by ID
+    
+    Args:
+        audio_id (int): The ID of the audio to retrieve
+        
+    Returns:
+        bytes: Binary audio data or None if not found
+    """
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT audio_data FROM audio_tts WHERE id = %s", (audio_id,))
+            result = cur.fetchone()
+            return result[0] if result else None
+
+def cleanup_old_audio_tts(keep_count=10):
+    """Delete old TTS audio data, keeping only the most recent entries
+    
+    Args:
+        keep_count (int): Number of recent entries to keep
+    """
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM audio_tts WHERE id NOT IN (SELECT id FROM audio_tts ORDER BY created_at DESC LIMIT %s)",
+                (keep_count,)
+            )
+            conn.commit()
+            print(f"✅ Cleaned up old TTS audio data, keeping {keep_count} recent entries")
