@@ -414,39 +414,9 @@ class ChatCog(commands.Cog):
         """Get response from Groq AI with conversation context"""
         try:
             # Normal, helpful system message for Mistral-SABA-24B model
-            system_message = f"""Ikaw ay Ginsilog Bot, gawa ni Mason Calix.
+            system_message = f"""Ikaw ay Ginsilog Bot, gawa ni Mason Calix. kapag tinanong lang pero kung ano functions mo as a bot gawin mo!
 
-PERSONALITY:
-- Ikaw ay isang normal, helpful, at friendly na Discord bot
-- Mabait ka at respectful sa lahat ng users
-- Maayos at helpful ang mga sagot mo sa mga tanong
-- Hindi ka nagmumura o nagsasabi ng mga bastos na salita
-- Lagi kang nagbibigay ng tamang impormasyon
-- Marunong kang sumagot sa Tagalog at English
-
-MGA RULES:
-1. Maging helpful sa mga users
-2. Kung Tagalog ang user, sumagot din sa Tagalog/Taglish
-3. Kung English ang user, sumagot din sa English
-4. Maging polite at respectful sa lahat ng oras
-5. Iwasan ang paulit-ulit na responses
-6. Iwasan ang pagsagot ng masyadong mahaba
-7. Kung may hindi ka alam, sabihin mo na hindi mo alam
-8. Huwag magbigay ng maling impormasyon
-
-PAG TINANONG:
-- Kung sino ka: "Ako si Ginsilog Bot, gawa ni Mason Calix. Paano kita matutulungan?"
-- Kung ano ka: "Ako ay isang friendly Discord bot na handang tumulong sa mga users"
-
-EXAMPLES:
-User: Paano magluto ng adobo?
-You: Para sa adobo, kailangan mo ng baboy o manok, toyo, suka, paminta, bawang, at dahon ng laurel. Pakuluan mo ang lahat hanggang lumambot ang karne at lumapot ang sarsa.
-
-User: What's the weather like?
-You: I don't have real-time weather data, but I can help you find a reliable weather website to check your local forecast.
-
-User: Sino ba ang pinakamatalino sa mundo?
-You: Maraming matalinong tao sa mundo at depende rin sa field ng expertise. Einstein ay kilala sa physics, Stephen Hawking sa cosmology, at marami pang iba. Sino sa particular field ang tinatanong mo?"""
+"""
 
             # Construct messages
             messages = [{"role": "system", "content": system_message}]
@@ -1128,6 +1098,44 @@ Thank you for your cooperation!""",
 
         # Send the embed in the channel
         await ctx.send(embed=embed)
+
+    @commands.command(name="clear_messages")
+    @commands.check(lambda ctx: any(role.id in [
+        1345727357662658603, 1345727357645885449, 1345727357645885448
+    ] for role in ctx.author.roles))  # Admin roles only
+    async def clear_messages(self, ctx, channel_id: int = None):
+        """Remove all bot messages from a specified channel"""
+        # If no channel_id is provided, use the current channel
+        if not channel_id:
+            channel = ctx.channel
+        else:
+            channel = self.bot.get_channel(channel_id)
+        
+        if not channel:
+            await ctx.send(f"**Error:** Hindi mahanap ang channel na may ID {channel_id}.")
+            return
+            
+        # Send initial feedback
+        status_message = await ctx.send(f"**Processing:** Checking messages in channel {channel.name}...")
+        
+        # Delete messages
+        deleted_count = 0
+        async for message in channel.history(limit=500):  # Check last 500 messages
+            if message.author.id == self.bot.user.id:  # Only delete bot's own messages
+                try:
+                    await message.delete()
+                    deleted_count += 1
+                    # Update status message every 10 deletions
+                    if deleted_count % 10 == 0:
+                        await status_message.edit(content=f"**Processing:** Deleted {deleted_count} messages so far...")
+                except Exception as e:
+                    print(f"Error deleting message: {e}")
+                
+                # Add a small delay to avoid rate limits
+                await asyncio.sleep(0.7)
+        
+        # Final confirmation
+        await status_message.edit(content=f"**Completed:** Successfully deleted {deleted_count} messages from {channel.name}.")
 
     @commands.command(name="leaderboard")
     async def leaderboard(self, ctx):
