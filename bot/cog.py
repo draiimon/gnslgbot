@@ -7,6 +7,9 @@ import time
 import random
 import datetime
 import pytz  # For Philippines timezone
+import os
+import io
+from gtts import gTTS  # Google Text-to-Speech
 from .config import Config
 
 class ChatCog(commands.Cog):
@@ -454,6 +457,47 @@ LAGING TANDAAN:
             await ctx.send("**AYOS!** UMALIS NA KO!")
         else:
             await ctx.send("**TANGA!** WALA AKO SA VOICE CHANNEL!")
+
+    @commands.command(name="vc")
+    @commands.check(lambda ctx: any(role.id in [1345727357662658603, 1345727357645885449, 1345727357645885448] for role in ctx.author.roles))  # Admin roles check
+    async def vc(self, ctx, *, message: str):
+        """Text-to-speech in voice channel (Admin only)"""
+        # Check if user is in a voice channel
+        if not ctx.author.voice:
+            return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
+            
+        # Connect to voice channel if not already connected
+        if not ctx.voice_client or ctx.voice_client.channel != ctx.author.voice.channel:
+            if ctx.voice_client:
+                await ctx.voice_client.disconnect()
+            await ctx.author.voice.channel.connect(timeout=60, reconnect=True)
+        
+        # Generate TTS audio
+        try:
+            # Create a temporary file path
+            temp_file = "temp_tts.mp3"
+            
+            # Generate TTS with gTTS (Google Text-to-Speech)
+            tts = gTTS(text=message, lang='tl', slow=False)  # 'tl' for Tagalog
+            tts.save(temp_file)
+            
+            # Create audio source for playback
+            audio_source = discord.FFmpegPCMAudio(temp_file)
+            
+            # Play the audio
+            if ctx.voice_client.is_playing():
+                ctx.voice_client.stop()
+            
+            ctx.voice_client.play(audio_source)
+            
+            # Delete the temporary file after playback
+            # await asyncio.sleep(5)  # Give some time for playback to start
+            # os.remove(temp_file)
+            
+            await ctx.send(f"🔊 **SINABI KO NA:** {message}", delete_after=10)
+            
+        except Exception as e:
+            await ctx.send(f"**ERROR:** {str(e)}")
    
    
     # ========== SERVER MANAGEMENT COMMANDS ==========
@@ -682,7 +726,8 @@ Thank you for your cooperation!""",
             "g!goodmorning": "Mag-send ng good morning message sa greetings channel",
             "g!goodnight": "Mag-send ng good night message sa greetings channel",
             "g!test": "Pagmumurahin lahat ng online users (mention them all)",
-            "g!g <channel_id> <message>": "Mag-send ng message sa ibang channel nang patago"
+            "g!g <channel_id> <message>": "Mag-send ng message sa ibang channel nang patago",
+            "g!vc <message>": "Text-to-speech sa voice channel (lalaki sa voice channel)"
         }
         
         # Regular commands that admins can also use
@@ -799,7 +844,8 @@ Thank you for your cooperation!""",
             "g!goodmorning": "Mag-send ng good morning message sa greetings channel",
             "g!goodnight": "Mag-send ng good night message sa greetings channel",
             "g!test": "Pagmumurahin lahat ng online users (mention them all)",
-            "g!g <channel_id> <message>": "Mag-send ng message sa ibang channel nang patago"
+            "g!g <channel_id> <message>": "Mag-send ng message sa ibang channel nang patago",
+            "g!vc <message>": "Text-to-speech sa voice channel (lalaki sa voice channel)"
         }
         
         command_text = ""
