@@ -312,7 +312,7 @@ class AudioCog(commands.Cog):
     
     @commands.command(name="vc")
     async def vc(self, ctx, *, message: str):
-        """Text-to-speech using Edge TTS API with direct PCM streaming"""
+        """Text-to-speech using Edge TTS API with Lavalink playback"""
         # Check if user is in a voice channel
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
@@ -329,7 +329,7 @@ class AudioCog(commands.Cog):
         try:
             # Generate TTS using edge_tts
             print(f"Generating Edge TTS for message: '{message}'")
-            wav_filename = f"{self.temp_dir}/tts_{ctx.message.id}.wav"
+            mp3_filename = f"{self.temp_dir}/tts_{ctx.message.id}.mp3"
             
             # Import edge_tts here to avoid overhead if not used
             import edge_tts
@@ -337,99 +337,75 @@ class AudioCog(commands.Cog):
             # Create Edge TTS communicator - use Tagalog/Filipino voice
             # Options: fil-PH-AngeloNeural (male), fil-PH-BlessicaNeural (female)
             # If these fail, fallback to en-US-JennyNeural or en-US-ChristopherNeural
+            tts = edge_tts.Communicate(text=message, voice="fil-PH-BlessicaNeural")
             
-            # Generate WAV directly with lower bitrate for better performance
-            tts = edge_tts.Communicate(
-                text=message, 
-                voice="fil-PH-BlessicaNeural",
-                output_format="audio/wav;codec=pcm;bitrate=16000"
-            )
-            
-            # Generate WAV audio directly using Edge TTS API
-            await tts.save(wav_filename)
-            print(f"Edge TTS WAV file generated successfully: {wav_filename}")
+            # Generate MP3 audio using Edge TTS API
+            await tts.save(mp3_filename)
+            print(f"Edge TTS file generated successfully: {mp3_filename}")
             
             # Verify file exists and has content
-            if not os.path.exists(wav_filename):
+            if not os.path.exists(mp3_filename):
                 raise Exception("Failed to generate Edge TTS file - file does not exist")
             
-            if os.path.getsize(wav_filename) == 0:
+            if os.path.getsize(mp3_filename) == 0:
                 raise Exception("Failed to generate Edge TTS file - file is empty")
                 
-            print(f"Edge TTS file saved: {wav_filename} ({os.path.getsize(wav_filename)} bytes)")
+            print(f"Edge TTS file saved: {mp3_filename} ({os.path.getsize(mp3_filename)} bytes)")
             
-            # Store in database (as MP3 to save space)
-            try:
-                # Import pydub for conversion to MP3 for storage
-                from pydub import AudioSegment
-                
-                # Convert WAV to MP3 for storage
-                audio = AudioSegment.from_wav(wav_filename)
-                mp3_temp = f"{self.temp_dir}/tts_db_{ctx.message.id}.mp3"
-                audio.export(mp3_temp, format="mp3", bitrate="32k")
-                
-                with open(mp3_temp, "rb") as f:
-                    audio_data = f.read()
-                    audio_id = store_audio_tts(ctx.author.id, message, audio_data)
-                    print(f"Stored Edge TTS in database with ID: {audio_id}")
-                
-                # Clean up temp MP3
-                os.remove(mp3_temp)
-            except Exception as db_error:
-                print(f"Warning: Failed to store TTS in database: {db_error}")
+            # Store in database
+            with open(mp3_filename, "rb") as f:
+                audio_data = f.read()
+                audio_id = store_audio_tts(ctx.author.id, message, audio_data)
+                print(f"Stored Edge TTS in database with ID: {audio_id}")
             
-            # Connect to the voice channel
+            # Connect to the voice channel with wavelink
             voice_channel = ctx.author.voice.channel
             
-            # If we have a wavelink player or any voice client, disconnect it
-            voice_client = ctx.guild.voice_client
-            if voice_client:
-                print("Disconnecting existing voice client")
-                await voice_client.disconnect()
-                voice_client = None
-                
-            # Try playing PCM audio with direct PCMStream (no FFmpeg needed)
             try:
-                # Connect to the voice channel
-                voice_client = await voice_channel.connect()
-                print(f"Connected to {voice_channel.name} for TTS playback")
+                # Get or create a wavelink player for this guild
+                player = ctx.voice_client
                 
-                # Create our custom PCM audio source
-                source = self.PCMStream(wav_filename)
+                # Check if we need to create a new player
+                if not player:
+                    print(f"Attempting to join channel: {voice_channel.name} (ID: {voice_channel.id})")
+                    player = await voice_channel.connect(cls=wavelink.Player)
+                    print(f"Created new wavelink player...")
+                elif player.channel.id != voice_channel.id:
+                    print(f"Moving to channel: {voice_channel.name}")
+                    await player.move_to(voice_channel)
                 
-                print("Starting Edge TTS playback with direct PCM streaming")
-                voice_client.play(source, after=lambda e: source.cleanup())
+                print(f"Successfully connected to {voice_channel.name}")
+                
+                # Get track from local file using Lavalink
+                tracks = await wavelink.NodePool.get_node().get_tracks(wavelink.LocalTrack, mp3_filename)
+                
+                if not tracks:
+                    raise Exception("Failed to load audio track from Lavalink")
+                
+                # Play the track using wavelink
+                track = tracks[0]
+                await player.play(track)
+                print(f"Playing TTS audio using Lavalink: {mp3_filename}")
                 
                 # Success message
                 await processing_msg.delete()
                 await ctx.send(f"🔊 **SPEAKING:** {message}", delete_after=10)
                 
-                # Wait for the audio to finish playing
-                while voice_client.is_playing():
-                    await asyncio.sleep(1)
-                
-                # Wait an additional 2 seconds before disconnecting
-                await asyncio.sleep(2)
-                
-                # Disconnect
-                await voice_client.disconnect()
-                print("Disconnected from voice channel after playback")
+                # We don't disconnect after playing - wavelink player stays in channel
                 
             except Exception as play_error:
-                print(f"Edge TTS playback error: {play_error}")
+                print(f"Lavalink playback error: {play_error}")
+                import traceback
+                traceback.print_exc()
                 
                 # Even if playback fails, we've still generated the TTS
                 await processing_msg.delete()
                 await ctx.send(f"🔊 **TTS GENERATED:** {message}\n\n(Audio generated but couldn't be played. Error: {str(play_error)[:100]}...)", delete_after=15)
                 
-                # Disconnect if we're still connected
-                if voice_client and voice_client.is_connected():
-                    await voice_client.disconnect()
-                
-            # Clean up the files
+            # Clean up the files once we're done
             try:
-                os.remove(wav_filename)
-                print(f"Removed temporary file: {wav_filename}")
+                os.remove(mp3_filename)
+                print(f"Removed temporary file: {mp3_filename}")
             except Exception as e:
                 print(f"Error removing file: {e}")
             
@@ -454,7 +430,7 @@ class AudioCog(commands.Cog):
     
     @commands.command(name="replay")
     async def replay(self, ctx):
-        """Replay last TTS message from database using direct PCM streaming"""
+        """Replay last TTS message from database using Lavalink"""
         # Check if user is in a voice channel
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
@@ -470,84 +446,64 @@ class AudioCog(commands.Cog):
         processing_msg = await ctx.send("**SANDALI LANG!** Ire-replay ko pa yung huling audio...")
         
         try:
-            # Save audio to temp files
+            # Save audio to temp file
             mp3_filename = f"{self.temp_dir}/replay_{ctx.message.id}.mp3"
-            wav_filename = f"{self.temp_dir}/replay_{ctx.message.id}.wav"
             
             with open(mp3_filename, "wb") as f:
                 f.write(audio_bytes)
                 
             print(f"Saved replay audio to file: {mp3_filename}")
             
-            # Import pydub for audio conversion
-            from pydub import AudioSegment
-            
-            # Convert MP3 to WAV with PCM format using pydub
-            print("Converting MP3 to WAV with PCM format...")
-            audio = AudioSegment.from_mp3(mp3_filename)
-            
-            # Set parameters required for Discord playback - lower bitrate for performance
-            audio = audio.set_frame_rate(16000).set_channels(1).set_sample_width(2)
-            
-            # Export as WAV (PCM format)
-            audio.export(wav_filename, format="wav")
-            print(f"Converted to WAV: {wav_filename} ({os.path.getsize(wav_filename)} bytes)")
-            
-            # Connect to the voice channel
+            # Connect to the voice channel with wavelink
             voice_channel = ctx.author.voice.channel
             
-            # If we have a wavelink player or any voice client, disconnect it
-            voice_client = ctx.guild.voice_client
-            if voice_client:
-                print("Disconnecting existing voice client for replay")
-                await voice_client.disconnect()
-                voice_client = None
-                
-            # Try playing audio using direct PCMStream
             try:
-                # Connect to the voice channel
-                voice_client = await voice_channel.connect()
-                print(f"Connected to {voice_channel.name} for replay playback")
+                # Get or create a wavelink player for this guild
+                player = ctx.voice_client
                 
-                # Create our custom PCM audio source
-                source = self.PCMStream(wav_filename)
+                # Check if we need to create a new player
+                if not player:
+                    print(f"Attempting to join channel: {voice_channel.name} (ID: {voice_channel.id})")
+                    player = await voice_channel.connect(cls=wavelink.Player)
+                    print(f"Created new wavelink player...")
+                elif player.channel.id != voice_channel.id:
+                    print(f"Moving to channel: {voice_channel.name}")
+                    await player.move_to(voice_channel)
                 
-                print("Starting replay with direct PCM streaming")
-                voice_client.play(source, after=lambda e: source.cleanup())
+                print(f"Successfully connected to {voice_channel.name}")
+                
+                # Get track from local file using Lavalink
+                tracks = await wavelink.NodePool.get_node().get_tracks(wavelink.LocalTrack, mp3_filename)
+                
+                if not tracks:
+                    raise Exception("Failed to load audio track from Lavalink")
+                
+                # Play the track using wavelink
+                track = tracks[0]
+                await player.play(track)
+                print(f"Playing replay audio using Lavalink: {mp3_filename}")
                 
                 # Success message
                 await processing_msg.delete()
                 await ctx.send(f"🔊 **REPLAYING:** Last TTS message", delete_after=10)
                 
-                # Wait for the audio to finish playing
-                while voice_client.is_playing():
-                    await asyncio.sleep(1)
-                
-                # Wait an additional 2 seconds before disconnecting
-                await asyncio.sleep(2)
-                
-                # Disconnect
-                await voice_client.disconnect()
-                print("Disconnected from voice channel after replay")
+                # We don't disconnect after playing - wavelink player stays in channel
                 
             except Exception as play_error:
-                print(f"Replay error: {play_error}")
+                print(f"Lavalink replay error: {play_error}")
+                import traceback
+                traceback.print_exc()
                 
                 # Even if playback fails, we've still retrieved the audio
                 await processing_msg.delete()
                 await ctx.send(f"🔊 **LAST TTS RETRIEVED**\n\n(Audio file found but couldn't be played. Error: {str(play_error)[:100]}...)", delete_after=15)
                 
-                # Disconnect if we're still connected
-                if voice_client and voice_client.is_connected():
-                    await voice_client.disconnect()
-                
             # Clean up the files
             try:
                 os.remove(mp3_filename)
-                os.remove(wav_filename)
-                print(f"Removed temporary replay files: {mp3_filename}, {wav_filename}")
+                print(f"Removed temporary replay file: {mp3_filename}")
             except Exception as e:
-                print(f"Error removing replay files: {e}")
+                print(f"Error removing replay file: {e}")
             
         except Exception as e:
             print(f"⚠️ REPLAY ERROR: {e}")
