@@ -507,17 +507,21 @@ class ChatCog(commands.Cog):
             music_embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1345733998357512215/1355508565347143720/Untitled_design_3.png?ex=67e92f3a&is=67e7ddba&hm=579b82f09e02b6d6c83d54831273c3dd4a99b0f90ab268c08dedd4c2660503e6&")
 
             music_commands = {
-                "g!play <song>": "Patugtugin ang kanta (YouTube or Spotify)",
+                "g!play tts <message>": "Convert text to speech at i-play sa voice channel",
+                "g!play <search>": "Search sa local files o magsalita gamit TTS",
+                "g!join": "Sumali sa voice channel mo",
+                "g!leave": "Umalis sa voice channel",
                 "g!pause": "I-pause ang kanta",
                 "g!resume": "I-resume ang kanta",
                 "g!skip": "Skip sa next song",
                 "g!stop": "Ihinto ang playback at i-clear ang queue",
                 "g!queue": "Tignan ang playlist queue",
+                "g!clear_queue": "I-clear ang queue ng kanta",
                 "g!shuffle": "I-shuffle ang queue",
                 "g!loop": "Toggle repeat mode",
                 "g!nowplaying": "Display current song",
                 "g!volume <0-100>": "Adjust volume ng player",
-                "g!search <query>": "Search songs sa YouTube"
+                "g!remove <number>": "Tanggalin ang kanta sa queue"
             }
 
             # Add music commands to description

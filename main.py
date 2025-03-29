@@ -5,7 +5,7 @@ from bot.config import Config
 from bot.cog import ChatCog
 from bot.optimized_audio_cog import AudioCog
 from bot.speech_recognition_cog import SpeechRecognitionCog
-from bot.music_cog import MusicCog
+from bot.enhanced_music_cog import EnhancedMusicCog  # Using the enhanced version
 from flask import Flask
 import threading
 import datetime
@@ -64,11 +64,11 @@ async def on_ready():
         await bot.add_cog(speech_cog)
         print("✅ Speech Recognition Cog loaded with voice command support")
     
-    # Load music cog if not already loaded
-    if not bot.get_cog("MusicCog"):
-        music_cog = MusicCog(bot)
-        await bot.add_cog(music_cog)
-        print("✅ GinsilogBot Music Cog loaded with YouTube and Spotify support")
+    # Load enhanced music cog if not already loaded
+    if not bot.get_cog("EnhancedMusicCog"):
+        enhanced_music_cog = EnhancedMusicCog(bot)
+        await bot.add_cog(enhanced_music_cog)
+        print("🔊 Enhanced Music Cog loaded with Edge TTS and local audio support")
         
     # Start the greetings scheduler
     check_greetings.start()
