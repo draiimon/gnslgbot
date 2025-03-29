@@ -58,6 +58,7 @@ class ChatCog(commands.Cog):
             
         # Role-to-emoji mapping - must match the one in setupnn command
         role_emoji_map = {
+            705770837399306332: "👑",  # Owner
             1345727357662658603: "🌿",  # 𝐇𝐈𝐆𝐇
             1345727357645885448: "🍆",  # 𝐊𝐄𝐊𝐋𝐀𝐑𝐒
             1345727357645885449: "💦",  # 𝐓𝐀𝐌𝐎𝐃𝐄𝐑𝐀𝐓𝐎𝐑
@@ -154,6 +155,7 @@ class ChatCog(commands.Cog):
             
         # Role-to-emoji mapping - must match the one in setupnn command
         role_emoji_map = {
+            705770837399306332: "👑",  # Owner
             1345727357662658603: "🌿",  # 𝐇𝐈𝐆𝐇
             1345727357645885448: "🍆",  # 𝐊𝐄𝐊𝐋𝐀𝐑𝐒
             1345727357645885449: "💦",  # 𝐓𝐀𝐌𝐎𝐃𝐄𝐑𝐀𝐓𝐎𝐑
@@ -1886,6 +1888,7 @@ class ChatCog(commands.Cog):
                 for guild in self.bot.guilds:
                     # Role-to-emoji mapping - same as in setupnn
                     role_emoji_map = {
+                        705770837399306332: "👑",  # Owner
                         1345727357662658603: "🌿",  # 𝐇𝐈𝐆𝐇
                         1345727357645885448: "🍆",  # 𝐊𝐄𝐊𝐋𝐀𝐑𝐒
                         1345727357645885449: "💦",  # 𝐓𝐀𝐌𝐎𝐃𝐄𝐑𝐀𝐓𝐎𝐑
@@ -1910,6 +1913,7 @@ class ChatCog(commands.Cog):
                     
                     # Role names for display in log
                     role_names = {
+                        705770837399306332: "Owner",
                         1345727357662658603: "𝐇𝐈𝐆𝐇",
                         1345727357645885448: "𝐊𝐄𝐊𝐋𝐀𝐑𝐒",
                         1345727357645885449: "𝐓𝐀𝐌𝐎𝐃𝐄𝐑𝐀𝐓𝐎𝐑",
@@ -2084,6 +2088,7 @@ class ChatCog(commands.Cog):
         """Set up name formatting based on highest role (admin only)"""
         # Role-to-emoji mapping
         role_emoji_map = {
+            705770837399306332: "👑",  # Owner
             1345727357662658603: "🌿",  # 𝐇𝐈𝐆𝐇
             1345727357645885448: "🍆",  # 𝐊𝐄𝐊𝐋𝐀𝐑𝐒
             1345727357645885449: "💦",  # 𝐓𝐀𝐌𝐎𝐃𝐄𝐑𝐀𝐓𝐎𝐑
@@ -2097,6 +2102,7 @@ class ChatCog(commands.Cog):
         
         # Role names for display in log
         role_names = {
+            705770837399306332: "Owner",
             1345727357662658603: "𝐇𝐈𝐆𝐇",
             1345727357645885448: "𝐊𝐄𝐊𝐋𝐀𝐑𝐒",
             1345727357645885449: "𝐓𝐀𝐌𝐎𝐃𝐄𝐑𝐀𝐓𝐎𝐑",
