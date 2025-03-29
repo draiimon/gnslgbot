@@ -1,9 +1,24 @@
 version: '3.8'
 
 services:
+  # Lavalink music server
+  lavalink:
+    image: ghcr.io/lavalink-devs/lavalink:latest
+    container_name: lavalink
+    restart: unless-stopped
+    volumes:
+      - ./lavalink/application.yml:/opt/Lavalink/application.yml
+    ports:
+      - "2333:2333"
+    networks:
+      - bot-network
+
+  # Discord bot
   bot:
     build: .
     restart: unless-stopped
+    depends_on:
+      - lavalink
     env_file:
       - .env
     volumes:
@@ -11,5 +26,16 @@ services:
       - ./temp_music:/app/temp_music
     environment:
       - PYTHONUNBUFFERED=1
+      - LAVALINK_HOST=lavalink
+      - LAVALINK_PORT=2333
+      - LAVALINK_PASSWORD=youshallnotpass
+    ports:
+      - "5000:5000"
+    networks:
+      - bot-network
     # Keeping the container running
     tty: true
+
+networks:
+  bot-network:
+    driver: bridge

@@ -6,6 +6,7 @@ from bot.cog import ChatCog
 from bot.speech_recognition_cog import SpeechRecognitionCog
 from bot.enhanced_music_cog import EnhancedMusicCog  # Using the enhanced version
 from bot.optimized_audio_cog import OptimizedMusicCog  # New YouTube and Spotify parser
+from bot.lavalink_music_cog import LavalinkMusicCog  # No-download solution using Lavalink
 from flask import Flask
 import threading
 import datetime
@@ -32,9 +33,6 @@ async def on_ready():
     # Initialize the database and audio TTS table
     init_db()
     init_audio_tts_table()
-    
-    # Remove Lavalink node connection for now since we don't have Java installed
-    # Will use direct FFmpeg approach instead
     
     # Ensure cogs are loaded in the correct order
     # Always load ChatCog first, since other cogs depend on it
@@ -75,6 +73,12 @@ async def on_ready():
         optimized_music_cog = OptimizedMusicCog(bot)
         await bot.add_cog(optimized_music_cog)
         print("🎵 Optimized Music Cog loaded with YouTube and Spotify parsing - NO API BLOCKS!")
+        
+    # Load the Lavalink music cog for streaming (no downloads)
+    if not bot.get_cog("LavalinkMusicCog"):
+        lavalink_music_cog = LavalinkMusicCog(bot)
+        await bot.add_cog(lavalink_music_cog)
+        print("🎧 Lavalink Music Cog loaded - NO DOWNLOAD STREAMING MODE!")
         
     # Start the greetings scheduler
     check_greetings.start()

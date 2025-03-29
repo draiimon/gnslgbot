@@ -1,8 +1,8 @@
 FROM python:3.11-slim
 
-# Install system dependencies including FFmpeg
+# Install system dependencies including FFmpeg and OpenJDK 17 for Lavalink
 RUN apt-get update && \
-    apt-get install -y ffmpeg libffi-dev libnacl-dev libsodium-dev gcc g++ make && \
+    apt-get install -y ffmpeg libffi-dev libnacl-dev libsodium-dev gcc g++ make openjdk-17-jre-headless curl && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

@@ -1,7 +1,6 @@
 server: # REST and WS server
   port: 2333
   address: 0.0.0.0
-  
 lavalink:
   server:
     password: "youshallnotpass"
@@ -13,34 +12,38 @@ lavalink:
       vimeo: true
       http: true
       local: false
-    bufferDurationMs: 400 # Higher values might reduce audio stutter but increases latency
-    youtubePlaylistLoadLimit: 10 # Number of pages to load for a YouTube playlist
-    playerUpdateInterval: 5 # How frequently to send player updates to clients, in seconds
+    bufferDurationMs: 400
+    youtubePlaylistLoadLimit: 25
+    playerUpdateInterval: 5
     youtubeSearchEnabled: true
     soundcloudSearchEnabled: true
     gc-warnings: true
-    #ratelimit:
-      #ipBlocks: ["1.0.0.0/8", "..."] # list of ip blocks
-      #excludedIps: ["...", "..."] # ips which should be explicit excluded from usage by lavalink
-      #strategy: "RotateOnBan" # RotateOnBan | LoadBalance | NanoSwitch | RotatingNanoSwitch
-      #searchTriggersFail: true # Whether a search 429 should trigger marking the ip as failing
-      #retryLimit: -1 # -1 = use default lavaplayer value | 0 = infinity | >0 = retry will happen this numbers times
-
+logging:
+  file:
+    max-history: 1
+    max-size: 10MB
+  path: ./logs/
+  level:
+    root: INFO
+    lavalink: INFO
 metrics:
   prometheus:
     enabled: false
     endpoint: /metrics
-
 sentry:
   dsn: ""
   environment: ""
-  
-logging:
-  file:
-    max-history: 30
-    max-size: 1GB
-  path: ./logs/
-
-  level:
-    root: INFO
-    lavalink: INFO
+plugins:
+  # Custom plugins can be added here
+  # Spotify integration
+  dunctebot:
+    sources:
+      # These get passed to the DecodeAudioResultHandler
+      spotify: true  # Enable Spotify source
+      # applemusic: true # Enable AppleMusic source
+    spotify:
+      clientId: ${SPOTIFY_CLIENT_ID} # Spotify client ID - uses Replit secret env vars
+      clientSecret: ${SPOTIFY_CLIENT_SECRET} # Spotify client secret - uses Replit secret env vars
+      countryCode: "PH" # The country code for regional content
+      playlistLoadLimit: 25
+      albumLoadLimit: 50
