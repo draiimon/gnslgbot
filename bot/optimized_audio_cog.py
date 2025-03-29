@@ -67,10 +67,10 @@ class AudioCog(commands.Cog):
         # Dictionary to store voice clients and queues per guild
         self.guild_audio_data = {}
         
-        # ULTRA-HIGH QUALITY FFMPEG AUDIO SETTINGS FOR 2025 - OPTIMIZED FOR SPEED AND CLARITY
-        # These settings provide the best balance between response time and audio quality
+        # ULTRA-SUPER-MAXIMUM QUALITY FFMPEG AUDIO SETTINGS FOR 2025 - OPTIMIZED FOR MAXIMUM CLARITY
+        # These settings provide the best audio quality with crystal clear voice
         self.ffmpeg_options = {
-            'options': '-f opus -ac 2 -ar 48000 -b:a 192k -bufsize 384k -minrate 128k -maxrate 256k -preset ultrafast -application voip -compression_level 0',
+            'options': '-f opus -ac 2 -ar 48000 -b:a 256k -bufsize 512k -minrate 192k -maxrate 320k -compression_level 0',
             'before_options': '-nostdin -threads 8 -probesize 42M -analyzeduration 0'
         }
         
@@ -449,13 +449,13 @@ class AudioCog(commands.Cog):
             voice = "fil-PH-AngeloNeural" if is_tagalog or is_definitely_tagalog else "en-US-GuyNeural"
             
             # Direct TTS with Edge TTS API
-            # Use a better voice that speaks clearly but not too slow (accuracy with faster response)
+            # SUPER CLEAR VOICE with much slower and deliberate speaking
             if is_tagalog:
-                # Filipino - clear speaking voice at more natural pace
-                tts = edge_tts.Communicate(text=message_text, voice="fil-PH-AngeloNeural", rate="-5%", volume="+15%")
+                # Filipino - ULTRA clear speaking with slow deliberate pronunciation
+                tts = edge_tts.Communicate(text=message_text, voice="fil-PH-AngeloNeural", rate="-30%", volume="+30%", pitch="+0%")
             else:
-                # English - clear speaking voice at more natural pace
-                tts = edge_tts.Communicate(text=message_text, voice="en-US-GuyNeural", rate="-5%", volume="+15%")
+                # English - ULTRA clear speaking with slow deliberate pronunciation
+                tts = edge_tts.Communicate(text=message_text, voice="en-US-GuyNeural", rate="-30%", volume="+30%", pitch="+0%")
             
             # Direct streaming approach
             mp3_filename = f"{self.temp_dir}/tts_direct_{message_id}.mp3"
