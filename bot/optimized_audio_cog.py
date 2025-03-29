@@ -110,6 +110,21 @@ class AudioCog(commands.Cog):
                 await guild.voice_client.disconnect()
     
     @commands.Cog.listener()
+    async def on_message(self, message):
+        """Process messages for auto-TTS functionality"""
+        # Ignore messages from bots
+        if message.author.bot:
+            return
+            
+        # Check if auto-TTS is enabled for this channel
+        guild_id = message.guild.id if message.guild else None
+        channel_id = message.channel.id
+        
+        if guild_id and channel_id in self.auto_tts_channels.get(guild_id, set()):
+            # Channel has auto-TTS enabled, process the message
+            await self.process_auto_tts(message)
+    
+    @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
         """Track voice channel changes"""
         # Don't take action on bot movement
