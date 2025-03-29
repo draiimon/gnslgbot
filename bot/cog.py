@@ -491,199 +491,141 @@ LAGING TANDAAN:
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
         
-        # Generate unique filename to avoid file locking issues
-        import time
-        unique_id = f"{ctx.author.id}_{int(time.time())}"
+        # Create temp directory if it doesn't exist
         temp_dir = "temp_audio"
-        
-        # Create the temp directory if it doesn't exist
         if not os.path.exists(temp_dir):
             os.makedirs(temp_dir)
-            
+        
+        # Generate unique filename to avoid conflicts
+        unique_id = f"{ctx.author.id}_{int(time.time())}"
         temp_file = f"{temp_dir}/tts_{unique_id}.mp3"
+        
+        # Tracking variables for cleanup
+        processing_msg = None
+        new_connection = False
         
         try:
             # Send "processing" message
             processing_msg = await ctx.send("**ANTAY KA MUNA!** Ginagawa ko pa yung audio...")
             
-            # Determine language based on content (simple heuristic)
-            # If message contains common Tagalog words, use 'tl'
-            import re
-            words = re.findall(r'\w+', message.lower())
-            tagalog_markers = ['ang', 'mga', 'na', 'ng', 'sa', 'ko', 'mo', 'siya', 'naman', 'po', 'tayo', 'kami']
-            tagalog_count = sum(1 for word in words if word in tagalog_markers)
-            
-            # Default to Tagalog, but switch to English if clearly English
-            lang = 'tl'  # Default to Tagalog
-            if len(words) > 3 and tagalog_count < 2:
-                lang = 'en'  # Switch to English if minimal Tagalog markers
-            
-            # Clean up old files to prevent disk space issues (keep last 20 files)
+            # Clean up old files (keep only the latest 10)
             try:
                 files = sorted([f for f in os.listdir(temp_dir) if f.startswith("tts_")], 
-                              key=lambda x: os.path.getmtime(os.path.join(temp_dir, x)))
-                if len(files) > 20:
-                    for old_file in files[:-20]:
+                             key=lambda x: os.path.getmtime(os.path.join(temp_dir, x)))
+                if len(files) > 10:
+                    for old_file in files[:-10]:
                         try:
                             os.remove(os.path.join(temp_dir, old_file))
-                        except:
-                            pass
-            except Exception as e:
-                print(f"Error cleaning temp files: {e}")
-                
-            # Generate TTS with gTTS with stricter error handling
-            try:
-                # Improved TTS generation with error handling
-                tts = gTTS(text=message, lang=lang, slow=False)
-                tts.save(temp_file)
-                
-                # Check if file exists and has content
-                if not os.path.exists(temp_file) or os.path.getsize(temp_file) == 0:
-                    raise Exception("Failed to generate audio file")
-                
-                await processing_msg.delete()
-                
-                # If already in a voice channel, disconnect first to reset audio state
-                if ctx.voice_client:
-                    await ctx.voice_client.disconnect()
-                    await asyncio.sleep(1)  # Wait a moment for proper disconnection
-                
-                # Connect to voice channel
-                voice_client = await ctx.author.voice.channel.connect()
-                
-                # Enhanced FFmpeg options
-                ffmpeg_options = {
-                    'options': '-loglevel warning -nostdin -vn -b:a 128k',
-                    'before_options': '-nostdin -y'
-                }
-                
-                # Create audio source with better settings
-                source = discord.FFmpegPCMAudio(source=temp_file, **ffmpeg_options)
-                
-                # Add volume transformer with moderate volume
-                audio_source = discord.PCMVolumeTransformer(source, volume=0.85)
-                
-                # Setup improved disconnect callback when audio is done
-                def after_playing(error):
-                    if error:
-                        print(f"Player error: {error}")
-                    
-                    # First, try to clean up the temporary file
-                    try:
-                        if os.path.exists(temp_file):
-                            os.remove(temp_file)
-                            print(f"Removed temp file: {temp_file}")
-                    except Exception as e:
-                        print(f"Error removing temp file: {e}")
-                    
-                    # Force kill FFmpeg processes if needed
-                    try:
-                        if hasattr(voice_client, '_player') and voice_client._player and hasattr(voice_client._player, '_process'):
-                            try:
-                                if voice_client._player._process:
-                                    voice_client._player._process.kill()
-                                    print("Forcibly terminated FFmpeg process")
-                            except Exception as e:
-                                print(f"Error killing FFmpeg process: {e}")
-                    except Exception as e:
-                        print(f"Error accessing FFmpeg process: {e}")
-                    
-                    # Schedule voice client disconnect with coroutine and timeout
-                    try:
-                        coro = voice_client.disconnect(force=True)
-                        fut = asyncio.run_coroutine_threadsafe(coro, self.bot.loop)
-                        try:
-                            # Add timeout to prevent hanging
-                            fut.result(timeout=5)
-                        except asyncio.TimeoutError:
-                            print("Disconnect timed out, but continuing")
+                            print(f"Cleaned up old file: {old_file}")
                         except Exception as e:
-                            print(f"Disconnect error: {e}")
-                    except Exception as e:
-                        print(f"Error during disconnect: {e}")
+                            print(f"Failed to clean up file {old_file}: {e}")
+            except Exception as e:
+                print(f"Error during file cleanup: {e}")
+            
+            # Determine language (default Tagalog, switch to English if needed)
+            import re
+            words = re.findall(r'\w+', message.lower())
+            tagalog_words = ['ang', 'mga', 'na', 'ng', 'sa', 'ko', 'mo', 'siya', 'naman', 'po', 'tayo', 'kami']
+            tagalog_count = sum(1 for word in words if word in tagalog_words)
+            
+            # Use English if message appears to be mostly English
+            lang = 'tl'  # Default to Tagalog
+            if len(words) > 3 and tagalog_count < 2:
+                lang = 'en'
+            
+            # Generate TTS file
+            tts = gTTS(text=message, lang=lang, slow=False)
+            tts.save(temp_file)
+            
+            # Verify the file was created successfully
+            if not os.path.exists(temp_file) or os.path.getsize(temp_file) == 0:
+                raise Exception("Failed to generate audio file")
+            
+            # Delete processing message
+            if processing_msg:
+                await processing_msg.delete()
+                processing_msg = None
+            
+            # Get or create voice client - don't disconnect if already connected
+            voice_client = ctx.voice_client
+            if not voice_client:
+                voice_client = await ctx.author.voice.channel.connect()
+                new_connection = True
+            elif voice_client.channel != ctx.author.voice.channel:
+                # If bot is in different channel, move to user's channel
+                await voice_client.move_to(ctx.author.voice.channel)
+            
+            # Stop any currently playing audio
+            if voice_client.is_playing():
+                voice_client.stop()
+            
+            # Configured FFmpeg options for better playback
+            ffmpeg_options = {
+                'options': '-loglevel error -vn -b:a 128k',
+                'before_options': '-y'
+            }
+            
+            # Create audio source
+            source = discord.FFmpegPCMAudio(source=temp_file, **ffmpeg_options)
+            audio_source = discord.PCMVolumeTransformer(source, volume=0.9)
+            
+            # Setup after-playing callback with improved error handling
+            def after_playing(error):
+                # Log any playback errors
+                if error:
+                    print(f"Audio playback error: {error}")
                 
-                # Play the audio with automatic disconnect when done
-                voice_client.play(audio_source, after=after_playing)
-                
-                # Set a safety timeout to force disconnect after estimated duration
+                # Clean up temp file
+                try:
+                    if os.path.exists(temp_file):
+                        os.remove(temp_file)
+                        print(f"Temp file removed: {temp_file}")
+                except Exception as e:
+                    print(f"Failed to remove temp file: {e}")
+            
+            # Play the audio
+            voice_client.play(audio_source, after=after_playing)
+            
+            # Set up safety disconnect for new connections
+            # Only disconnect if we made a new connection (preserving auto-joined connections)
+            if new_connection:
                 async def safety_disconnect():
-                    # Calculate rough duration based on message length (about 10 chars per second)
-                    duration = min(max(len(message) / 10, 3), 30) + 5  # Between 3-30 seconds + 5 second buffer
-                    await asyncio.sleep(duration)
-                    # Force disconnect if still connected after timeout
+                    # Estimate audio duration (10 chars per second + buffer)
+                    est_duration = min(max(len(message) / 10, 3), 60) + 5
+                    await asyncio.sleep(est_duration)
+                    
                     try:
+                        # Only disconnect if still in a voice channel and was a new connection
                         if voice_client and voice_client.is_connected():
-                            print(f"Safety disconnect triggered after {duration}s")
+                            print(f"Safety disconnect after {est_duration}s")
                             await voice_client.disconnect(force=True)
                     except Exception as e:
                         print(f"Safety disconnect error: {e}")
                 
-                # Start the safety disconnect task
+                # Start safety disconnect task
                 self.bot.loop.create_task(safety_disconnect())
-                
-                # Send confirmation message
-                await ctx.send(f"🔊 **SINABI KO NA:** {message}", delete_after=10)
-                
-            except Exception as e:
-                # More detailed handling of TTS errors
-                error_msg = str(e)
-                print(f"TTS ERROR DETAILS: {error_msg}")
-                
-                # Cleanup voice client on error with force=True to ensure termination
-                if ctx.voice_client:
-                    try:
-                        # Try to kill any running FFmpeg processes
-                        if hasattr(ctx.voice_client, '_player') and ctx.voice_client._player and hasattr(ctx.voice_client._player, '_process'):
-                            try:
-                                if ctx.voice_client._player._process:
-                                    ctx.voice_client._player._process.kill()
-                                    print("Forcibly killed FFmpeg process during error cleanup")
-                            except Exception as e:
-                                print(f"Error killing FFmpeg process during cleanup: {e}")
-                        
-                        # Force disconnect
-                        await ctx.voice_client.disconnect(force=True)
-                    except Exception as e:
-                        print(f"Error during force disconnect on error: {e}")
-                
-                # Attempt more specific error messages for common issues
-                if "not found" in error_msg.lower():
-                    await ctx.send("**ERROR:** Hindi ma-generate ang audio file. FFmpeg may be missing.", delete_after=15)
-                elif "estimating duration" in error_msg.lower():
-                    await ctx.send("**ERROR:** Audio processing problem. Try a shorter message.", delete_after=15)
-                elif "lang" in error_msg.lower():
-                    await ctx.send("**ERROR:** Unsupported language detected.", delete_after=15)
-                else:
-                    await ctx.send(f"**ERROR:** May problema sa TTS. Try again later.", delete_after=15)
-                
+            
+            # Send success message
+            await ctx.send(f"🔊 **SINABI KO NA:** {message}", delete_after=10)
+            
         except Exception as e:
-            # Clean up processing message if it exists
-            if 'processing_msg' in locals():
+            error_msg = str(e)
+            print(f"TTS ERROR: {error_msg}")
+            
+            # Clean up processing message
+            if processing_msg:
                 try:
                     await processing_msg.delete()
-                except:
+                except Exception:
                     pass
             
-            # Ensure voice client is cleaned up with force disconnect    
-            if ctx.voice_client:
-                try:
-                    # Try to kill any FFmpeg processes first
-                    if hasattr(ctx.voice_client, '_player') and ctx.voice_client._player and hasattr(ctx.voice_client._player, '_process'):
-                        try:
-                            if ctx.voice_client._player._process:
-                                ctx.voice_client._player._process.kill()
-                                print("Emergency kill of FFmpeg process in final error handler")
-                        except Exception as e:
-                            print(f"Error in emergency FFmpeg kill: {e}")
-                    
-                    # Force disconnect
-                    await ctx.voice_client.disconnect(force=True)
-                except Exception as e:
-                    print(f"Error in final force disconnect: {e}")
-                    
-            # Send error message
-            await ctx.send(f"**PUTANGINA MAY ERROR:** {str(e)}", delete_after=15)
-            print(f"TTS ERROR: {str(e)}")
+            # Send appropriate error message
+            if "not found" in error_msg.lower() or "ffmpeg" in error_msg.lower():
+                await ctx.send("**ERROR:** Hindi ma-generate ang audio file. FFmpeg issue.", delete_after=15)
+            elif "lang" in error_msg.lower():
+                await ctx.send("**ERROR:** May problem sa language. Try speaking English.", delete_after=15)
+            else:
+                await ctx.send(f"**PUTANGINA MAY ERROR:** {error_msg}", delete_after=15)
    
    
     # ========== SERVER MANAGEMENT COMMANDS ==========
