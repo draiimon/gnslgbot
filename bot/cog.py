@@ -329,6 +329,8 @@ class ChatCog(commands.Cog):
             "🔧 UTILITY": {
                 "g!joinvc/leavevc": "Voice channel management",
                 "g!vc <message>": "Text-to-speech sa voice channel",
+                "g!autotts": "Toggle real-time Auto TTS sa channel",
+                "g!replay": "Replay last TTS message",
                 "g!rules": "Server rules",
                 "g!announcement": "Make an announcement"
             }

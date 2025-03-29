@@ -73,6 +73,11 @@ class AudioCog(commands.Cog):
             'options': '-f opus -ac 2 -ar 48000 -b:a 256k -bufsize 512k -minrate 192k -maxrate 320k -preset medium -application audio -compression_level 10',
             'before_options': '-nostdin -threads 4'
         }
+        
+        # Track channels with AutoTTS enabled (guild_id -> set of channels)
+        self.auto_tts_channels = {}
+        # Track the last time a user has spoken to prevent repeated TTS
+        self.last_user_speech = {}
     
     def get_guild_data(self, guild_id):
         """Get or create guild audio data"""
@@ -374,6 +379,50 @@ class AudioCog(commands.Cog):
             return False
             
     # Added for auto TTS functionality
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        """Listen for messages and convert to speech if AutoTTS is enabled"""
+        # Ignore messages from self or other bots
+        if message.author.bot:
+            return
+            
+        # Ignore commands
+        if message.content.startswith('g!'):
+            return
+            
+        # Check if this is a channel with AutoTTS enabled
+        guild_id = message.guild.id
+        channel_id = message.channel.id
+        
+        # If AutoTTS is enabled for this channel
+        if (guild_id in self.auto_tts_channels and 
+            channel_id in self.auto_tts_channels[guild_id]):
+            
+            # Check if the user has spoken recently (within 2 seconds) to avoid spam
+            user_id = message.author.id
+            now = datetime.datetime.now()
+            
+            if user_id in self.last_user_speech:
+                last_time = self.last_user_speech[user_id]
+                time_diff = (now - last_time).total_seconds()
+                
+                # If user has spoken too recently, skip this message
+                if time_diff < 2:
+                    print(f"Skipping TTS for {message.author.name}: too frequent")
+                    return
+            
+            # Update last speech time
+            self.last_user_speech[user_id] = now
+            
+            # Process TTS 
+            await self.process_auto_tts(message)
+            
+            # Add a small reaction to show the message was processed for TTS
+            try:
+                await message.add_reaction("🔊")
+            except:
+                pass
+            
     async def process_auto_tts(self, message):
         """Process TTS message automatically when user types in chat"""
         try:
@@ -390,6 +439,7 @@ class AudioCog(commands.Cog):
                         None  # Don't send confirmation messages for auto-TTS
                     )
                 )
+                print(f"Auto TTS: {message.author.name} -> '{message.content}'")
                 return True
         except Exception as e:
             print(f"Auto TTS error: {e}")
@@ -422,6 +472,28 @@ class AudioCog(commands.Cog):
             )
         )
     
+    @commands.command(name="autotts")
+    async def auto_tts(self, ctx):
+        """Toggle automatic TTS for all messages in the current channel"""
+        guild_id = ctx.guild.id
+        channel_id = ctx.channel.id
+        
+        # Initialize dictionary for this guild if needed
+        if guild_id not in self.auto_tts_channels:
+            self.auto_tts_channels[guild_id] = set()
+            
+        # Toggle auto-TTS for this channel
+        if channel_id in self.auto_tts_channels[guild_id]:
+            # Disable auto-TTS
+            self.auto_tts_channels[guild_id].remove(channel_id)
+            await ctx.send(f"**AUTO TTS DISABLED!** Hindi ko na automatic bibigkasin ang mga messages sa channel na ito.", delete_after=10)
+        else:
+            # Enable auto-TTS  
+            self.auto_tts_channels[guild_id].add(channel_id)
+            await ctx.send(f"**AUTO TTS ENABLED!** Automatic kong bibigkasin lahat ng messages sa channel na ito. Type normally!", delete_after=10)
+        
+        print(f"Auto TTS {'enabled' if channel_id in self.auto_tts_channels.get(guild_id, set()) else 'disabled'} for channel {ctx.channel.name}")
+        
     @commands.command(name="replay")
     async def replay(self, ctx):
         """Replay last TTS message from database using direct Discord playback (2025 Method)"""
