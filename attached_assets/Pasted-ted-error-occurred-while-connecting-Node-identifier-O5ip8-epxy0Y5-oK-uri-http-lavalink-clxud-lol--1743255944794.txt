@@ -1,0 +1,20 @@
+ted error occurred while connecting Node(identifier=O5ip8-epxy0Y5-oK, uri=http://lavalink.clxud.lol:2333, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.clxud.lol:2333 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=O5ip8-epxy0Y5-oK, uri=http://lavalink.clxud.lol:2333, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.clxud.lol:2333 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=O5ip8-epxy0Y5-oK, uri=http://lavalink.clxud.lol:2333, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.clxud.lol:2333 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=O5ip8-epxy0Y5-oK, uri=http://lavalink.clxud.lol:2333, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.clxud.lol:2333 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+Automated greetings disabled during maintenance
+An unexpected error occurred while connecting Node(identifier=O5ip8-epxy0Y5-oK, uri=http://lavalink.clxud.lol:2333, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.clxud.lol:2333 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=O5ip8-epxy0Y5-oK, uri=http://lavalink.clxud.lol:2333, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.clxud.lol:2333 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=O5ip8-epxy0Y5-oK, uri=http://lavalink.clxud.lol:2333, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.clxud.lol:2333 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=O5ip8-epxy0Y5-oK, uri=http://lavalink.clxud.lol:2333, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.clxud.lol:2333 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=O5ip8-epxy0Y5-oK, uri=http://lavalink.clxud.lol:2333, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.clxud.lol:2333 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+Error: Command raised an exception: InvalidNodeException: No nodes are currently assigned to the wavelink.Pool in a CONNECTED state.

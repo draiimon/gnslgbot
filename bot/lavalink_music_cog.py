@@ -130,12 +130,13 @@ class LavalinkMusicCog(commands.Cog):
             print(f"❌ Failed to connect to primary Asia region Lavalink server: {e}")
             print("⚠️ Trying other servers...")
         
-        # Simple direct attempt to the other servers (avoid disconnect issues)
+        # Simple direct attempt to the other servers (updated with more reliable servers)
         all_servers = [
+            # Try additional servers - some are known to be reliable
             {
-                'host': 'lava.link',
-                'port': 80,
-                'password': 'anything as a password',
+                'host': 'losingmyself.xyz',
+                'port': 2333,
+                'password': 'SleepingOnTrains',
                 'secure': False
             },
             {

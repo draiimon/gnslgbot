@@ -46,25 +46,19 @@ class Config:
     EMBED_COLOR_ERROR = 0xFF3357    # Bright red
     EMBED_COLOR_INFO = 0x3357FF     # Bright blue
     
-    # Lavalink settings - using a Singapore-based Lavalink server for faster PH connections
-    LAVALINK_HOST = os.getenv('LAVALINK_HOST', 'lavalink.clxud.lol')
-    LAVALINK_PORT = int(os.getenv('LAVALINK_PORT', '2333'))
-    LAVALINK_PASSWORD = os.getenv('LAVALINK_PASSWORD', 'youshallnotpass')
+    # Lavalink settings - using a lava.link as primary (more reliable)
+    LAVALINK_HOST = os.getenv('LAVALINK_HOST', 'lava.link')
+    LAVALINK_PORT = int(os.getenv('LAVALINK_PORT', '80'))
+    LAVALINK_PASSWORD = os.getenv('LAVALINK_PASSWORD', 'anything as a password')
     LAVALINK_SECURE = False  # No SSL for this server
     
     # Alternative Lavalink servers (fallbacks)
     ALT_LAVALINK_SERVERS = [
-        # Singapore/HK region servers - faster connection from Philippines
+        # Updated servers (March 2025)
         {
-            'host': 'lavalink.clxud.lol',
-            'port': 2333, 
-            'password': 'youshallnotpass',
-            'secure': False
-        },
-        {
-            'host': 'lava.link',
-            'port': 80,
-            'password': 'anything as a password',
+            'host': 'losingmyself.xyz',
+            'port': 2333,
+            'password': 'SleepingOnTrains',
             'secure': False
         },
         {
