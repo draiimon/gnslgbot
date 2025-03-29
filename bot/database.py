@@ -288,6 +288,76 @@ def get_leaderboard(limit=10):
             )
             return cur.fetchall()
 
+# User Profile/Stats Functions
+def get_user_stats(user_id):
+    """Get comprehensive user statistics from database
+    
+    Args:
+        user_id (int): Discord user ID
+        
+    Returns:
+        dict: User statistics including balance, rank, join date, etc.
+    """
+    stats = {}
+    
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            # Get basic user info
+            cur.execute(
+                "SELECT coins, created_at, last_daily FROM users WHERE user_id = %s",
+                (user_id,)
+            )
+            user_data = cur.fetchone()
+            
+            if user_data:
+                stats['balance'] = user_data[0]
+                stats['join_date'] = user_data[1]
+                stats['last_daily'] = user_data[2]
+            else:
+                # User doesn't exist in database yet
+                stats['balance'] = 50000
+                stats['join_date'] = None
+                stats['last_daily'] = None
+            
+            # Get user rank by balance
+            cur.execute(
+                """
+                SELECT position 
+                FROM (
+                    SELECT user_id, coins, 
+                    ROW_NUMBER() OVER (ORDER BY coins DESC) as position
+                    FROM users
+                ) as rankings
+                WHERE user_id = %s
+                """,
+                (user_id,)
+            )
+            rank_data = cur.fetchone()
+            stats['rank'] = rank_data[0] if rank_data else "Unranked"
+            
+            # Get message count
+            cur.execute(
+                "SELECT COUNT(*) FROM message_history WHERE channel_id = %s AND is_user = TRUE",
+                (user_id,)
+            )
+            message_count = cur.fetchone()
+            stats['message_count'] = message_count[0] if message_count else 0
+            
+            # Get blackjack stats if game exists
+            cur.execute(
+                "SELECT game_state, bet FROM blackjack_games WHERE user_id = %s",
+                (user_id,)
+            )
+            blackjack_data = cur.fetchone()
+            if blackjack_data:
+                stats['has_active_game'] = True
+                stats['game_state'] = blackjack_data[0]
+                stats['current_bet'] = blackjack_data[1]
+            else:
+                stats['has_active_game'] = False
+            
+    return stats
+
 # Audio TTS Functions
 def init_audio_tts_table():
     """Initialize the audio_tts table"""
