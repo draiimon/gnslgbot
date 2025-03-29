@@ -10,6 +10,8 @@ import shutil
 import wavelink
 from wavelink.tracks import Playable, YouTubeTrack
 from wavelink.ext import spotify
+from pydub import AudioSegment
+from pydub.playback import play
 from typing import Optional, Union
 import datetime
 import re
