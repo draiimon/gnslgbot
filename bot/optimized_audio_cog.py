@@ -476,9 +476,12 @@ class AudioCog(commands.Cog):
                 detected_lang = "Tagalog" if is_tagalog else "English"
                 
                 # For ultra-fast TTS, we'll use direct streaming without file storage
+                # New format: user's message directly without adding "said:" (much cleaner)
+                tts_message = f"{message.content}"
+                
                 asyncio.create_task(
                     self.process_tts_direct(
-                        message.content, 
+                        tts_message, 
                         voice_channel, 
                         message.author.id,
                         message.id

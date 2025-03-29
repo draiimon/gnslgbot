@@ -94,8 +94,8 @@ class SpeechRecognitionCog(commands.Cog):
         # Create a new listening task for this guild
         self.listening_tasks[ctx.guild.id] = asyncio.create_task(self.start_listening_for_speech(ctx))
         
-        # Speak a welcome message
-        await self.speak_message(ctx.guild.id, "Ginslog Bot is now listening! Just type your message in chat and I'll respond!")
+        # No need to speak any welcome message - let's be faster and cleaner
+        # await self.speak_message(ctx.guild.id, "Ginslog Bot is now listening! Just type your message in chat and I'll respond!")
     
     async def start_listening_for_speech(self, ctx):
         """Listen for voice commands using a Discord-compatible approach"""
@@ -109,8 +109,7 @@ class SpeechRecognitionCog(commands.Cog):
         # Log that we're starting to listen
         print(f"🎧 Starting voice listening in {voice_channel.name} for guild {guild_id}")
         
-        # Inform channel we're ready for voice commands - SIMPLIFIED MODE
-        await ctx.send("🎤 **GINSLOG BOT IS READY!** Just type your messages in this channel and I'll respond!")
+        # No confirmation message needed - keep interaction clean and simple
         
         # In listening mode, just keep the task alive to maintain the connection
         while guild_id in self.listening_guilds:
@@ -219,11 +218,9 @@ class SpeechRecognitionCog(commands.Cog):
             print(f"❌ ERROR: Could not find member with ID {user_id}")
             return
         
-        # Send acknowledgment message - SIMPLIFIED VERSION
+        # Send compact acknowledgment without unnecessary text
+        # Just show what the user asked to provide confirmation
         await text_channel.send(f"🎤 **{member.display_name}:** {command}")
-        
-        # No longer speak "Thinking about your question" to save time
-        # Just indicate that we're processing without added delay
         
         # Create conversation context for AI
         conversation = [
@@ -429,10 +426,11 @@ class SpeechRecognitionCog(commands.Cog):
                 
             voice_channel = ctx.author.voice.channel
             
-            # Connect to voice channel using our helper
+            # Connect to voice channel using our helper - SILENTLY
+            # No join message or acknowledgement, just connect
             await self._ensure_voice_connection(voice_channel)
             
-            # Process and answer the question directly
+            # Process and answer the question directly - ultra clean flow
             await self.handle_voice_command(ctx.guild.id, ctx.author.id, question)
             
         except Exception as e:
