@@ -28,15 +28,36 @@ from .database import (
 )
 
 class MusicPlayer(wavelink.Player):
-    """Custom player class with queue functionality"""
+    """Custom player class with queue functionality (Wavelink 3.x compatibility)"""
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.now_playing = None
         self.is_playing = False
         self.loop = False
+        self.queue = wavelink.Queue()
+        
+    async def on_track_end(self, reason):
+        """Called when track finishes, plays the next track in queue (Wavelink 3.x)"""
+        print(f"Track ended with reason: {reason}")
+        
+        if self.loop and self.now_playing:
+            await self.play(self.now_playing)
+            return
+            
+        # Go to the next track
+        if self.queue.is_empty:
+            self.now_playing = None
+            self.is_playing = False
+            return
+            
+        # Get next track
+        track = self.queue.get()
+        self.now_playing = track
+        await self.play(track)
+        print(f"Playing next track: {track.title}")
         
     async def do_next(self):
-        """Play the next track in queue"""
+        """Legacy method - Play the next track in queue """
         if self.loop and self.now_playing:
             await self.play(self.now_playing)
             return
@@ -44,6 +65,7 @@ class MusicPlayer(wavelink.Player):
         # Check if queue is empty
         if self.queue.is_empty:
             self.now_playing = None
+            self.is_playing = False
             return
         
         # Get next track and play it
@@ -52,6 +74,7 @@ class MusicPlayer(wavelink.Player):
         
         # Play using wavelink
         await self.play(track)
+        self.is_playing = True
     
     async def add_tracks(self, ctx, tracks):
         """Add tracks to the queue with user feedback"""
@@ -60,28 +83,27 @@ class MusicPlayer(wavelink.Player):
             return
         
         # Single track received
-        if isinstance(tracks, wavelink.tracks.YouTubeTrack):
+        if not isinstance(tracks, list):
+            # Add requester attribute for displaying who requested
+            tracks.requester = ctx.author
+            
+            # Add to queue
             self.queue.put(tracks)
             await ctx.send(f"**ADDED TO QUEUE:** {tracks.title}", delete_after=15)
             
-        # Playlist received
-        elif isinstance(tracks, wavelink.tracks.YouTubePlaylist):
-            # Handle a playlist
-            await ctx.send(f"**ADDED PLAYLIST:** {len(tracks.tracks)} tracks from '{tracks.name}'", delete_after=15)
-            for track in tracks.tracks:
-                self.queue.put(track)
-                
         # List of tracks
         elif isinstance(tracks, list):
             if len(tracks) == 1:
                 track = tracks[0]
+                track.requester = ctx.author
                 self.queue.put(track)
                 await ctx.send(f"**ADDED TO QUEUE:** {track.title}", delete_after=15)
             else:
                 # Handling a list of tracks
-                await ctx.send(f"**ADDED TO QUEUE:** {len(tracks)} tracks", delete_after=15)
                 for track in tracks:
+                    track.requester = ctx.author
                     self.queue.put(track)
+                await ctx.send(f"**ADDED TO QUEUE:** {len(tracks)} tracks", delete_after=15)
         
         # Start playing if not already playing
         if not self.is_playing:
@@ -112,20 +134,24 @@ class AudioCog(commands.Cog):
         
         # Setup Wavelink nodes (optional - only needed for music playback)
         try:
-            # Create our node - using Wavelink 2.6.3 API (optional now)
-            self.node = wavelink.Node(
-                uri='http://localhost:2333',
-                password='youshallnotpass',
-                id="main-node",
-                secure=False
-            )
+            # Create nodes using Wavelink 3.x API
+            nodes = [
+                wavelink.Node(
+                    uri='http://localhost:2333',
+                    password='youshallnotpass',
+                    inactive_player_timeout=None,
+                    identifier="main-node"
+                )
+            ]
             
-            # Connect to our node with wavelink 2.6.3 API (optional now)
-            await wavelink.NodePool.connect(client=self.bot, nodes=[self.node])
+            # Connect to the Lavalink server using wavelink 3.x API
+            wavelink.Pool.nodes = nodes
+            await wavelink.Pool.nodes[0].connect(client=self.bot)
             self.wavelink_connected = True
             print("✅ Connected to Lavalink node! (Music playback enabled)")
             
-            # Setup track end event handling
+            # Setup track end event handling (updated for wavelink 3.x)
+            # In wavelink 3.x, we use the on_wavelink_track_end event
             self.bot.add_listener(self.on_wavelink_track_end, "on_wavelink_track_end")
             
         except Exception as e:
@@ -151,15 +177,18 @@ class AudioCog(commands.Cog):
 
     async def cog_unload(self):
         """Clean up when cog is unloaded"""
-        # Disconnect all players gracefully
+        # Disconnect all players gracefully using wavelink 3.x API
         try:
-            for guild_id, player in wavelink.NodePool.get_node().players.items():
-                try:
-                    await player.disconnect()
-                except:
-                    pass
-        except:
-            pass
+            if wavelink.Pool.nodes:
+                node = wavelink.Pool.get_node()
+                if node and node.players:
+                    for player in node.players.values():
+                        try:
+                            await player.disconnect()
+                        except Exception as e:
+                            print(f"Error disconnecting player: {e}")
+        except Exception as e:
+            print(f"Error during cog unload: {e}")
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
@@ -272,12 +301,13 @@ class AudioCog(commands.Cog):
                 abs_path = os.path.abspath(filename).replace('\\', '/')
                 file_url = f"file:///{abs_path}"
                 
-                # Get a node and tracks
-                node = wavelink.NodePool.get_node()
+                # Get a node and tracks using wavelink 3.x API
+                node = wavelink.Pool.get_node()
                 if not node:
                     raise Exception("No Lavalink node available")
                 
-                tracks = await node.get_tracks(wavelink.tracks.Playable, file_url)
+                # Use wavelink 3.x search API
+                tracks = await wavelink.Playable.search(file_url)
                 if not tracks:
                     raise Exception("Could not load track from file")
                 
@@ -618,13 +648,13 @@ class AudioCog(commands.Cog):
             player = ctx.voice_client
             
             # Create a new player if we don't have one
-            if not player or not player.is_connected:
+            if not player:
                 # Create MusicPlayer instance instead of a regular Wavelink player
                 player = await channel.connect(cls=MusicPlayer)
                 print(f"Created new MusicPlayer in {channel.name}")
             
             # Check if we need to move the player
-            elif player.channel.id != channel.id:
+            elif player.channel != channel:
                 await player.move_to(channel)
                 print(f"Moved player to {channel.name}")
             
@@ -641,59 +671,67 @@ class AudioCog(commands.Cog):
             is_url = bool(re.match(r'https?://', query))
             print(f"Query type: {'URL' if is_url else 'Search term'}")
             
-            # Define a safe query handler to catch YouTube API issues
-            async def safe_get_tracks(search_query, is_yturl=False):
-                try:
-                    if is_yturl:
-                        # Direct URL search - FIXED for wavelink 2.6.3
-                        # The first parameter must be the class, second is the query
-                        return await wavelink.NodePool.get_node().get_tracks(wavelink.tracks.YouTubeTrack, search_query)
-                    else:
-                        # YouTube search - FIXED for wavelink 2.6.3
-                        # The first parameter must be the class, second is the query
-                        return await wavelink.NodePool.get_node().get_tracks(wavelink.tracks.YouTubeTrack, f"ytsearch:{search_query}")
-                except ValueError as e:
-                    print(f"YouTube API error: {e}")
-                    # Return empty list if YouTube API fails
-                    return []
-                except Exception as e:
-                    print(f"Unexpected track loading error: {e}")
-                    return []
-            
+            # Using the new wavelink 3.x API
             if is_url:
-                # Try to get tracks from the URL
-                tracks = await safe_get_tracks(query, is_yturl=True)
-                
-                if not tracks:
-                    await ctx.send(f"**ERROR:** YouTube service unavailable or track unloadable for: {query}", delete_after=15)
-                    await search_msg.delete()
-                    return
-                    
-                # Check if it's a playlist - using keyword argument format for get_playlist
+                # For direct URL playback
                 try:
-                    playlist = await wavelink.NodePool.get_node().get_playlist(query=query, cls=wavelink.YouTubePlaylist)
-                    if playlist:
-                        # Handle YouTube playlist
-                        await player.add_tracks(ctx, playlist)
+                    # Get the node from the Pool
+                    node = wavelink.Pool.get_node()
+                    
+                    # Check if it's a YouTube URL - Use YouTube or auto-select based on URL
+                    if "youtube.com" in query or "youtu.be" in query:
+                        print("Searching YouTube for URL:", query)
+                        # YouTube URL case
+                        if "playlist" in query or "list=" in query:
+                            # This is a playlist URL
+                            tracks = await wavelink.YouTubePlaylist.search(query)
+                            print(f"Found {len(tracks.tracks)} tracks in playlist")
+                            
+                            if not tracks or not tracks.tracks:
+                                await search_msg.delete()
+                                return await ctx.send(f"**TANGINA! WALANG NAKITA:** No tracks found for that playlist")
+                                
+                            await player.add_tracks(ctx, tracks.tracks)
+                            await search_msg.delete()
+                            await ctx.send(f"**PLAYLIST ADDED TO QUEUE:** Added {len(tracks.tracks)} tracks from **{tracks.name}**")
+                            return
+                        else:
+                            # Single YouTube URL
+                            tracks = await wavelink.YouTubeTrack.search(query)
                     else:
-                        # Handle single track
-                        await player.add_tracks(ctx, tracks)
+                        # Generic URL (could be Spotify, SoundCloud, etc.)
+                        tracks = await wavelink.Playable.search(query)
+                    
+                    if not tracks:
+                        await search_msg.delete()
+                        return await ctx.send(f"**TANGINA! WALANG NAKITA:** No tracks found for that URL")
+                        
+                    # Get the first result for URL search
+                    track = tracks[0]
+                    await player.add_tracks(ctx, [track])
+                    
                 except Exception as e:
-                    print(f"Playlist loading error: {e}")
-                    # Just use the tracks we already have
-                    await player.add_tracks(ctx, tracks)
-                    
-            else:
-                # Search for a song on YouTube
-                tracks = await safe_get_tracks(query)
-                
-                if not tracks:
-                    await ctx.send(f"**ERROR:** YouTube service unavailable or no matches found for: {query}", delete_after=15)
+                    print(f"Error searching URL: {e}")
                     await search_msg.delete()
-                    return
+                    return await ctx.send(f"**ERROR SEARCHING URL:** {str(e)[:100]}...")
+            else:
+                # For search queries
+                try:
+                    # Search YouTube for the query
+                    print("Searching YouTube for query:", query)
+                    tracks = await wavelink.YouTubeTrack.search(query)
                     
-                await player.add_tracks(ctx, tracks)
-                
+                    if not tracks:
+                        await search_msg.delete()
+                        return await ctx.send(f"**TANGINA! WALANG NAKITA:** No results found for **{query}**")
+                    
+                    # For search results, add the top result
+                    await player.add_tracks(ctx, [tracks[0]])
+                except Exception as e:
+                    print(f"Error searching: {e}")
+                    await search_msg.delete()
+                    return await ctx.send(f"**ERROR SEARCHING:** {str(e)[:100]}...")
+            
             # Remove the search message
             await search_msg.delete()
                 

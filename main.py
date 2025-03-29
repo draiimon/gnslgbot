@@ -8,6 +8,9 @@ import threading
 import datetime
 import random
 import pytz  # For timezone support
+import wavelink  # For music playback with Lavalink
+import subprocess
+import asyncio
 from bot.database import init_db, init_audio_tts_table
 
 # Initialize bot with command prefix and remove default help command
@@ -19,6 +22,31 @@ bot = commands.Bot(command_prefix=Config.COMMAND_PREFIX,
 # Global variables for tracking greetings
 last_morning_greeting_date = None
 last_night_greeting_date = None
+lavalink_process = None
+
+async def clean_audio_temp():
+    """Clean up temporary audio files at startup"""
+    # Perform basic cleanup of temp audio files at startup
+    try:
+        print("Cleaning up temporary audio files...")
+        temp_dir = "temp_audio"
+        if os.path.exists(temp_dir):
+            for file in os.listdir(temp_dir):
+                try:
+                    file_path = os.path.join(temp_dir, file)
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
+                        print(f"Deleted temp file: {file_path}")
+                except Exception as e:
+                    print(f"Error deleting temp file: {e}")
+        
+        # Ensure temp directory exists
+        os.makedirs(temp_dir, exist_ok=True)
+        print("✅ Temp audio directory ready")
+        return True
+    except Exception as e:
+        print(f"Error in audio cleanup: {e}")
+        return False
 
 @bot.event
 async def on_ready():
@@ -30,20 +58,40 @@ async def on_ready():
     init_db()
     init_audio_tts_table()
     
-    # Remove Lavalink node connection for now since we don't have Java installed
-    # Will use direct FFmpeg approach instead
+    # Start Lavalink server
+    lavalink_started = await start_lavalink()
+    
+    # Connect to the Lavalink server with wavelink if started successfully
+    if lavalink_started:
+        # Connect to Lavalink node
+        try:
+            node = wavelink.Node(
+                uri="http://localhost:2333",
+                password="youshallnotpass"
+            )
+            await wavelink.Pool.connect(nodes=[node], client=bot)
+            print("✅ Connected to Lavalink server")
+        except Exception as e:
+            print(f"⚠️ Failed to connect to Lavalink node: {e}")
     
     # Ensure cogs are loaded
     if not bot.get_cog("ChatCog"):
         await bot.add_cog(ChatCog(bot))
         print("ChatCog initialized")
         print("✅ ChatCog loaded")
-        
-    # Import and load the OPTIMIZED audio cog (No Lavalink required, low memory usage)
-    from bot.optimized_audio_cog import AudioCog
-    if not bot.get_cog("AudioCog"):
-        await bot.add_cog(AudioCog(bot))
-        print("✅ OPTIMIZED AudioCog loaded (No Lavalink, low memory usage)")
+    
+    # Load optimized audio cog for TTS    
+    from bot.optimized_audio_cog import AudioCog as OptimizedAudioCog
+    if not bot.get_cog("OptimizedAudioCog"):
+        await bot.add_cog(OptimizedAudioCog(bot))
+        print("✅ TTS AudioCog loaded (Fast TTS with Edge TTS)")
+    
+    # Load music cog with Lavalink integration for music playback
+    if lavalink_started:
+        from bot.audio_cog import AudioCog
+        if not bot.get_cog("AudioCog"):
+            await bot.add_cog(AudioCog(bot))
+            print("✅ Music AudioCog loaded (YouTube/Spotify playback)")
         
     # Start the greetings scheduler
     check_greetings.start()
