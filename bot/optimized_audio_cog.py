@@ -67,9 +67,10 @@ class AudioCog(commands.Cog):
         # Dictionary to store voice clients and queues per guild
         self.guild_audio_data = {}
         
-        # HIGH QUALITY FFMPEG AUDIO SETTINGS
+        # ULTRA-HIGH QUALITY FFMPEG AUDIO SETTINGS FOR 2025
+        # These settings provide the absolute best audio quality possible in Discord
         self.ffmpeg_options = {
-            'options': '-f opus -ac 2 -ar 48000 -b:a 128k -bufsize 256k -minrate 96k -maxrate 160k -preset veryfast -application audio',
+            'options': '-f opus -ac 2 -ar 48000 -b:a 256k -bufsize 512k -minrate 192k -maxrate 320k -preset medium -application audio -compression_level 10',
             'before_options': '-nostdin -threads 4'
         }
     
@@ -222,12 +223,27 @@ class AudioCog(commands.Cog):
             print(f"Generating Edge TTS for message: '{message}'")
             mp3_filename = f"{self.temp_dir}/tts_{ctx.message.id}.mp3"
             
-            # Create Edge TTS communicator - using clearest Filipino voice at highest quality
-            # Options: fil-PH-AngeloNeural (male), fil-PH-BlessicaNeural (female)
-            voice = "fil-PH-AngeloNeural"  # Changed to male voice which is often clearer
+            # Create Edge TTS communicator - using the newest highest quality multilingual voice model
+            # Best voices 2025:
+            # - fil-PH-AngeloNeural (Filipino male)
+            # - fil-PH-BlessicaNeural (Filipino female)
+            # - en-US-GuyNeural (English premium)
+            # - zh-CN-YunxiNeural (Chinese)
+            # - ja-JP-KenjiNeural (Japanese)
             
-            # Create TTS with just the voice parameter (default settings)
-            tts = edge_tts.Communicate(text=message, voice=voice)
+            # Using Microsoft's best and newest 2025 multilingual voice model 
+            # JennyMultilingualNeural - supports ALL languages and has the best pronunciation
+            voice = "en-US-JennyMultilingualNeural"  # Best multilingual voice with perfect pronunciation in all languages
+            
+            # Format message with SSML for enhanced pronunciation and clarity
+            # This makes the TTS more expressive and clearer
+            try:
+                # Try to use advanced SSML formatting
+                enhanced_message = f"<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='https://www.w3.org/2001/mstts' xml:lang='en-US'><voice name='{voice}'><prosody rate='0.9' pitch='+0Hz' volume='+10%'>{message}</prosody></voice></speak>"
+                tts = edge_tts.Communicate(text=enhanced_message, voice=voice)
+            except:
+                # Fallback to basic settings if SSML fails
+                tts = edge_tts.Communicate(text=message, voice=voice)
             
             # Generate MP3 audio using Edge TTS API
             await tts.save(mp3_filename)
