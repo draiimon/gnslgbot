@@ -855,23 +855,6 @@ files = [
 ]
 
 [[package]]
-name = "lavalink"
-version = "5.9.0"
-description = "A Lavalink WebSocket & API wrapper built around coverage, reliability and performance."
-optional = false
-python-versions = "*"
-files = [
-    {file = "lavalink-5.9.0.tar.gz", hash = "sha256:a01aff4bdf25a51387d2d7729e110a8ced442c21da558dccdceffbc1e0f3861d"},
-]
-
-[package.dependencies]
-aiohttp = ">=3.9.0,<4"
-
-[package.extras]
-development = ["flake8", "pylint"]
-docs = ["enum_tools", "guzzle_sphinx_theme", "pygments", "sphinx", "sphinx_toolbox"]
-
-[[package]]
 name = "markupsafe"
 version = "3.0.2"
 description = "Safely add untrusted strings to HTML/XML markup."
@@ -1470,22 +1453,6 @@ socks = ["pysocks (>=1.5.6,!=1.5.7,<2.0)"]
 zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
-name = "wavelink"
-version = "2.6.3"
-description = "A robust and powerful Lavalink wrapper for discord.py"
-optional = false
-python-versions = ">=3.10"
-files = [
-    {file = "wavelink-2.6.3-py3-none-any.whl", hash = "sha256:dbee1434c63cad38989db894f078d8f48a3d3e6166090c5548f456da98aedd5a"},
-    {file = "wavelink-2.6.3.tar.gz", hash = "sha256:7376556546b88e41ac8713afb406677cf14244c3bf731304a382784a4fa8e5d2"},
-]
-
-[package.dependencies]
-aiohttp = ">=3.7.4,<4"
-"discord.py" = ">=2.0.1"
-yarl = ">=1.8.2,<1.9.0"
-
-[[package]]
 name = "werkzeug"
 version = "3.1.3"
 description = "The comprehensive WSGI web application library."
@@ -1592,4 +1559,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "864d590306db9b0f3e880d2c7ad92e82b9c32e4d479cdc1dc1eeadc546922097"
+content-hash = "8d1ce691000e1503776d090f0ef1f57ce2fa6c72e28bd8f8d69351934bd238af"
