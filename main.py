@@ -23,6 +23,7 @@ bot = commands.Bot(command_prefix=Config.COMMAND_PREFIX,
 # Global variables for tracking greetings
 last_morning_greeting_date = None
 last_night_greeting_date = None
+maintenance_mode = False  # Global flag for maintenance mode
 
 @bot.event
 async def on_ready():
@@ -119,14 +120,14 @@ async def on_ready():
 @tasks.loop(minutes=1)
 async def check_greetings():
     """Check if it's time to send good morning or good night greetings"""
-    global last_morning_greeting_date, last_night_greeting_date
+    global last_morning_greeting_date, last_night_greeting_date, maintenance_mode
     
-    # DISABLED DURING MAINTENANCE
-    print("Automated greetings disabled during maintenance")
-    return
+    # Check if maintenance mode is enabled
+    if maintenance_mode:
+        print("Automated greetings disabled during maintenance")
+        return
     
-    # Code below is commented out during maintenance
-    """
+    # If not in maintenance mode, run the greetings code
     # Get current time in Philippines timezone (UTC+8)
     ph_timezone = pytz.timezone('Asia/Manila')
     now = datetime.datetime.now(ph_timezone)
@@ -179,7 +180,6 @@ async def check_greetings():
         # Update last greeting date
         last_night_greeting_date = current_date
         print(f"✅ Sent good night greeting at {now}")
-    """
 
 @check_greetings.before_loop
 async def before_check_greetings():

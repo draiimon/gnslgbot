@@ -1557,6 +1557,118 @@ class ChatCog(commands.Cog):
 
         # Send the embed
         await ctx.send(embed=embed)
+        
+    @commands.command(name="view")
+    async def view(self, ctx, member: discord.Member = None):
+        """Display user's profile picture and stats"""
+        # If no member is specified, use the command user
+        if member is None:
+            member = ctx.author
+            
+        # Create an embed for the user
+        embed = discord.Embed(
+            title=f"**PROFILE NI {member.display_name.upper()}**",
+            description=f"**USER ID:** {member.id}\n" +
+                        f"**JOINED SERVER:** {member.joined_at.strftime('%B %d, %Y')}\n" +
+                        f"**ACCOUNT CREATED:** {member.created_at.strftime('%B %d, %Y')}\n",
+            color=Config.EMBED_COLOR_INFO
+        )
+        
+        # Add user's balance if available
+        from bot.database import get_user_balance
+        balance = get_user_balance(member.id)
+        if balance is not None:
+            embed.add_field(
+                name="**💰 BALANCE:**",
+                value=f"**₱{balance:,}**",
+                inline=True
+            )
+            
+        # Add user's roles
+        roles = [role.name for role in member.roles if role.name != "@everyone"]
+        if roles:
+            embed.add_field(
+                name="**🏅 ROLES:**",
+                value=", ".join(roles),
+                inline=True
+            )
+            
+        # Add user status
+        status_emojis = {
+            discord.Status.online: "🟢",
+            discord.Status.idle: "🟡",
+            discord.Status.dnd: "🔴",
+            discord.Status.offline: "⚫"
+        }
+        status_emoji = status_emojis.get(member.status, "⚫")
+        embed.add_field(
+            name="**STATUS:**",
+            value=f"{status_emoji} {str(member.status).upper()}",
+            inline=True
+        )
+        
+        # Set user's avatar as the embed image (full size)
+        if member.avatar:
+            embed.set_image(url=member.avatar.url)
+            
+        # Set footer
+        embed.set_footer(
+            text=f"Requested by {ctx.author.display_name} | Ginsilog Profile System",
+            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+        )
+            
+        await ctx.send(embed=embed)
+        
+    @commands.command(name="maintenance")
+    @commands.check(lambda ctx: any(role.id in [
+        1345727357662658603, 1345727357645885449, 1345727357645885448
+    ] for role in ctx.author.roles))
+    async def maintenance(self, ctx, action: str = None):
+        """Toggle maintenance mode (admin only)"""
+        # Check if the action is valid
+        if action not in ["on", "off", "toggle", "status"]:
+            await ctx.send("**BOBO!** Valid commands: `g!maintenance on`, `g!maintenance off`, `g!maintenance toggle`, or `g!maintenance status`")
+            return
+            
+        # Import the required modules
+        import sys
+        import importlib
+        
+        # Get the main module
+        main_module = sys.modules.get('main')
+        if not main_module:
+            await ctx.send("**ERROR:** Cannot access main module.")
+            return
+            
+        # Get the current state
+        is_maintenance_mode = main_module.maintenance_mode
+        
+        # Handle the requested action
+        if action == "status":
+            status = "ON" if is_maintenance_mode else "OFF"
+            await ctx.send(f"**MAINTENANCE MODE:** `{status}`")
+            return
+            
+        if action == "toggle":
+            # If toggle, flip the current state
+            new_state = not is_maintenance_mode
+        elif action == "on":
+            new_state = True
+        elif action == "off":
+            new_state = False
+            
+        # Apply the new state
+        main_module.maintenance_mode = new_state
+        
+        # Show confirmation message
+        if new_state:
+            await ctx.send("**MAINTENANCE MODE ACTIVATED!** Greetings scheduler stopped.")
+        else:
+            await ctx.send("**MAINTENANCE MODE DEACTIVATED!** Greetings scheduler resumed.")
+        
+        # Show confirmation
+        status = "ON" if new_state else "OFF"
+        await ctx.send(f"**MAINTENANCE MODE NOW:** `{status}`")
 
 
 def setup(bot):
