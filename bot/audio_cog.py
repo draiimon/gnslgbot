@@ -291,7 +291,7 @@ class AudioCog(commands.Cog):
     
     @commands.command(name="vc")
     async def vc(self, ctx, *, message: str):
-        """Text-to-speech using Edge TTS API with FFmpegOpusAudio"""
+        """Text-to-speech using Edge TTS API with pydub conversion to PCM"""
         # Check if user is in a voice channel
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
@@ -308,31 +308,46 @@ class AudioCog(commands.Cog):
         try:
             # Generate TTS using edge_tts
             print(f"Generating Edge TTS for message: '{message}'")
-            filename = f"{self.temp_dir}/tts_{ctx.message.id}.mp3"
+            mp3_filename = f"{self.temp_dir}/tts_{ctx.message.id}.mp3"
+            wav_filename = f"{self.temp_dir}/tts_{ctx.message.id}.wav"
             
             # Import edge_tts here to avoid overhead if not used
             import edge_tts
+            
+            # Import pydub for audio conversion
+            from pydub import AudioSegment
             
             # Create Edge TTS communicator - use Tagalog/Filipino voice
             # Options: fil-PH-AngeloNeural (male), fil-PH-BlessicaNeural (female)
             # If these fail, fallback to en-US-JennyNeural or en-US-ChristopherNeural
             tts = edge_tts.Communicate(text=message, voice="fil-PH-BlessicaNeural")
             
-            # Generate audio using Edge TTS API
-            await tts.save(filename)
-            print(f"Edge TTS file generated successfully: {filename}")
+            # Generate MP3 audio using Edge TTS API
+            await tts.save(mp3_filename)
+            print(f"Edge TTS file generated successfully: {mp3_filename}")
             
             # Verify file exists and has content
-            if not os.path.exists(filename):
+            if not os.path.exists(mp3_filename):
                 raise Exception("Failed to generate Edge TTS file - file does not exist")
             
-            if os.path.getsize(filename) == 0:
+            if os.path.getsize(mp3_filename) == 0:
                 raise Exception("Failed to generate Edge TTS file - file is empty")
                 
-            print(f"Edge TTS file saved: {filename} ({os.path.getsize(filename)} bytes)")
+            print(f"Edge TTS file saved: {mp3_filename} ({os.path.getsize(mp3_filename)} bytes)")
+            
+            # Convert MP3 to WAV with PCM format using pydub
+            print("Converting MP3 to WAV with PCM format...")
+            audio = AudioSegment.from_mp3(mp3_filename)
+            
+            # Set parameters required for Discord playback
+            audio = audio.set_frame_rate(48000).set_channels(2).set_sample_width(2)
+            
+            # Export as WAV (PCM format)
+            audio.export(wav_filename, format="wav")
+            print(f"Converted to WAV: {wav_filename} ({os.path.getsize(wav_filename)} bytes)")
             
             # Store in database
-            with open(filename, "rb") as f:
+            with open(mp3_filename, "rb") as f:
                 audio_data = f.read()
                 audio_id = store_audio_tts(ctx.author.id, message, audio_data)
                 print(f"Stored Edge TTS in database with ID: {audio_id}")
@@ -347,26 +362,25 @@ class AudioCog(commands.Cog):
                 await voice_client.disconnect()
                 voice_client = None
                 
-            # Try playing audio using FFmpegOpusAudio
+            # Try playing PCM audio with FFmpegPCMAudio (no opus needed)
             try:
                 # Connect to the voice channel
                 voice_client = await voice_channel.connect()
                 print(f"Connected to {voice_channel.name} for TTS playback")
                 
-                # Create audio source with FFmpegOpusAudio and proper codec
-                source = discord.FFmpegOpusAudio(filename, codec="libopus")
+                # Create audio source with FFmpegPCMAudio for raw PCM WAV
+                # No need for opus encoding with this approach
+                source = discord.PCMVolumeTransformer(
+                    discord.FFmpegPCMAudio(wav_filename), 
+                    volume=0.5
+                )
                 
-                print("Starting Edge TTS playback with FFmpegOpusAudio")
+                print("Starting Edge TTS playback with PCM audio")
                 voice_client.play(source)
                 
                 # Success message
                 await processing_msg.delete()
                 await ctx.send(f"🔊 **SPEAKING:** {message}", delete_after=10)
-                
-                # Wait for the audio to finish playing
-                # First, give a reasonable amount of time based on message length
-                word_count = len(message.split())
-                estimated_duration = max(5, min(20, word_count / 2))  # ~2 words per second
                 
                 # Wait for the audio to finish playing
                 while voice_client.is_playing():
@@ -390,12 +404,13 @@ class AudioCog(commands.Cog):
                 if voice_client and voice_client.is_connected():
                     await voice_client.disconnect()
                 
-            # Clean up the file
+            # Clean up the files
             try:
-                os.remove(filename)
-                print(f"Removed temporary file: {filename}")
+                os.remove(mp3_filename)
+                os.remove(wav_filename)
+                print(f"Removed temporary files: {mp3_filename}, {wav_filename}")
             except Exception as e:
-                print(f"Error removing file: {e}")
+                print(f"Error removing files: {e}")
             
             # Clean up old database entries
             cleanup_old_audio_tts(keep_count=20)
@@ -418,7 +433,7 @@ class AudioCog(commands.Cog):
     
     @commands.command(name="replay")
     async def replay(self, ctx):
-        """Replay last TTS message from database using FFmpegOpusAudio"""
+        """Replay last TTS message from database using pydub conversion to PCM"""
         # Check if user is in a voice channel
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
@@ -434,12 +449,28 @@ class AudioCog(commands.Cog):
         processing_msg = await ctx.send("**SANDALI LANG!** Ire-replay ko pa yung huling audio...")
         
         try:
-            # Save audio to temp file
-            filename = f"{self.temp_dir}/replay_{ctx.message.id}.mp3"
-            with open(filename, "wb") as f:
+            # Save audio to temp files
+            mp3_filename = f"{self.temp_dir}/replay_{ctx.message.id}.mp3"
+            wav_filename = f"{self.temp_dir}/replay_{ctx.message.id}.wav"
+            
+            with open(mp3_filename, "wb") as f:
                 f.write(audio_bytes)
                 
-            print(f"Saved replay audio to file: {filename}")
+            print(f"Saved replay audio to file: {mp3_filename}")
+            
+            # Import pydub for audio conversion
+            from pydub import AudioSegment
+            
+            # Convert MP3 to WAV with PCM format using pydub
+            print("Converting MP3 to WAV with PCM format...")
+            audio = AudioSegment.from_mp3(mp3_filename)
+            
+            # Set parameters required for Discord playback
+            audio = audio.set_frame_rate(48000).set_channels(2).set_sample_width(2)
+            
+            # Export as WAV (PCM format)
+            audio.export(wav_filename, format="wav")
+            print(f"Converted to WAV: {wav_filename} ({os.path.getsize(wav_filename)} bytes)")
             
             # Connect to the voice channel
             voice_channel = ctx.author.voice.channel
@@ -451,16 +482,19 @@ class AudioCog(commands.Cog):
                 await voice_client.disconnect()
                 voice_client = None
                 
-            # Try playing audio using FFmpegOpusAudio
+            # Try playing audio using PCM
             try:
                 # Connect to the voice channel
                 voice_client = await voice_channel.connect()
                 print(f"Connected to {voice_channel.name} for replay playback")
                 
-                # Create audio source with FFmpegOpusAudio and proper codec
-                source = discord.FFmpegOpusAudio(filename, codec="libopus")
+                # Create audio source with PCM WAV
+                source = discord.PCMVolumeTransformer(
+                    discord.FFmpegPCMAudio(wav_filename), 
+                    volume=0.5
+                )
                 
-                print("Starting replay with FFmpegOpusAudio")
+                print("Starting replay with PCM audio")
                 voice_client.play(source)
                 
                 # Success message
@@ -489,12 +523,13 @@ class AudioCog(commands.Cog):
                 if voice_client and voice_client.is_connected():
                     await voice_client.disconnect()
                 
-            # Clean up the file
+            # Clean up the files
             try:
-                os.remove(filename)
-                print(f"Removed temporary replay file: {filename}")
+                os.remove(mp3_filename)
+                os.remove(wav_filename)
+                print(f"Removed temporary replay files: {mp3_filename}, {wav_filename}")
             except Exception as e:
-                print(f"Error removing replay file: {e}")
+                print(f"Error removing replay files: {e}")
             
         except Exception as e:
             print(f"⚠️ REPLAY ERROR: {e}")
