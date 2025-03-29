@@ -215,12 +215,11 @@ class SpeechRecognitionCog(commands.Cog):
             print(f"❌ ERROR: Could not find member with ID {user_id}")
             return
         
-        # Send acknowledgment message
-        await text_channel.send(f"🎤 **Voice command from {member.display_name}:** {command}")
-        await text_channel.send("🔄 Generating AI response...")
+        # Send acknowledgment message - SIMPLIFIED VERSION
+        await text_channel.send(f"🎤 **{member.display_name}:** {command}")
         
-        # Start processing indicator
-        processing_message = await self.speak_message(guild_id, "Thinking about your question...")
+        # No longer speak "Thinking about your question" to save time
+        # Just indicate that we're processing without added delay
         
         # Create conversation context for AI
         conversation = [
@@ -233,8 +232,8 @@ class SpeechRecognitionCog(commands.Cog):
             response = await self.get_ai_response(conversation)
             print(f"✅ AI response generated: '{response[:50]}...'")
             
-            # Send response to text channel
-            await text_channel.send(f"🤖 **AI Response:** {response}")
+            # Send response to text channel - CLEAN FORMAT
+            await text_channel.send(f"🤖 **GINSLOG BOT:** {response}")
             
             # Speak the response
             await self.speak_message(guild_id, response)
