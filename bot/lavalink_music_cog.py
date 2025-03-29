@@ -149,24 +149,25 @@ class LavalinkMusicCog(commands.Cog):
                 await music_player.text_channel.send("✓ Queue finished! Add more songs using `g!lplay`")
         
     async def connect_nodes(self):
-        """Connect to Lavalink nodes"""
+        """Connect to Lavalink nodes with robust error handling"""
         await self.bot.wait_until_ready()
         
-        # IMPORTANT: Since we're having DNS issues with all Lavalink servers,
-        # we'll prioritize the fallback YouTube parser for reliability
+        # Import socket for checking DNS errors
+        import socket
         
-        print(f"⚠️ Due to DNS resolution issues on Replit, skipping Lavalink connection")
-        print(f"✅ Using YouTube direct streaming instead for reliable playback")
+        # Track connection errors
+        dns_errors = 0
+        timeout_errors = 0
+        connection_errors = 0
+        other_errors = 0
         
-        # Don't even try to connect to Lavalink servers if we're in Replit
-        # Mark as not connected so fallback is used
-        self.lavalink_connected = False
+        print(f"\n🔄 Attempting to connect to Lavalink servers...")
+        print(f"🌐 This may take some time due to DNS and connection constraints in the environment")
         
-        # Optional debugging - try IP address directly instead of hostname
-        # This is just for diagnostic purposes
+        # Try primary Lavalink connection first - using direct IP instead of hostname
         try:
-            # Attempt direct IP connection to a reliable server (optional)
-            # This is only for testing if direct IP works better than hostname
+            # Attempt direct IP connection to bypass DNS issues
+            print(f"Connecting to Lavalink via direct IP: 144.172.83.115")
             direct_ip_node = wavelink.Node(
                 uri="http://144.172.83.115:2333",  # Use an IP address to bypass DNS
                 password="youshallnotpass"
@@ -175,15 +176,68 @@ class LavalinkMusicCog(commands.Cog):
             try:
                 await wavelink.Pool.connect(nodes=[direct_ip_node], client=self.bot)
                 self.lavalink_connected = True
-                print("✅ Connected to Lavalink via direct IP! This is unexpected but good.")
+                print("✅ Connected to Lavalink via direct IP! Music streaming enabled.")
                 return
+            except asyncio.TimeoutError:
+                timeout_errors += 1
+                print(f"❌ Connection timed out to direct IP Lavalink server")
+            except socket.gaierror as dns_err:
+                dns_errors += 1
+                print(f"❌ DNS resolution failed (unexpected for IP): {dns_err}")
+            except ConnectionRefusedError as conn_err:
+                connection_errors += 1
+                print(f"❌ Connection refused: {conn_err}")
             except Exception as direct_ip_error:
-                print(f"❌ Direct IP connection also failed: {direct_ip_error}")
-                # Continue with fallback
+                other_errors += 1
+                print(f"❌ Direct IP connection failed: {direct_ip_error}")
         except Exception as e:
+            other_errors += 1
             print(f"❌ Error setting up direct IP connection: {e}")
-            
-        # If we're still here, we'll use the fallback
+        
+        # Try alternative server IPs - you can add more reliable servers here
+        alt_servers = [
+            {"uri": "http://lavalink.clxud.lol", "password": "youshallnotpass"},
+            {"uri": "http://lavalink.devamop.in:443", "password": "DevamOP"}
+        ]
+        
+        for i, server in enumerate(alt_servers):
+            try:
+                print(f"Connecting to alternate Lavalink server {i+1}: {server['uri']}")
+                alt_node = wavelink.Node(
+                    uri=server['uri'],
+                    password=server['password']
+                )
+                
+                try:
+                    await wavelink.Pool.connect(nodes=[alt_node], client=self.bot)
+                    self.lavalink_connected = True
+                    print(f"✅ Connected to alternate Lavalink server {i+1}! Music streaming enabled.")
+                    return
+                except asyncio.TimeoutError:
+                    timeout_errors += 1
+                    print(f"❌ Connection timed out to alternate server {i+1}")
+                except socket.gaierror as dns_err:
+                    dns_errors += 1
+                    print(f"❌ DNS resolution failed for alternate server {i+1}: {dns_err}")
+                except ConnectionRefusedError as conn_err:
+                    connection_errors += 1
+                    print(f"❌ Connection refused for alternate server {i+1}: {conn_err}")
+                except Exception as alt_error:
+                    other_errors += 1
+                    print(f"❌ Error connecting to alternate server {i+1}: {alt_error}")
+            except Exception as e:
+                other_errors += 1
+                print(f"❌ Error setting up alternate server {i+1}: {e}")
+        
+        # All connection attempts failed - summarize and use fallback
+        print("\n⚠️ All Lavalink connection attempts failed!")
+        print(f"- DNS resolution errors: {dns_errors}")
+        print(f"- Connection timeout errors: {timeout_errors}")
+        print(f"- Connection refused errors: {connection_errors}")
+        print(f"- Other errors: {other_errors}")
+        
+        # Use the fallback
+        print("\n🔄 Activating reliable fallback mode")
         print("ℹ️ The bot will use the custom YouTube parser for music playback")
         print("💡 Benefits: Works reliably in Replit environment with no external dependencies")
         print("💡 Features: YouTube search, direct URL playback, queue management")
@@ -378,8 +432,24 @@ class LavalinkMusicCog(commands.Cog):
                     # Get the first track from the queue
                     track = music_player.next()
                     if track:
-                        await player.play(track)
-                        await ctx.send(f"🎵 Now playing: **{track.title}**")
+                        try:
+                            await player.play(track)
+                            await ctx.send(f"🎵 Now playing: **{track.title}**")
+                        except Exception as play_error:
+                            # If playing through wavelink fails, try the fallback
+                            print(f"Error playing through wavelink: {play_error}")
+                            await ctx.send("⚠️ Falling back to direct playback method...")
+                            
+                            # This is a special case - we'll force the fallback mode
+                            self.lavalink_connected = False
+                            
+                            # Add the track back to the front of the queue
+                            # and then trigger the fallback manually
+                            music_player.current = None
+                            music_player.queue.insert(0, track)
+                            
+                            # Let the fallback code handle it
+                            raise Exception("Forcing fallback mode")
                         
             except Exception as e:
                 print(f"Error in play command: {e}")
@@ -518,8 +588,8 @@ class LavalinkMusicCog(commands.Cog):
         music_player.clear()
         music_player.current = None
         
-        # Stop the player
-        await player.stop()
+        # Stop the player safely
+        await self._safe_voice_action(player, 'stop')
         
         await ctx.send("✓ Inistop at ni-clear ang queue!")
     
@@ -542,7 +612,7 @@ class LavalinkMusicCog(commands.Cog):
         if is_dj:
             # DJ can force skip
             await ctx.send("✓ Admin/DJ force skipped the current song.")
-            await player.stop()
+            await self._safe_voice_action(player, 'stop')
             return
             
         # Get the number of members in voice channel (excluding bots)
@@ -557,7 +627,7 @@ class LavalinkMusicCog(commands.Cog):
         
         if current_votes >= required_votes:
             await ctx.send(f"✓ Vote skip successful ({current_votes}/{required_votes}).")
-            await player.stop()
+            await self._safe_voice_action(player, 'stop')
         else:
             await ctx.send(f"✓ Skip vote added ({current_votes}/{required_votes} needed).")
     
@@ -634,7 +704,7 @@ class LavalinkMusicCog(commands.Cog):
             await ctx.send("❌ Naka-pause na talaga!")
             return
             
-        await player.pause()
+        await self._safe_voice_action(player, 'pause')
         await ctx.send("⏸️ Ni-pause ang music.")
     
     @commands.command(name="lresume", aliases=["lunpause"])
@@ -650,7 +720,7 @@ class LavalinkMusicCog(commands.Cog):
             await ctx.send("❌ Hindi naman naka-pause!")
             return
             
-        await player.resume()
+        await self._safe_voice_action(player, 'resume')
         await ctx.send("▶️ Ni-resume ang music.")
     
     @commands.command(name="lvolume", aliases=["lvol", "lv"])
@@ -672,7 +742,7 @@ class LavalinkMusicCog(commands.Cog):
         
         # Update the player's volume if connected
         if player:
-            await player.set_volume(volume)
+            await self._safe_voice_action(player, 'set_volume', volume)
             
         await ctx.send(f"✓ Volume set to **{volume}%**")
     
@@ -813,8 +883,8 @@ class LavalinkMusicCog(commands.Cog):
             await ctx.send(f"❌ Position too high! Max is {track.duration//60000}:{(track.duration%60000)//1000:02d}")
             return
             
-        # Seek to position
-        await player.seek(position_ms)
+        # Seek to position safely
+        await self._safe_voice_action(player, 'seek', position_ms)
         await ctx.send(f"⏩ Seeked to {position_ms//60000}:{(position_ms%60000)//1000:02d}")
     
     @commands.command(name="ldisconnect", aliases=["ldc", "lleave"])
@@ -831,8 +901,8 @@ class LavalinkMusicCog(commands.Cog):
         music_player.clear()
         music_player.current = None
         
-        # Disconnect
-        await player.disconnect()
+        # Disconnect safely
+        await self._safe_voice_action(player, 'disconnect')
         await ctx.send("👋 Umalis ako sa voice channel!")
         
     @commands.command(name="lsoundcloud", aliases=["lsc"])
@@ -844,6 +914,21 @@ class LavalinkMusicCog(commands.Cog):
             query = f"scsearch:{query}"
         await self.lplay(ctx, query=query)
         
+    async def _safe_voice_action(self, player, action_name, *args, **kwargs):
+        """Safely execute a voice client action with error handling"""
+        try:
+            # Get the method by name
+            action = getattr(player, action_name, None)
+            if action and callable(action):
+                return await action(*args, **kwargs)
+            else:
+                print(f"Action {action_name} not found or not callable")
+                return None
+        except Exception as e:
+            print(f"Error executing voice action {action_name}: {e}")
+            # Don't propagate the error - handled here
+            return None
+    
     @commands.command(name="lmusichelp", aliases=["lmhelp"])
     async def lmusichelp(self, ctx):
         """Show help for all music commands"""
