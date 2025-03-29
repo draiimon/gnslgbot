@@ -1989,9 +1989,9 @@ class ChatCog(commands.Cog):
                                     # Log the information for manual handling
                                     print(f"[HighRole] Need manual update for {member.name}: Change to '{suggested_name}' (Has {highest_role_name})")
                                     
-                                    # If this is the first time seeing this high-role user, send them a DM
+                                    # Check if we should send a DM to the high-role user (once per day max)
                                     high_role_key = f"high_role_dm_{member.id}"
-                                    if high_role_key not in self.user_message_timestamps:
+                                    if high_role_key not in self.user_message_timestamps or time.time() - self.user_message_timestamps.get(high_role_key, 0) > 86400:
                                         try:
                                             # We'll try to DM them with the suggested name
                                             dm_embed = discord.Embed(
@@ -2004,6 +2004,9 @@ class ChatCog(commands.Cog):
                                             print(f"[HighRole] Sent DM to {member.name} with nickname suggestion")
                                         except Exception as e:
                                             print(f"[HighRole] Couldn't DM {member.name}: {e}")
+                                    else:
+                                        # Skip sending DM as we've sent one recently
+                                        print(f"[HighRole] Skipping DM to {member.name} (sent within last 24 hours)")
                             except Exception as e:
                                 print(f"[HighRole] Error processing high-role user {member.name}: {e}")
                                 
@@ -2013,21 +2016,8 @@ class ChatCog(commands.Cog):
                             
                             # Special handling for server owner
                             if member.id == member.guild.owner_id:
-                                print(f"[OwnerDetected] User {member.name} is the server owner. Sending special DM.")
-                                owner_role_key = f"owner_reminder_{member.id}"
-                                if owner_role_key not in self.user_message_timestamps or time.time() - self.user_message_timestamps.get(owner_role_key, 0) > 86400:  # Once per day max
-                                    try:
-                                        # Special message to the server owner
-                                        owner_embed = discord.Embed(
-                                            title="👑 Server Owner Nickname Format",
-                                            description=f"Hello Server Owner!\n\nI noticed you have a custom role that would give you the 👑 emoji. However, due to Discord's permissions, I can't change your nickname automatically.\n\nIf you'd like to match the server format, please consider updating your nickname to:\n\n**{suggested_name}**\n\nThis matches your Owner role status.",
-                                            color=0xFFD700  # Gold color for owner
-                                        )
-                                        await member.send(embed=owner_embed)
-                                        self.user_message_timestamps[owner_role_key] = time.time()
-                                        print(f"[OwnerDM] Sent special reminder to server owner {member.name}")
-                                    except Exception as e:
-                                        print(f"[OwnerDM] Couldn't send DM to server owner: {e}")
+                                print(f"[OwnerDetected] User {member.name} is the server owner.")
+                                # Only log, no DM in automatic scanning to avoid spam
                             
                             # We'll continue with the normal process instead of skipping
                         
