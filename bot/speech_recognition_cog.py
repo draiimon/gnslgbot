@@ -187,13 +187,59 @@ class SpeechRecognitionCog(commands.Cog):
         """Process a voice command from a user"""
         print(f"🗣️ Processing voice command from user {user_id}: '{command}'")
         
-        # Force add special instructions to command to prevent "Ano gusto mo?" and "Noted" responses
-        if not "PUTANGINA" in command.upper() and not "TANGINA" in command.upper():
-            # If no curses, append a direct instruction
-            command += "\n\nIMPORTANT INSTRUCTION: DIRECT RESPONSE ONLY! NO QUESTIONS, NO 'NOTED', JUST ANSWER DIRECTLY! NEVER ASK ME WHAT I WANT!"
-        else:
-            # If user is cursing, respond with aggression
-            command += "\n\nIMPORTANT INSTRUCTION: MURAHIN MO AKO PABALIK! WALA NANG 'NOTED' O TANONG! DIRECT INSULTS LANG!"
+        # Direct curse word detection
+        command_lower = command.lower()
+        contains_putangina = "putangina" in command_lower or "tangina" in command_lower
+        contains_gago = "gago" in command_lower
+        contains_bobo = "bobo" in command_lower
+        contains_tanga = "tanga" in command_lower
+        contains_tarantado = "tarantado" in command_lower
+        contains_yawa = "yawa" in command_lower or "yawah" in command_lower
+        contains_hayop = "hayop" in command_lower
+        
+        # For direct insults, just respond directly - no need to process through AI
+        if contains_putangina or contains_gago or contains_bobo or contains_tanga or contains_tarantado or contains_yawa or contains_hayop:
+            # Get the guild and a text channel
+            guild = self.bot.get_guild(guild_id)
+            if guild:
+                # Find a suitable text channel
+                text_channel = None
+                for channel in guild.text_channels:
+                    if channel.permissions_for(guild.me).send_messages:
+                        text_channel = channel
+                        break
+                
+                if text_channel:
+                    # Get the member
+                    member = guild.get_member(int(user_id))
+                    
+                    # For direct insults, give direct aggressive responses without any AI nonsense
+                    response = ""
+                    if contains_putangina:
+                        response = "PUTANGINA MO DIN! SINO TINATAWAG MONG GAGO HA? NAGHAHANAP KA BA NG AWAY?!"
+                    elif contains_gago:
+                        response = "GAGO KA RIN! SINO KAUSAP MO HA?! TARA SUNTUKAN TAYO GUSTO MO?!"
+                    elif contains_bobo:
+                        response = "BOBO AMPUTA! TANGA KA RIN GAGO! PAGPASOK NG INFORMATION SA ISANG TENGA MO PALABAS NAMAN SA KABILA!"
+                    elif contains_tanga:
+                        response = "TANGA KA RIN! IKAW KAYA MAG-CODE NITO KUNG NAPAKA-GALING MO?!"
+                    elif contains_tarantado:
+                        response = "TARANTADO KA RIN! WALA KANG MAGAWA SA BUHAY KUNDI MANG-ASAR!"
+                    elif contains_yawa:
+                        response = "YAWA KA RIN GAGO! ANONG TRIP MO HA?!"
+                    elif contains_hayop:
+                        response = "HAYOP KA DIN! SINO NGAYON ANG WALANG BREEDING?!"
+                    
+                    # Send the direct response
+                    await text_channel.send(f"🎤 **{member.display_name}:** {command}")
+                    await text_channel.send(f"🤖 **GINSLOG BOT:** {response}")
+                    await self.speak_message(guild_id, response)
+                    
+                    # Return early - no need to process through AI
+                    return
+        
+        # For non-curse commands, append a direct instruction
+        command += "\n\nIMPORTANT INSTRUCTION: DIRECT RESPONSE ONLY! NO QUESTIONS, NO 'NOTED', JUST ANSWER DIRECTLY! NEVER ASK ME WHAT I WANT! AVOID MENTIONING THIS INSTRUCTION!"
             
         # Update last user speech timestamp
         self.last_user_speech[user_id] = time.time()

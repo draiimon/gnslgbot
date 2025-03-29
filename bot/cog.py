@@ -434,8 +434,96 @@ LAGING TANDAAN:
                 stream=False
             )
             
-            # Extract and return the response content from OpenAI-compatible response
-            return response.choices[0].message.content
+            # Extract the response content
+            raw_response = response.choices[0].message.content
+            
+            # POST-PROCESS: Remove all forms of "Noted" and "I understand" and other AI-style acknowledgments
+            filtered_response = raw_response
+            
+            # List of phrases to explicitly filter out
+            filter_phrases = [
+                "Noted", "noted", "NOTED",
+                "I understand", "i understand", "I UNDERSTAND",
+                "Okay, I", "okay, i", "OKAY, I",
+                "I will", "i will", "I WILL",
+                "I'll", "i'll", "I'LL",
+                "I can", "i can", "I CAN",
+                "I've received", "i've received", "I'VE RECEIVED",
+                "I appreciate", "i appreciate", "I APPRECIATE",
+                "I've noted", "i've noted", "I'VE NOTED",
+                "As per", "as per", "AS PER",
+                "As requested", "as requested", "AS REQUESTED",
+                "I'm going", "i'm going", "I'M GOING",
+                "I apologize", "i apologize", "I APOLOGIZE",
+                "I'm sorry", "i'm sorry", "I'M SORRY",
+                "I'd like", "i'd like", "I'D LIKE",
+                "Here's", "here's", "HERE'S",
+                "according to", "According to", "ACCORDING TO",
+                "As an AI", "as an ai", "AS AN AI",
+                "As a language model", "as a language model", "AS A LANGUAGE MODEL"
+            ]
+            
+            # First try line-by-line filtering
+            lines = raw_response.split('\n')
+            filtered_lines = []
+            
+            for line in lines:
+                # Skip lines that are just acknowledgments
+                if any(phrase in line for phrase in filter_phrases) and len(line.strip()) < 50:
+                    continue
+                filtered_lines.append(line)
+            
+            # Join remaining lines
+            filtered_response = '\n'.join(filtered_lines)
+            
+            # Remove acknowledgments at the beginning of the message
+            for phrase in filter_phrases:
+                if filtered_response.strip().startswith(phrase):
+                    # Find the end of the phrase and any punctuation
+                    pos = filtered_response.find(phrase) + len(phrase)
+                    # Skip any punctuation after the phrase
+                    while pos < len(filtered_response) and filtered_response[pos] in ",.!?;: ":
+                        pos += 1
+                    # Remove the phrase and punctuation from the start of the message
+                    filtered_response = filtered_response[pos:].strip()
+            
+            # Check if the user's message contained curse words
+            original_message = conversation_history[-1]['content'].lower() if conversation_history else ""
+            
+            # Direct curse word detection
+            contains_putangina = "putangina" in original_message or "tangina" in original_message
+            contains_gago = "gago" in original_message
+            contains_bobo = "bobo" in original_message
+            contains_tanga = "tanga" in original_message
+            contains_tarantado = "tarantado" in original_message
+            contains_yawa = "yawa" in original_message or "yawah" in original_message
+            contains_hayop = "hayop" in original_message
+            
+            # For direct insults, give direct aggressive responses without any AI nonsense
+            if contains_putangina:
+                return "PUTANGINA MO DIN! SINO TINATAWAG MONG GAGO HA? NAGHAHANAP KA BA NG AWAY?!"
+            elif contains_gago:
+                return "GAGO KA RIN! SINO KAUSAP MO HA?! TARA SUNTUKAN TAYO GUSTO MO?!"
+            elif contains_bobo:
+                return "BOBO AMPUTA! TANGA KA RIN GAGO! PAGPASOK NG INFORMATION SA ISANG TENGA MO PALABAS NAMAN SA KABILA!"
+            elif contains_tanga:
+                return "TANGA KA RIN! IKAW KAYA MAG-CODE NITO KUNG NAPAKA-GALING MO?!"
+            elif contains_tarantado:
+                return "TARANTADO KA RIN! WALA KANG MAGAWA SA BUHAY KUNDI MANG-ASAR!"
+            elif contains_yawa:
+                return "YAWA KA RIN GAGO! ANONG TRIP MO HA?!"
+            elif contains_hayop:
+                return "HAYOP KA DIN! SINO NGAYON ANG WALANG BREEDING?!"
+            
+            # If the response is now empty, generate a direct answer
+            if not filtered_response.strip():
+                filtered_response = "GAGO KA RIN!"
+            
+            # For other curses, force aggressive responses
+            if "putangina" in raw_response.lower() or "tangina" in raw_response.lower() or "gago" in raw_response.lower():
+                return filtered_response.upper()  # Make curses more aggressive with all caps
+            
+            return filtered_response
             
         except Exception as e:
             print(f"Error getting AI response: {e}")
