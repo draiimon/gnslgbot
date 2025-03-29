@@ -14,7 +14,7 @@ from .config import Config
 
 
 class ChatCog(commands.Cog):
-    """Cog for handling chat interactions with the Groq AI model and games"""
+    """Cog for handling chat interactions with the Ginsilog AI and games"""
 
     def __init__(self, bot):
         self.bot = bot
@@ -379,55 +379,138 @@ class ChatCog(commands.Cog):
     # ========== HELP COMMAND ==========
     @commands.command(name="tulong")
     async def tulong(self, ctx):
-        """Display all available commands"""
-        embed = discord.Embed(
-            title="📚 BOT COMMAND GUIDE",
-            description="**ITO MGA COMMAND NA PWEDE MO GAMITIN:**",
-            color=Config.EMBED_COLOR_PRIMARY)
+        """Display all available commands in fancy embeds"""
+        try:
+            # Get owner's avatar for footer
+            owner_avatar = None
+            try:
+                owner = await self.bot.fetch_user(705770837399306332)
+                if owner and owner.avatar:
+                    owner_avatar = owner.avatar.url
+            except Exception as e:
+                print(f"Error fetching owner avatar: {e}")
+                owner_avatar = None
 
-        categories = {
-            "🤖 AI CHAT": {
-                "g!usap <message>": "Chat with the AI assistant",
-                "g!ask <message>": "Voice-only AI response (no text logging)",
-                "@Ginsilog BOT <message>": "Mention the bot to chat",
-                "g!clear": "Clear chat history"
-            },
-            "💰 ECONOMY": {
-                "g!daily": "Claim daily ₱10,000",
-                "g!balance": "Check your balance",
-                "g!give <@user> <amount>": "Transfer money",
-                "g!leaderboard": "Top 20 richest players"
-            },
-            "🎮 GAMES": {
-                "g!toss <h/t> <bet>": "Coin flip game",
-                "g!blackjack <bet>": "Play Blackjack",
-                "g!game": "Number guessing game"
-            },
-            "🔧 UTILITY": {
-                "g!joinvc/leavevc": "Voice channel management",
-                "g!vc <message>": "Text-to-speech sa voice channel",
-                "g!change f/m": "Change TTS voice gender (f=female, m=male)",
-                "g!autotts": "Toggle real-time Auto TTS sa channel",
-                "g!replay": "Replay last TTS message",
-                "g!resetvc": "Fix voice channel connection issues",
-                "g!rules": "Server rules",
-                "g!announcement": "Make an announcement"
+            # Main title embed
+            main_embed = discord.Embed(
+                title="**✨ GINSILOG BOT COMMANDS ✨**",
+                description="**TANGINA MO! GUSTO MO MALAMAN MGA COMMANDS? ETO NA LISTAHAN:**",
+                color=discord.Color.from_rgb(255, 59, 59)  # Bright red
+            )
+            
+            # Set a nice thumbnail - use bot's avatar
+            if self.bot.user and self.bot.user.avatar:
+                main_embed.set_thumbnail(url=self.bot.user.avatar.url)
+            
+            # Footer for main embed
+            main_embed.set_footer(
+                text="⚡ GINSILOG BOT 2025 EDITION ⚡ | Gawa ni Mason Calix",
+                icon_url=owner_avatar
+            )
+            
+            await ctx.send(embed=main_embed)
+            
+            # AI CHAT COMMANDS
+            ai_embed = discord.Embed(
+                title="**🤖 AI CHAT COMMANDS 🤖**",
+                description="**MGA KAUSAPIN MO SI GINSILOG:**",
+                color=discord.Color.from_rgb(64, 224, 208)  # Turquoise
+            )
+            
+            ai_commands = {
+                "g!usap <message>": "Kausapin ang Ginsilog AI assistant",
+                "g!ask <message>": "Voice-only AI response (walang text log)",
+                "@Ginsilog BOT <message>": "I-mention lang ang bot para mag-chat",
+                "g!clear": "I-clear ang chat history ng channel"
             }
-            # Admin commands are intentionally hidden from regular help menu
-            # Use g!admin or g!commandslist for admin commands (admin-only)
-        }
-
-        for category, commands in categories.items():
-            formatted_commands = []
-            for cmd, desc in commands.items():
-                formatted_commands.append(f"• {cmd}: {desc}")
-
-            embed.add_field(name=f"**{category}**",
-                            value="\n".join(formatted_commands),
-                            inline=False)
-
-        embed.set_footer(text=f"Ginsilog Bot | Gawa ni Mason Calix")
-        await ctx.send(embed=embed)
+            
+            for cmd, desc in ai_commands.items():
+                ai_embed.add_field(name=f"**{cmd}**", value=desc, inline=False)
+                
+            ai_embed.set_footer(
+                text="AI CHAT | Ginsilog AI 2025 | Gawa ni Mason Calix",
+                icon_url=owner_avatar
+            )
+            
+            # ECONOMY COMMANDS
+            economy_embed = discord.Embed(
+                title="**💰 ECONOMY COMMANDS 💰**",
+                description="**YUMAMAN KA DITO GAGO:**",
+                color=discord.Color.from_rgb(255, 215, 0)  # Gold
+            )
+            
+            economy_commands = {
+                "g!daily": "Kunin ang daily ₱10,000 mo",
+                "g!balance": "Check ang pera mo",
+                "g!give <@user> <amount>": "Bigyan ng pera ang ibang tao",
+                "g!leaderboard": "Top 20 pinakamayayaman sa server"
+            }
+            
+            for cmd, desc in economy_commands.items():
+                economy_embed.add_field(name=f"**{cmd}**", value=desc, inline=False)
+                
+            economy_embed.set_footer(
+                text="ECONOMY SYSTEM | Money Commands | Gawa ni Mason Calix",
+                icon_url=owner_avatar
+            )
+            
+            # GAMES COMMANDS
+            games_embed = discord.Embed(
+                title="**🎮 GAMES COMMANDS 🎮**",
+                description="**SUGAL SUGAL DIN PAMINSAN-MINSAN:**",
+                color=discord.Color.from_rgb(138, 43, 226)  # Purple
+            )
+            
+            games_commands = {
+                "g!toss <h/t> <bet>": "Coin flip game (heads/tails)",
+                "g!blackjack <bet>": "Maglaro ng Blackjack (21)",
+                "g!hit": "Draw card sa Blackjack game",
+                "g!stand": "End turn sa Blackjack game"
+            }
+            
+            for cmd, desc in games_commands.items():
+                games_embed.add_field(name=f"**{cmd}**", value=desc, inline=False)
+                
+            games_embed.set_footer(
+                text="GAMES SYSTEM | Gambling Games | Gawa ni Mason Calix",
+                icon_url=owner_avatar
+            )
+            
+            # UTILITY COMMANDS
+            utility_embed = discord.Embed(
+                title="**🔧 UTILITY COMMANDS 🔧**",
+                description="**IBANG FEATURES NG BOT:**",
+                color=discord.Color.from_rgb(79, 134, 247)  # Blue
+            )
+            
+            utility_commands = {
+                "g!joinvc": "Sumali sa voice channel mo",
+                "g!leavevc": "Umalis sa voice channel",
+                "g!vc <message>": "Text-to-speech sa voice channel",
+                "g!change f/m": "Palitan ang boses (f=babae, m=lalaki)",
+                "g!autotts": "Toggle Auto TTS sa channel",
+                "g!replay": "Ulitin ang huling TTS message",
+                "g!resetvc": "Ayusin ang voice connection issues",
+                "g!rules": "Tignan ang server rules"
+            }
+            
+            for cmd, desc in utility_commands.items():
+                utility_embed.add_field(name=f"**{cmd}**", value=desc, inline=False)
+                
+            utility_embed.set_footer(
+                text="UTILITY COMMANDS | Voice & More | Gawa ni Mason Calix",
+                icon_url=owner_avatar
+            )
+            
+            # Send all embeds
+            await ctx.send(embed=ai_embed)
+            await ctx.send(embed=economy_embed)
+            await ctx.send(embed=games_embed)
+            await ctx.send(embed=utility_embed)
+            
+        except Exception as e:
+            print(f"Error in tulong command: {e}")
+            await ctx.send(f"**ERROR:** May problema sa pagpapakita ng commands: {e}")
 
     # ========== AI CHAT COMMANDS ==========
     async def get_ai_response(self, conversation_history):
@@ -465,11 +548,11 @@ class ChatCog(commands.Cog):
             print(f"Error details: {type(e).__name__}")
 
             # More friendly error message
-            return "Ay sorry ha! May error sa system ko. Pwede mo ba ulit subukan? Mejo nagkaka-aberya ang API ko eh. Pasensya na! 😅 (Groq API error)"
+            return "Ay sorry ha! May error sa system ko. Pwede mo ba ulit subukan? Mejo nagkaka-aberya ang AI ko eh. Pasensya na! 😅"
 
     @commands.command(name="usap")
     async def usap(self, ctx, *, message: str):
-        """Chat with GROQ AI"""
+        """Chat with Ginsilog AI"""
         if self.is_rate_limited(ctx.author.id):
             await ctx.send(
                 f"**Huy {ctx.author.mention}!** Ang bilis mo naman magtype! Sandali lang muna, naglo-load pa ako. Parang text blast ka eh! 😅"
@@ -494,7 +577,7 @@ class ChatCog(commands.Cog):
 
     @commands.command(name="asklog")
     async def asklog(self, ctx, *, message: str):
-        """Chat with GROQ AI and log to specific channel"""
+        """Chat with Ginsilog AI and log to specific channel"""
         if self.is_rate_limited(ctx.author.id):
             await ctx.send(
                 f"**Huy {ctx.author.mention}!** Ang bilis mo naman magtype! Sandali lang muna, naglo-load pa ako. Parang text blast ka eh! 😅"
@@ -986,35 +1069,46 @@ class ChatCog(commands.Cog):
     ] for role in ctx.author.roles))  # Multiple admin roles check
     async def commandslist(self, ctx):
         """Admin command panel - comprehensive list of all commands for admins"""
-        # Get owner's avatar for the footer
-        owner = ctx.guild.get_member(705770837399306332)  # Mason's ID
-        owner_avatar = owner.avatar.url if owner and owner.avatar else None if owner else None
-        
-        # Main header embed
-        header_embed = discord.Embed(
-            title="**🌟 GINSILOG BOT MASTER COMMAND LIST 🌟**",
-            description=
-            "**KUMPLETO AT MAGANDANG LISTA NG LAHAT NG COMMANDS PARA SA MGA MODERATOR!**\n\n"
-            "**⬇️ SCROLL DOWN TO VIEW ALL COMMAND CATEGORIES ⬇️**",
-            color=Config.EMBED_COLOR_PRIMARY)
+        try:
+            # Get owner's avatar for footer
+            owner_avatar = None
+            try:
+                owner = await self.bot.fetch_user(705770837399306332)
+                if owner and owner.avatar:
+                    owner_avatar = owner.avatar.url
+            except Exception as e:
+                print(f"Error fetching owner avatar: {e}")
+                owner_avatar = None
             
-        # Set thumbnail image with bot's avatar
-        header_embed.set_thumbnail(url=self.bot.user.avatar.url if self.bot.user and self.bot.user.avatar else None)
-        
-        # Set author information
-        header_embed.set_author(
-            name="Ginsilog Master Commands", 
-            icon_url=self.bot.user.avatar.url if self.bot.user and self.bot.user.avatar else None
-        )
+            # Main title embed - with improved styling
+            header_embed = discord.Embed(
+                title="**🌟 GINSILOG BOT MASTER COMMAND LIST 🌟**",
+                description="**KUMPLETO AT MAGANDANG LISTA NG LAHAT NG COMMANDS PARA SA MGA MODERATOR!**\n\n"
+                            "**⬇️ SCROLL DOWN TO VIEW ALL COMMAND CATEGORIES ⬇️**",
+                color=discord.Color.from_rgb(255, 59, 59)  # Bright red
+            )
             
-        # Set footer with owner's avatar
-        header_embed.set_footer(
-            text="MASTER LIST | PARA SA MODERATOR LANG | Gawa ni Mason Calix",
-            icon_url=owner_avatar
-        )
-        
-        # Send the header embed first
-        await ctx.send(embed=header_embed)
+            # Set a nice thumbnail - use bot's avatar
+            if self.bot.user and self.bot.user.avatar:
+                header_embed.set_thumbnail(url=self.bot.user.avatar.url)
+            
+            # Set author information with improved error handling
+            header_embed.set_author(
+                name="Ginsilog Master Commands", 
+                icon_url=self.bot.user.avatar.url if self.bot.user and self.bot.user.avatar else None
+            )
+            
+            # Set footer with owner's avatar
+            header_embed.set_footer(
+                text="MASTER LIST | PARA SA MODERATOR LANG | Gawa ni Mason Calix",
+                icon_url=owner_avatar
+            )
+            
+            # Send the header embed first
+            await ctx.send(embed=header_embed)
+        except Exception as e:
+            print(f"Error in commandslist header: {e}")
+            await ctx.send(f"**ERROR:** May problema sa pagpapakita ng commands: {e}")
 
         # ADMIN COMMANDS EMBED - with fancy styling
         admin_commands = {
@@ -1128,7 +1222,7 @@ class ChatCog(commands.Cog):
         
         chat_embed = discord.Embed(
             title="**🤖 AI CHAT COMMANDS 🤖**",
-            description="**MAG-CHAT AT KAUSAPIN ANG BOT (GROQ AI):**",
+            description="**MAG-CHAT AT KAUSAPIN ANG BOT:**",
             color=discord.Color.blue()  # Blue for AI
         )
         
@@ -1138,7 +1232,7 @@ class ChatCog(commands.Cog):
             
         chat_embed.description += f"\n\n{chat_text}"
         chat_embed.set_footer(
-            text="AI SYSTEM | Chat Commands | Gawa ni Mason Calix",
+            text="AI SYSTEM | Ginsilog AI 2025 | Gawa ni Mason Calix",
             icon_url=owner_avatar
         )
         
