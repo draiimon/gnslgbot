@@ -56,19 +56,8 @@ class ChatCog(commands.Cog):
         if member.bot:
             return
             
-        # Role-to-emoji mapping - must match the one in setupnn command
-        role_emoji_map = {
-            705770837399306332: "👑",  # Owner
-            1345727357662658603: "🌿",  # 𝐇𝐈𝐆𝐇
-            1345727357645885448: "🍆",  # 𝐊𝐄𝐊𝐋𝐀𝐑𝐒
-            1345727357645885449: "💦",  # 𝐓𝐀𝐌𝐎𝐃𝐄𝐑𝐀𝐓𝐎𝐑
-            1345727357645885442: "🚀",  # 𝐀𝐒𝐀 𝐒𝐏𝐀𝐂𝐄𝐒𝐇𝐈𝐏
-            1345727357612195890: "🌸",  # 𝐕𝐀𝐕𝐀𝐈𝐇𝐀𝐍
-            1345727357612195889: "💪",  # 𝐁𝐎𝐒𝐒𝐈𝐍𝐆
-            1345727357612195887: "☁️",  # 𝐁𝐖𝐈𝐒𝐈𝐓𝐀
-            1345727357645885446: "🍑",  # 𝐁𝐎𝐓 𝐒𝐈 𝐁𝐇𝐈𝐄
-            1345727357612195885: "🛑",  # 𝐁𝐎𝐁𝐎
-        }
+        # Use centralized configuration from config.py
+        role_emoji_map = Config.ROLE_EMOJI_MAP
         
         # Get member's roles sorted by position (highest first)
         member_roles = sorted(member.roles, key=lambda r: r.position, reverse=True)
@@ -108,21 +97,8 @@ class ChatCog(commands.Cog):
         # Remove any extra spaces
         clean_name = clean_name.strip()
         
-        # Convert to Unicode bold style
-        unicode_map = {
-            'A': '𝐀', 'B': '𝐁', 'C': '𝐂', 'D': '𝐃', 'E': '𝐄', 'F': '𝐅', 'G': '𝐆', 'H': '𝐇', 
-            'I': '𝐈', 'J': '𝐉', 'K': '𝐊', 'L': '𝐋', 'M': '𝐌', 'N': '𝐍', 'O': '𝐎', 'P': '𝐏', 
-            'Q': '𝐐', 'R': '𝐑', 'S': '𝐒', 'T': '𝐓', 'U': '𝐔', 'V': '𝐕', 'W': '𝐖', 'X': '𝐗', 
-            'Y': '𝐘', 'Z': '𝐙',
-            'a': '𝐚', 'b': '𝐛', 'c': '𝐜', 'd': '𝐝', 'e': '𝐞', 'f': '𝐟', 'g': '𝐠', 'h': '𝐡', 
-            'i': '𝐢', 'j': '𝐣', 'k': '𝐤', 'l': '𝐥', 'm': '𝐦', 'n': '𝐧', 'o': '𝐨', 'p': '𝐩', 
-            'q': '𝐪', 'r': '𝐫', 's': '𝐬', 't': '𝐭', 'u': '𝐮', 'v': '𝐯', 'w': '𝐰', 'x': '𝐱', 
-            'y': '𝐲', 'z': '𝐳', 
-            '0': '0', '1': '1', '2': '2', '3': '3', '4': '4', 
-            '5': '5', '6': '6', '7': '7', '8': '8', '9': '9',
-            ' ': ' ', '_': '_', '-': '-', '.': '.', ',': ',', '!': '!', '?': '?'
-        }
-        formatted_name = ''.join(unicode_map.get(c, c) for c in clean_name)
+        # Convert to Unicode bold style using config
+        formatted_name = ''.join(Config.UNICODE_MAP.get(c, c) for c in clean_name)
         
         # Add the role emoji
         new_name = f"{formatted_name} {emoji}"
@@ -153,19 +129,9 @@ class ChatCog(commands.Cog):
             print(f"[Debug] - No relevant changes for {after.name}, skipping")
             return
             
-        # Role-to-emoji mapping - must match the one in setupnn command
-        role_emoji_map = {
-            705770837399306332: "👑",  # Owner
-            1345727357662658603: "🌿",  # 𝐇𝐈𝐆𝐇
-            1345727357645885448: "🍆",  # 𝐊𝐄𝐊𝐋𝐀𝐑𝐒
-            1345727357645885449: "💦",  # 𝐓𝐀𝐌𝐎𝐃𝐄𝐑𝐀𝐓𝐎𝐑
-            1345727357645885442: "🚀",  # 𝐀𝐒𝐀 𝐒𝐏𝐀𝐂𝐄𝐒𝐇𝐈𝐏
-            1345727357612195890: "🌸",  # 𝐕𝐀𝐕𝐀𝐈𝐇𝐀𝐍
-            1345727357612195889: "💪",  # 𝐁𝐎𝐒𝐒𝐈𝐍𝐆
-            1345727357612195887: "☁️",  # 𝐁𝐖𝐈𝐒𝐈𝐓𝐀
-            1345727357645885446: "🍑",  # 𝐁𝐎𝐓 𝐒𝐈 𝐁𝐇𝐈𝐄
-            1345727357612195885: "🛑",  # 𝐁𝐎𝐁𝐎
-        }
+        # Use centralized configuration from config.py
+        role_emoji_map = Config.ROLE_EMOJI_MAP
+        role_names = Config.ROLE_NAMES
         
         # Skip bots
         if after.bot:
@@ -209,21 +175,8 @@ class ChatCog(commands.Cog):
         # Remove any extra spaces
         clean_name = clean_name.strip()
         
-        # Convert to Unicode bold style (reusing the function)
-        unicode_map = {
-            'A': '𝐀', 'B': '𝐁', 'C': '𝐂', 'D': '𝐃', 'E': '𝐄', 'F': '𝐅', 'G': '𝐆', 'H': '𝐇', 
-            'I': '𝐈', 'J': '𝐉', 'K': '𝐊', 'L': '𝐋', 'M': '𝐌', 'N': '𝐍', 'O': '𝐎', 'P': '𝐏', 
-            'Q': '𝐐', 'R': '𝐑', 'S': '𝐒', 'T': '𝐓', 'U': '𝐔', 'V': '𝐕', 'W': '𝐖', 'X': '𝐗', 
-            'Y': '𝐘', 'Z': '𝐙',
-            'a': '𝐚', 'b': '𝐛', 'c': '𝐜', 'd': '𝐝', 'e': '𝐞', 'f': '𝐟', 'g': '𝐠', 'h': '𝐡', 
-            'i': '𝐢', 'j': '𝐣', 'k': '𝐤', 'l': '𝐥', 'm': '𝐦', 'n': '𝐧', 'o': '𝐨', 'p': '𝐩', 
-            'q': '𝐪', 'r': '𝐫', 's': '𝐬', 't': '𝐭', 'u': '𝐮', 'v': '𝐯', 'w': '𝐰', 'x': '𝐱', 
-            'y': '𝐲', 'z': '𝐳', 
-            '0': '0', '1': '1', '2': '2', '3': '3', '4': '4', 
-            '5': '5', '6': '6', '7': '7', '8': '8', '9': '9',
-            ' ': ' ', '_': '_', '-': '-', '.': '.', ',': ',', '!': '!', '?': '?'
-        }
-        formatted_name = ''.join(unicode_map.get(c, c) for c in clean_name)
+        # Convert to Unicode bold style using config
+        formatted_name = ''.join(Config.UNICODE_MAP.get(c, c) for c in clean_name)
         
         # Add the role emoji
         new_name = f"{formatted_name} {emoji}"
@@ -1111,6 +1064,7 @@ class ChatCog(commands.Cog):
         await ctx.send(embed=rules)
 
     @commands.command(name="announcement")
+    @commands.check(lambda ctx: any(role.id in Config.ADMIN_ROLE_IDS for role in ctx.author.roles))  # Admin roles check
     async def announcement(self, ctx, *, message: str = None):
         """Make announcements"""
         if not message:
@@ -1130,9 +1084,7 @@ class ChatCog(commands.Cog):
 # ========== ADMIN COMMANDS ==========
 
     @commands.command(name="sagad")
-    @commands.check(lambda ctx: any(role.id in [
-        1345727357662658603, 1345727357645885449, 1345727357645885448
-    ] for role in ctx.author.roles))  # Multiple admin roles check
+    @commands.check(lambda ctx: any(role.id in Config.ADMIN_ROLE_IDS for role in ctx.author.roles))  # Admin roles check
     async def sagad(self, ctx, amount: int, member: discord.Member):
         """Add coins to a user's balance"""
         if amount <= 0:
@@ -1149,9 +1101,7 @@ class ChatCog(commands.Cog):
             delete_after=10)
 
     @commands.command(name="bawas")
-    @commands.check(lambda ctx: any(role.id in [
-        1345727357662658603, 1345727357645885449, 1345727357645885448
-    ] for role in ctx.author.roles))  # Multiple admin roles check
+    @commands.check(lambda ctx: any(role.id in Config.ADMIN_ROLE_IDS for role in ctx.author.roles))  # Admin roles check
     async def bawas(self, ctx, amount: int, member: discord.Member):
         """Deduct coins from a user's balance"""
         if amount <= 0:
@@ -1173,9 +1123,7 @@ class ChatCog(commands.Cog):
             delete_after=10)
 
     @commands.command(name="goodmorning")
-    @commands.check(lambda ctx: any(role.id in [
-        1345727357662658603, 1345727357645885449, 1345727357645885448
-    ] for role in ctx.author.roles))  # Multiple admin roles check
+    @commands.check(lambda ctx: any(role.id in Config.ADMIN_ROLE_IDS for role in ctx.author.roles))  # Admin roles check
     async def goodmorning(self, ctx):
         """Manually trigger a good morning greeting"""
         # Get the greetings channel
@@ -1206,9 +1154,7 @@ class ChatCog(commands.Cog):
             await ctx.send("**WALANG ONLINE NA TANGA!** Walang imemention!")
 
     @commands.command(name="test")
-    @commands.check(lambda ctx: any(role.id in [
-        1345727357662658603, 1345727357645885449, 1345727357645885448
-    ] for role in ctx.author.roles))  # Multiple admin roles check
+    @commands.check(lambda ctx: any(role.id in Config.ADMIN_ROLE_IDS for role in ctx.author.roles))  # Admin roles check
     async def test(self, ctx):
         """Admin test command to curse at all online users"""
         # Get the specific channel where the curse will be sent
@@ -1258,9 +1204,7 @@ class ChatCog(commands.Cog):
         )
 
     @commands.command(name="goodnight")
-    @commands.check(lambda ctx: any(role.id in [
-        1345727357662658603, 1345727357645885449, 1345727357645885448
-    ] for role in ctx.author.roles))  # Multiple admin roles check
+    @commands.check(lambda ctx: any(role.id in Config.ADMIN_ROLE_IDS for role in ctx.author.roles))  # Admin roles check
     async def goodnight(self, ctx):
         """Manually trigger a good night greeting"""
         # Get the greetings channel
@@ -1281,9 +1225,7 @@ class ChatCog(commands.Cog):
         await ctx.send("**PINATULOG MO NA ANG MGA TANGA!**")
 
     @commands.command(name="g")
-    @commands.check(lambda ctx: any(role.id in [
-        1345727357662658603, 1345727357645885449, 1345727357645885448
-    ] for role in ctx.author.roles))  # Multiple admin roles check
+    @commands.check(lambda ctx: any(role.id in Config.ADMIN_ROLE_IDS for role in ctx.author.roles))  # Admin roles check
     async def ghost_message(self, ctx, channel_id: int, *, message: str):
         """Send a message to a specific channel as the bot (g!g <channel_id> <message>)"""
         # Delete the original command message for stealth
@@ -1316,9 +1258,7 @@ class ChatCog(commands.Cog):
             await ctx.send("**MESSAGE SENT!**", delete_after=5)
 
     @commands.command(name="commandslist")
-    @commands.check(lambda ctx: any(role.id in [
-        1345727357662658603, 1345727357645885449, 1345727357645885448
-    ] for role in ctx.author.roles))  # Multiple admin roles check
+    @commands.check(lambda ctx: any(role.id in Config.ADMIN_ROLE_IDS for role in ctx.author.roles))  # Admin roles check
     async def commandslist(self, ctx):
         """Admin command panel - comprehensive list of all commands for admins"""
         try:
@@ -1515,13 +1455,10 @@ class ChatCog(commands.Cog):
     async def admin(self, ctx):
         """Admin command panel - only visible to admins"""
         # Check if user has admin roles
-        admin_roles = [
-            1345727357662658603, 1345727357645885449, 1345727357645885448
-        ]
         user_roles = [role.id for role in ctx.author.roles]
 
         # Check if user has any of the specified admin roles
-        is_admin = any(role_id in admin_roles for role_id in user_roles)
+        is_admin = any(role_id in Config.ADMIN_ROLE_IDS for role_id in user_roles)
 
         if not is_admin:
             await ctx.send(
@@ -1651,9 +1588,7 @@ class ChatCog(commands.Cog):
         await ctx.send(embed=admin_embed)
 
     @commands.command(name="clear_messages")
-    @commands.check(lambda ctx: any(role.id in [
-        1345727357662658603, 1345727357645885449, 1345727357645885448
-    ] for role in ctx.author.roles))  # Admin roles only
+    @commands.check(lambda ctx: any(role.id in Config.ADMIN_ROLE_IDS for role in ctx.author.roles))  # Admin roles check
     async def clear_messages(self, ctx, channel_id: int = None):
         """Remove all bot messages from a specified channel"""
         # If no channel_id is provided, use the current channel
@@ -1829,9 +1764,7 @@ class ChatCog(commands.Cog):
         await ctx.send(embed=embed)
         
     @commands.command(name="maintenance")
-    @commands.check(lambda ctx: any(role.id in [
-        1345727357662658603, 1345727357645885449, 1345727357645885448
-    ] for role in ctx.author.roles))
+    @commands.check(lambda ctx: any(role.id in Config.ADMIN_ROLE_IDS for role in ctx.author.roles))
     async def maintenance(self, ctx, action: str = None):
         """Toggle maintenance mode (admin only)"""
         # Check if the action is valid
@@ -1886,62 +1819,18 @@ class ChatCog(commands.Cog):
             print("[Auto] Starting rapid nickname scan...")
             try:
                 for guild in self.bot.guilds:
-                    # Role-to-emoji mapping - same as in setupnn
-                    role_emoji_map = {
-                        705770837399306332: "👑",  # Owner
-                        1345727357662658603: "🌿",  # 𝐇𝐈𝐆𝐇
-                        1345727357645885448: "🍆",  # 𝐊𝐄𝐊𝐋𝐀𝐑𝐒
-                        1345727357645885449: "💦",  # 𝐓𝐀𝐌𝐎𝐃𝐄𝐑𝐀𝐓𝐎𝐑
-                        1345727357645885442: "🚀",  # 𝐀𝐒𝐀 𝐒𝐏𝐀𝐂𝐄𝐒𝐇𝐈𝐏
-                        1345727357612195890: "🌸",  # 𝐕𝐀𝐕𝐀𝐈𝐇𝐀𝐍
-                        1345727357612195889: "💪",  # 𝐁𝐎𝐒𝐒𝐈𝐍𝐆
-                        1345727357612195887: "☁️",  # 𝐁𝐖𝐈𝐒𝐈𝐓𝐀
-                        1345727357645885446: "🍑",  # 𝐁𝐎𝐓 𝐒𝐈 𝐁𝐇𝐈𝐄
-                        1345727357612195885: "🛑",  # 𝐁𝐎𝐁𝐎
-                    }
+                    # Use centralized configuration from config.py
+                    role_emoji_map = Config.ROLE_EMOJI_MAP
+                    role_names = Config.ROLE_NAMES
                     
                     # Bots to ignore in our server (these should never be renamed)
                     BOTS_TO_IGNORE = [
                         self.bot.user.id,  # Our own bot
-                        411916947773587456,  # Jockie Music
-                        294882584201003009,  # Sesh
-                        234395307759108106,  # Groovy
-                        235088799074484224,  # Rhythm 
-                        472911936951156740,  # Queue
-                        547905866255433758,  # Ear Tensifier
-                    ]
+                    ] + Config.BOTS_TO_IGNORE
                     
-                    # Role names for display in log
-                    role_names = {
-                        705770837399306332: "Owner",
-                        1345727357662658603: "𝐇𝐈𝐆𝐇",
-                        1345727357645885448: "𝐊𝐄𝐊𝐋𝐀𝐑𝐒",
-                        1345727357645885449: "𝐓𝐀𝐌𝐎𝐃𝐄𝐑𝐀𝐓𝐎𝐑",
-                        1345727357645885442: "𝐀𝐒𝐀 𝐒𝐏𝐀𝐂𝐄𝐒𝐇𝐈𝐏",
-                        1345727357612195890: "𝐕𝐀𝐕𝐀𝐈𝐇𝐀𝐍",
-                        1345727357612195889: "𝐁𝐎𝐒𝐒𝐈𝐍𝐆",
-                        1345727357612195887: "𝐁𝐖𝐈𝐒𝐈𝐓𝐀",
-                        1345727357645885446: "𝐁𝐎𝐓 𝐒𝐈 𝐁𝐇𝐈𝐄",
-                        1345727357612195885: "𝐁𝐎𝐁𝐎",
-                    }
-                    
-                    # Unicode map for text conversion
-                    unicode_map = {
-                        'A': '𝐀', 'B': '𝐁', 'C': '𝐂', 'D': '𝐃', 'E': '𝐄', 'F': '𝐅', 'G': '𝐆', 'H': '𝐇', 
-                        'I': '𝐈', 'J': '𝐉', 'K': '𝐊', 'L': '𝐋', 'M': '𝐌', 'N': '𝐍', 'O': '𝐎', 'P': '𝐏', 
-                        'Q': '𝐐', 'R': '𝐑', 'S': '𝐒', 'T': '𝐓', 'U': '𝐔', 'V': '𝐕', 'W': '𝐖', 'X': '𝐗', 
-                        'Y': '𝐘', 'Z': '𝐙',
-                        'a': '𝐚', 'b': '𝐛', 'c': '𝐜', 'd': '𝐝', 'e': '𝐞', 'f': '𝐟', 'g': '𝐠', 'h': '𝐡', 
-                        'i': '𝐢', 'j': '𝐣', 'k': '𝐤', 'l': '𝐥', 'm': '𝐦', 'n': '𝐧', 'o': '𝐨', 'p': '𝐩', 
-                        'q': '𝐪', 'r': '𝐫', 's': '𝐬', 't': '𝐭', 'u': '𝐮', 'v': '𝐯', 'w': '𝐰', 'x': '𝐱', 
-                        'y': '𝐲', 'z': '𝐳', 
-                        '0': '0', '1': '1', '2': '2', '3': '3', '4': '4', 
-                        '5': '5', '6': '6', '7': '7', '8': '8', '9': '9',
-                        ' ': ' ', '_': '_', '-': '-', '.': '.', ',': ',', '!': '!', '?': '?'
-                    }
-                    
+                    # Helper function to convert text to Unicode bold style
                     def to_unicode_bold(text):
-                        return ''.join(unicode_map.get(c, c) for c in text)
+                        return ''.join(Config.UNICODE_MAP.get(c, c) for c in text)
                     
                     updated_count = 0
                     skipped_count = 0
@@ -2089,57 +1978,16 @@ class ChatCog(commands.Cog):
             await asyncio.sleep(10)  # 10 seconds between scans
             
     @commands.command(name="setupnn")
-    @commands.check(lambda ctx: any(role.id in [
-        1345727357662658603, 1345727357645885449, 1345727357645885448
-    ] for role in ctx.author.roles))
+    @commands.check(lambda ctx: any(role.id in Config.ADMIN_ROLE_IDS for role in ctx.author.roles))
     async def setupnn(self, ctx):
         """Set up name formatting based on highest role (admin only)"""
-        # Role-to-emoji mapping
-        role_emoji_map = {
-            705770837399306332: "👑",  # Owner
-            1345727357662658603: "🌿",  # 𝐇𝐈𝐆𝐇
-            1345727357645885448: "🍆",  # 𝐊𝐄𝐊𝐋𝐀𝐑𝐒
-            1345727357645885449: "💦",  # 𝐓𝐀𝐌𝐎𝐃𝐄𝐑𝐀𝐓𝐎𝐑
-            1345727357645885442: "🚀",  # 𝐀𝐒𝐀 𝐒𝐏𝐀𝐂𝐄𝐒𝐇𝐈𝐏
-            1345727357612195890: "🌸",  # 𝐕𝐀𝐕𝐀𝐈𝐇𝐀𝐍
-            1345727357612195889: "💪",  # 𝐁𝐎𝐒𝐒𝐈𝐍𝐆
-            1345727357612195887: "☁️",  # 𝐁𝐖𝐈𝐒𝐈𝐓𝐀
-            1345727357645885446: "🍑",  # 𝐁𝐎𝐓 𝐒𝐈 𝐁𝐇𝐈𝐄
-            1345727357612195885: "🛑",  # 𝐁𝐎𝐁𝐎
-        }
-        
-        # Role names for display in log
-        role_names = {
-            705770837399306332: "Owner",
-            1345727357662658603: "𝐇𝐈𝐆𝐇",
-            1345727357645885448: "𝐊𝐄𝐊𝐋𝐀𝐑𝐒",
-            1345727357645885449: "𝐓𝐀𝐌𝐎𝐃𝐄𝐑𝐀𝐓𝐎𝐑",
-            1345727357645885442: "𝐀𝐒𝐀 𝐒𝐏𝐀𝐂𝐄𝐒𝐇𝐈𝐏",
-            1345727357612195890: "𝐕𝐀𝐕𝐀𝐈𝐇𝐀𝐍",
-            1345727357612195889: "𝐁𝐎𝐒𝐒𝐈𝐍𝐆",
-            1345727357612195887: "𝐁𝐖𝐈𝐒𝐈𝐓𝐀",
-            1345727357645885446: "𝐁𝐎𝐓 𝐒𝐈 𝐁𝐇𝐈𝐄",
-            1345727357612195885: "𝐁𝐎𝐁𝐎",
-        }
-        
-        # Unicode text conversion map for bold text style
-        unicode_map = {
-            'A': '𝐀', 'B': '𝐁', 'C': '𝐂', 'D': '𝐃', 'E': '𝐄', 'F': '𝐅', 'G': '𝐆', 'H': '𝐇', 
-            'I': '𝐈', 'J': '𝐉', 'K': '𝐊', 'L': '𝐋', 'M': '𝐌', 'N': '𝐍', 'O': '𝐎', 'P': '𝐏', 
-            'Q': '𝐐', 'R': '𝐑', 'S': '𝐒', 'T': '𝐓', 'U': '𝐔', 'V': '𝐕', 'W': '𝐖', 'X': '𝐗', 
-            'Y': '𝐘', 'Z': '𝐙',
-            'a': '𝐚', 'b': '𝐛', 'c': '𝐜', 'd': '𝐝', 'e': '𝐞', 'f': '𝐟', 'g': '𝐠', 'h': '𝐡', 
-            'i': '𝐢', 'j': '𝐣', 'k': '𝐤', 'l': '𝐥', 'm': '𝐦', 'n': '𝐧', 'o': '𝐨', 'p': '𝐩', 
-            'q': '𝐪', 'r': '𝐫', 's': '𝐬', 't': '𝐭', 'u': '𝐮', 'v': '𝐯', 'w': '𝐰', 'x': '𝐱', 
-            'y': '𝐲', 'z': '𝐳', 
-            '0': '0', '1': '1', '2': '2', '3': '3', '4': '4', 
-            '5': '5', '6': '6', '7': '7', '8': '8', '9': '9',
-            ' ': ' ', '_': '_', '-': '-', '.': '.', ',': ',', '!': '!', '?': '?'
-        }
+        # Use the centralized configuration from config.py
+        role_emoji_map = Config.ROLE_EMOJI_MAP
+        role_names = Config.ROLE_NAMES
         
         # Function to convert text to Unicode bold style
         def to_unicode_bold(text):
-            return ''.join(unicode_map.get(c, c) for c in text)
+            return ''.join(Config.UNICODE_MAP.get(c, c) for c in text)
         
         # Status message and counter
         status_embed = discord.Embed(
