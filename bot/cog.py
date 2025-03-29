@@ -471,32 +471,67 @@ LAGING TANDAAN:
             if ctx.voice_client:
                 await ctx.voice_client.disconnect()
             await ctx.author.voice.channel.connect(timeout=60, reconnect=True)
+            await asyncio.sleep(1)  # Wait for connection to stabilize
         
         # Generate TTS audio
         try:
-            # Create a temporary file path
-            temp_file = "temp_tts.mp3"
+            # Send "processing" message
+            processing_msg = await ctx.send("**ANTAY KA MUNA!** Ginagawa ko pa yung audio...")
             
+            # Create a temporary file path with unique name to avoid conflicts
+            temp_dir = "temp_audio"
+            # Create directory if it doesn't exist
+            if not os.path.exists(temp_dir):
+                os.makedirs(temp_dir)
+                
+            temp_file = f"{temp_dir}/tts_{ctx.author.id}_{int(time.time())}.mp3"
+            
+            # Determine language based on content (simple heuristic)
+            # If message contains more English words than Tagalog words, use 'en'
+            import re
+            words = re.findall(r'\w+', message.lower())
+            tagalog_markers = ['ang', 'mga', 'na', 'ng', 'sa', 'ko', 'mo', 'siya', 'naman', 'po', 'tayo', 'kami']
+            tagalog_count = sum(1 for word in words if word in tagalog_markers)
+            
+            # Default to Tagalog, but switch to English if clearly English
+            lang = 'tl'  # Default to Tagalog
+            if len(words) > 3 and tagalog_count < 2:
+                lang = 'en'  # Switch to English if minimal Tagalog markers
+                
             # Generate TTS with gTTS (Google Text-to-Speech)
-            tts = gTTS(text=message, lang='tl', slow=False)  # 'tl' for Tagalog
+            tts = gTTS(text=message, lang=lang, slow=False)
             tts.save(temp_file)
             
-            # Create audio source for playback
-            audio_source = discord.FFmpegPCMAudio(temp_file)
+            # Delete processing message
+            await processing_msg.delete()
             
-            # Play the audio
-            if ctx.voice_client.is_playing():
-                ctx.voice_client.stop()
+            # Log for debugging
+            print(f"✅ TTS file generated at {temp_file}, language: {lang}")
             
-            ctx.voice_client.play(audio_source)
+            try:
+                # Create audio source for playback
+                audio_source = discord.FFmpegPCMAudio(executable="ffmpeg", source=temp_file)
+                
+                # Add volume adjustment to make it louder and clearer
+                audio_source = discord.PCMVolumeTransformer(audio_source, volume=1.5)
+                
+                # Play the audio
+                if ctx.voice_client.is_playing():
+                    ctx.voice_client.stop()
+                    
+                ctx.voice_client.play(
+                    audio_source, 
+                    after=lambda e: print(f'Player error: {e}' if e else 'Audio playback finished successfully!')
+                )
+            except Exception as audio_error:
+                await ctx.send(f"**ERROR SA AUDIO PLAYBACK:** {str(audio_error)}")
+                print(f"Audio playback error: {str(audio_error)}")
             
-            # Delete the temporary file after playback
-            # await asyncio.sleep(5)  # Give some time for playback to start
-            # os.remove(temp_file)
-            
+            # Send confirmation
             await ctx.send(f"🔊 **SINABI KO NA:** {message}", delete_after=10)
             
         except Exception as e:
+            print(f"TTS ERROR: {str(e)}")
             await ctx.send(f"**ERROR:** {str(e)}")
    
    
