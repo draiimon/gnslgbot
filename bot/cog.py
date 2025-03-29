@@ -283,13 +283,9 @@ class ChatCog(commands.Cog):
                 "g!join/leave": "Voice channel management",
                 "g!rules": "Server rules",
                 "g!announcement": "Make an announcement"
-            },
-            "🔑 ADMIN COMMANDS": {
-                "g!sagad <amount> <@user>": "Add coins to a user",
-                "g!bawas <amount> <@user>": "Remove coins from a user",
-                "g!goodmorning": "Send good morning message",
-                "g!goodnight": "Send good night message"
-            } # The g!test command is intentionally hidden from help menu
+            }
+            # Admin commands are intentionally hidden from regular help menu
+            # Use g!admin or g!commandslist for admin commands (admin-only)
         }
 
         for category, commands in categories.items():
