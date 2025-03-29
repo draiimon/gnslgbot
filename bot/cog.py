@@ -1562,10 +1562,14 @@ class ChatCog(commands.Cog):
         
     @commands.command(name="view")
     async def view(self, ctx, member: discord.Member = None):
-        """Display user's profile picture and stats"""
+        """Display user's profile picture and stats (server members only)"""
         # If no member is specified, use the command user
         if member is None:
             member = ctx.author
+
+        # Check if member is in the server
+        if not isinstance(member, discord.Member):
+            return await ctx.send("**TANGA!** Hindi ko makikita ang profile ng mga users na wala sa server! Server members lang pwede tignan!")
             
         # Create an embed for the user
         embed = discord.Embed(
