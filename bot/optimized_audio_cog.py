@@ -225,18 +225,9 @@ class AudioCog(commands.Cog):
             # Create Edge TTS communicator - using clearest Filipino voice at highest quality
             # Options: fil-PH-AngeloNeural (male), fil-PH-BlessicaNeural (female)
             voice = "fil-PH-AngeloNeural"  # Changed to male voice which is often clearer
-            rate = "+0%"  # Normal rate
-            volume = "+0%"  # Normal volume
-            pitch = "+0%"  # Normal pitch
             
-            # Create TTS with improved voice parameters
-            tts = edge_tts.Communicate(
-                text=message, 
-                voice=voice,
-                rate=rate,
-                volume=volume,
-                pitch=pitch
-            )
+            # Create TTS with just the voice parameter (default settings)
+            tts = edge_tts.Communicate(text=message, voice=voice)
             
             # Generate MP3 audio using Edge TTS API
             await tts.save(mp3_filename)
