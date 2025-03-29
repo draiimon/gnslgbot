@@ -366,18 +366,55 @@ class SpeechRecognitionCog(commands.Cog):
     async def _ensure_voice_connection(self, voice_channel):
         """Ensure we have a voice connection to the specified channel"""
         guild_id = voice_channel.guild.id
+        guild = voice_channel.guild
         
-        if guild_id in self.voice_clients:
+        # Check if we have a connection in our own tracking
+        if guild_id in self.voice_clients and self.voice_clients[guild_id].is_connected():
             # Already connected, just move to the new channel if needed
             if self.voice_clients[guild_id].channel.id != voice_channel.id:
                 await self.voice_clients[guild_id].move_to(voice_channel)
         else:
-            # Connect to new channel
-            voice_client = await voice_channel.connect()
-            self.voice_clients[guild_id] = voice_client
-            # Initialize TTS queue if needed
-            if guild_id not in self.tts_queue:
-                self.tts_queue[guild_id] = []
+            # We don't have a valid connection in our tracking
+            
+            # Check if discord.py thinks we have a connection
+            voice_client = guild.voice_client
+            if voice_client and voice_client.is_connected():
+                # Discord.py has a connection, use it instead of creating a new one
+                self.voice_clients[guild_id] = voice_client
+                
+                # Move to the requested channel if needed
+                if voice_client.channel.id != voice_channel.id:
+                    await voice_client.move_to(voice_channel)
+            else:
+                # No connection exists anywhere, create a new one
+                try:
+                    voice_client = await voice_channel.connect()
+                    self.voice_clients[guild_id] = voice_client
+                except discord.errors.ClientException as e:
+                    # If we get "already connected" error, try to find and use the existing connection
+                    if "Already connected" in str(e):
+                        print(f"⚠️ Error connecting: {e}, attempting to find existing connection")
+                        voice_client = guild.voice_client
+                        if voice_client:
+                            self.voice_clients[guild_id] = voice_client
+                            # Move to requested channel
+                            if voice_client.channel.id != voice_channel.id:
+                                await voice_client.move_to(voice_channel)
+                        else:
+                            # If all else fails, force disconnect and try again
+                            for vc in self.bot.voice_clients:
+                                if vc.guild.id == guild_id:
+                                    await vc.disconnect(force=True)
+                            # Now try connecting again
+                            voice_client = await voice_channel.connect()
+                            self.voice_clients[guild_id] = voice_client
+                    else:
+                        # Some other error, re-raise
+                        raise
+        
+        # Initialize TTS queue if needed
+        if guild_id not in self.tts_queue:
+            self.tts_queue[guild_id] = []
         
         return self.voice_clients[guild_id]
     
