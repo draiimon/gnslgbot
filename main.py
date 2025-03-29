@@ -3,9 +3,9 @@ import discord
 from discord.ext import commands, tasks
 from bot.config import Config
 from bot.cog import ChatCog
-from bot.optimized_audio_cog import AudioCog
 from bot.speech_recognition_cog import SpeechRecognitionCog
 from bot.enhanced_music_cog import EnhancedMusicCog  # Using the enhanced version
+from bot.optimized_audio_cog import OptimizedMusicCog  # New YouTube and Spotify parser
 from flask import Flask
 import threading
 import datetime
@@ -48,11 +48,11 @@ async def on_ready():
         chat_cog = bot.get_cog("ChatCog")
         print("ChatCog already loaded")
         
-    # Load audio cog if not already loaded
-    if not bot.get_cog("AudioCog"):
-        audio_cog = AudioCog(bot)
-        await bot.add_cog(audio_cog)
-        print("✅ Audio Cog loaded with 2025 TTS implementation (Optimized for Replit)")
+    # Audio Cog has been replaced by the enhanced options
+    # if not bot.get_cog("AudioCog"):
+    #    audio_cog = AudioCog(bot)
+    #    await bot.add_cog(audio_cog)
+    #    print("✅ Audio Cog loaded with 2025 TTS implementation (Optimized for Replit)")
         
     # Load new speech recognition cog with direct access to ChatCog's AI response method
     if not bot.get_cog("SpeechRecognitionCog"):
@@ -69,6 +69,12 @@ async def on_ready():
         enhanced_music_cog = EnhancedMusicCog(bot)
         await bot.add_cog(enhanced_music_cog)
         print("🔊 Enhanced Music Cog loaded with Edge TTS and local audio support")
+    
+    # Load the optimized music cog with YouTube and Spotify parsing
+    if not bot.get_cog("OptimizedMusicCog"):
+        optimized_music_cog = OptimizedMusicCog(bot)
+        await bot.add_cog(optimized_music_cog)
+        print("🎵 Optimized Music Cog loaded with YouTube and Spotify parsing - NO API BLOCKS!")
         
     # Start the greetings scheduler
     check_greetings.start()
