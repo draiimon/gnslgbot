@@ -1,0 +1,45 @@
+2025-03-29 13:22:26 ERROR    discord.client Ignoring exception in on_ready
+Traceback (most recent call last):
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/discord/client.py", line 481, in _run_event
+    await coro(*args, **kwargs)
+  File "/home/runner/workspace/main.py", line 80, in on_ready
+    await bot.add_cog(lavalink_music_cog)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/discord/ext/commands/bot.py", line 799, in add_cog
+    cog = await cog._inject(self, override=override, guild=guild, guilds=guilds)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/discord/ext/commands/cog.py", line 725, in _inject
+    raise e
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/discord/ext/commands/cog.py", line 716, in _inject
+    bot.add_command(command)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/discord/ext/commands/bot.py", line 253, in add_command
+    super().add_command(command)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/discord/ext/commands/core.py", line 1362, in add_command
+    raise CommandRegistrationError(alias, alias_conflict=True)
+discord.ext.commands.errors.CommandRegistrationError: The alias play is already an existing command or alias.
+✓ Connecting to Lavalink server at lavalink.devamop.in:443 (Secure: True)
+An unexpected error occurred while connecting Node(identifier=Tw8GHCp7euwDn4y8, uri=https://lavalink.devamop.in:443, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.devamop.in:443 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=Tw8GHCp7euwDn4y8, uri=https://lavalink.devamop.in:443, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.devamop.in:443 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=Tw8GHCp7euwDn4y8, uri=https://lavalink.devamop.in:443, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.devamop.in:443 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=Tw8GHCp7euwDn4y8, uri=https://lavalink.devamop.in:443, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.devamop.in:443 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=Tw8GHCp7euwDn4y8, uri=https://lavalink.devamop.in:443, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.devamop.in:443 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=Tw8GHCp7euwDn4y8, uri=https://lavalink.devamop.in:443, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.devamop.in:443 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=Tw8GHCp7euwDn4y8, uri=https://lavalink.devamop.in:443, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.devamop.in:443 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=Tw8GHCp7euwDn4y8, uri=https://lavalink.devamop.in:443, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.devamop.in:443 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=Tw8GHCp7euwDn4y8, uri=https://lavalink.devamop.in:443, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.devamop.in:443 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=Tw8GHCp7euwDn4y8, uri=https://lavalink.devamop.in:443, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.devamop.in:443 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=Tw8GHCp7euwDn4y8, uri=https://lavalink.devamop.in:443, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.devamop.in:443 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=Tw8GHCp7euwDn4y8, uri=https://lavalink.devamop.in:443, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.devamop.in:443 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=Tw8GHCp7euwDn4y8, uri=https://lavalink.devamop.in:443, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.devamop.in:443 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues

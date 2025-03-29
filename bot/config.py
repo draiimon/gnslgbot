@@ -49,5 +49,27 @@ class Config:
     # Lavalink settings - using a public Lavalink server
     LAVALINK_HOST = os.getenv('LAVALINK_HOST', 'lavalink.lexnet.cc')
     LAVALINK_PORT = int(os.getenv('LAVALINK_PORT', '443'))
-    LAVALINK_PASSWORD = os.getenv('LAVALINK_PASSWORD', 'lexn3tl@val!nk')
-    LAVALINK_SECURE = True  # Use SSL for the connection
+    LAVALINK_PASSWORD = os.getenv('LAVALINK_PASSWORD', 'lexn3tl4v4')
+    LAVALINK_SECURE = True  # Use SSL for this server
+    
+    # Alternative Lavalink servers (fallbacks)
+    ALT_LAVALINK_SERVERS = [
+        {
+            'host': 'lavalink2.lexnet.cc',
+            'port': 443, 
+            'password': 'lexn3tl4v4',
+            'secure': True
+        },
+        {
+            'host': 'lavalink.devamop.in',
+            'port': 443,
+            'password': 'DevamOP',
+            'secure': True
+        },
+        {
+            'host': 'lava.link',
+            'port': 80,
+            'password': 'anything as a password',
+            'secure': False
+        }
+    ]

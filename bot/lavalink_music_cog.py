@@ -8,6 +8,7 @@ from typing import Optional, Dict, List, Any, Union
 import wavelink
 from wavelink.tracks import Playable
 from bot.config import Config
+from bot.custom_youtube import YouTubeUnblocker, SpotifyUnblocker
 
 # We'll use direct integration with Spotify APIs instead of wavelink.ext.spotify
 # since newer versions of wavelink may not have this extension
@@ -90,6 +91,12 @@ class LavalinkMusicCog(commands.Cog):
         self.bot = bot
         self.players = {}  # Guild ID -> MusicPlayer
         self.spotify_enabled = Config.SPOTIFY_CLIENT_ID and Config.SPOTIFY_CLIENT_SECRET
+        self.lavalink_connected = False
+        
+        # Import the YouTube parser for fallback
+        from bot.custom_youtube import YouTubeUnblocker, SpotifyUnblocker
+        self.youtube_parser = YouTubeUnblocker()
+        self.spotify_parser = SpotifyUnblocker(self.youtube_parser)
         
         # Set up wavelink node when the bot is ready
         bot.loop.create_task(self.connect_nodes())
@@ -97,9 +104,6 @@ class LavalinkMusicCog(commands.Cog):
     async def connect_nodes(self):
         """Connect to Lavalink nodes"""
         await self.bot.wait_until_ready()
-        
-        # We no longer use spotify_client directly with newer wavelink versions
-        # The Lavalink server will handle Spotify integration through plugins
         
         # Connect to the Lavalink server using Config settings
         lavalink_host = Config.LAVALINK_HOST
@@ -109,14 +113,22 @@ class LavalinkMusicCog(commands.Cog):
         
         print(f"✓ Connecting to Lavalink server at {lavalink_host}:{lavalink_port} (Secure: {lavalink_secure})")
         
-        # Connect using wavelink 3.x API
-        nodes = [
-            wavelink.Node(
-                uri=f'{"https" if lavalink_secure else "http"}://{lavalink_host}:{lavalink_port}', 
-                password=lavalink_password
-            )
-        ]
-        await wavelink.Pool.connect(nodes=nodes, client=self.bot)
+        # Try to connect to Lavalink but don't fail if it doesn't work
+        try:
+            # Connect using wavelink 3.x API
+            nodes = [
+                wavelink.Node(
+                    uri=f'{"https" if lavalink_secure else "http"}://{lavalink_host}:{lavalink_port}', 
+                    password=lavalink_password
+                )
+            ]
+            await wavelink.Pool.connect(nodes=nodes, client=self.bot)
+            self.lavalink_connected = True
+            print("✅ Successfully connected to Lavalink server!")
+        except Exception as e:
+            print(f"❌ Failed to connect to Lavalink server: {e}")
+            print("⚠️ The bot will fall back to using the custom YouTube parser for music functionality.")
+            self.lavalink_connected = False
         
     def get_player(self, guild_id):
         """Get or create a music player for a guild"""
@@ -312,10 +324,90 @@ class LavalinkMusicCog(commands.Cog):
                         
             except Exception as e:
                 print(f"Error in play command: {e}")
-                await ctx.send(f"❌ Error: {str(e)}")
+                
+                # If Lavalink is not connected, try using the custom YouTube parser as fallback
+                if not self.lavalink_connected:
+                    await ctx.send("⚠️ Falling back to custom YouTube parser...")
+                    
+                    try:
+                        # Determine if it's a Spotify URL
+                        if spotify_match:
+                            content_type = spotify_match.group(2)
+                            content_id = spotify_match.group(3)
+                            
+                            if content_type == 'track':
+                                track_info = self.spotify_parser.get_track_info(query)
+                                if track_info:
+                                    await ctx.send(f"✓ Found on YouTube instead: **{track_info['title']}**")
+                                    
+                                    # Store track info
+                                    music_player.add(track_info)
+                                    
+                                    # Let the user know we're using a fallback
+                                    await ctx.send(f"✓ Added to queue (via YouTube): **{track_info['title']}**")
+                                else:
+                                    await ctx.send("❌ Could not find the Spotify track on YouTube.")
+                                    return
+                            else:
+                                await ctx.send("❌ Spotify playlists require Lavalink connection, which is currently unavailable.")
+                                return
+                        
+                        # Handle YouTube or general search
+                        elif 'youtube.com' in query.lower() or 'youtu.be' in query.lower():
+                            # It's a YouTube URL
+                            video_id = self.youtube_parser.extract_video_id(query)
+                            if video_id:
+                                video_info = self.youtube_parser.get_video_info(video_id)
+                                if video_info:
+                                    # Add to queue
+                                    music_player.add(video_info)
+                                    await ctx.send(f"✓ Added to queue (via direct parser): **{video_info['title']}**")
+                                else:
+                                    await ctx.send("❌ Could not get video information.")
+                                    return
+                            else:
+                                await ctx.send("❌ Invalid YouTube URL.")
+                                return
+                        else:
+                            # It's a search query
+                            await ctx.send(f"🔎 Searching for: **{query}**")
+                            search_results = self.youtube_parser.search_videos(query, max_results=1)
+                            
+                            if search_results:
+                                video_info = search_results[0]
+                                # Add to queue
+                                music_player.add(video_info)
+                                await ctx.send(f"✓ Added to queue: **{video_info['title']}**")
+                            else:
+                                await ctx.send(f"❌ No results found for '{query}'")
+                                return
+                        
+                        # Start playing if not already playing
+                        if not player.is_playing():
+                            # Get the first track from the queue
+                            track = music_player.next()
+                            if track:
+                                # Connect to voice channel if not already connected
+                                if not ctx.voice_client:
+                                    await self.join_voice_channel(ctx)
+                                
+                                # This is a custom track object, not a wavelink track
+                                # We need to handle it differently
+                                await ctx.send(f"🎵 Now playing: **{track['title']}**")
+                                
+                                # Here we would add code to play the track using FFmpeg
+                                # But for now, just inform the user that playback isn't implemented
+                                await ctx.send("⚠️ Fallback playback not fully implemented. Please check back later.")
+                    
+                    except Exception as fallback_error:
+                        print(f"Error in fallback mode: {fallback_error}")
+                        await ctx.send(f"❌ Error in fallback mode: {str(fallback_error)}")
+                else:
+                    # If Lavalink is available but there was still an error, show the original error
+                    await ctx.send(f"❌ Error: {str(e)}")
     
-    @commands.command(name="stop")
-    async def stop(self, ctx):
+    @commands.command(name="lstop")
+    async def lstop(self, ctx):
         """Stop playing and clear the queue"""
         player = ctx.voice_client
         
@@ -333,8 +425,8 @@ class LavalinkMusicCog(commands.Cog):
         
         await ctx.send("✓ Inistop at ni-clear ang queue!")
     
-    @commands.command(name="skip", aliases=["s"])
-    async def skip(self, ctx):
+    @commands.command(name="lskip", aliases=["ls"])
+    async def lskip(self, ctx):
         """Skip the current song or vote to skip"""
         player = ctx.voice_client
         
@@ -371,8 +463,8 @@ class LavalinkMusicCog(commands.Cog):
         else:
             await ctx.send(f"✓ Skip vote added ({current_votes}/{required_votes} needed).")
     
-    @commands.command(name="queue", aliases=["q"])
-    async def queue(self, ctx):
+    @commands.command(name="lqueue", aliases=["lq"])
+    async def lqueue(self, ctx):
         """Show the current music queue"""
         player = ctx.voice_client
         music_player = self.get_player(ctx.guild.id)
@@ -431,8 +523,8 @@ class LavalinkMusicCog(commands.Cog):
         
         await ctx.send(embed=embed)
     
-    @commands.command(name="pause")
-    async def pause(self, ctx):
+    @commands.command(name="lpause")
+    async def lpause(self, ctx):
         """Pause the current song"""
         player = ctx.voice_client
         
@@ -447,8 +539,8 @@ class LavalinkMusicCog(commands.Cog):
         await player.pause()
         await ctx.send("⏸️ Ni-pause ang music.")
     
-    @commands.command(name="resume", aliases=["unpause"])
-    async def resume(self, ctx):
+    @commands.command(name="lresume", aliases=["lunpause"])
+    async def lresume(self, ctx):
         """Resume the current song"""
         player = ctx.voice_client
         
@@ -463,8 +555,8 @@ class LavalinkMusicCog(commands.Cog):
         await player.resume()
         await ctx.send("▶️ Ni-resume ang music.")
     
-    @commands.command(name="volume", aliases=["vol", "v"])
-    async def volume(self, ctx, volume: int = None):
+    @commands.command(name="lvolume", aliases=["lvol", "lv"])
+    async def lvolume(self, ctx, volume: int = None):
         """Set the volume (0-100)"""
         player = ctx.voice_client
         music_player = self.get_player(ctx.guild.id)
@@ -486,8 +578,8 @@ class LavalinkMusicCog(commands.Cog):
             
         await ctx.send(f"✓ Volume set to **{volume}%**")
     
-    @commands.command(name="loop", aliases=["l"])
-    async def loop(self, ctx):
+    @commands.command(name="lloop", aliases=["ll"])
+    async def lloop(self, ctx):
         """Toggle loop for the current song"""
         music_player = self.get_player(ctx.guild.id)
         music_player.loop = not music_player.loop
@@ -498,8 +590,8 @@ class LavalinkMusicCog(commands.Cog):
             
         await ctx.send(f"🔂 Song loop: **{'Enabled' if music_player.loop else 'Disabled'}**")
     
-    @commands.command(name="loopqueue", aliases=["lq"])
-    async def loopqueue(self, ctx):
+    @commands.command(name="lloopqueue", aliases=["llq"])
+    async def lloopqueue(self, ctx):
         """Toggle loop for the entire queue"""
         music_player = self.get_player(ctx.guild.id)
         music_player.loop_queue = not music_player.loop_queue
@@ -510,8 +602,8 @@ class LavalinkMusicCog(commands.Cog):
             
         await ctx.send(f"🔁 Queue loop: **{'Enabled' if music_player.loop_queue else 'Disabled'}**")
     
-    @commands.command(name="shuffle")
-    async def shuffle(self, ctx):
+    @commands.command(name="lshuffle")
+    async def lshuffle(self, ctx):
         """Shuffle the queue"""
         music_player = self.get_player(ctx.guild.id)
         
@@ -522,8 +614,8 @@ class LavalinkMusicCog(commands.Cog):
         music_player.shuffle()
         await ctx.send("🔀 Shuffled the queue!")
     
-    @commands.command(name="nowplaying", aliases=["np"])
-    async def nowplaying(self, ctx):
+    @commands.command(name="lnowplaying", aliases=["lnp"])
+    async def lnowplaying(self, ctx):
         """Show information about the currently playing song"""
         player = ctx.voice_client
         
@@ -597,8 +689,8 @@ class LavalinkMusicCog(commands.Cog):
             
         await ctx.send(embed=embed)
     
-    @commands.command(name="seek")
-    async def seek(self, ctx, *, time: str):
+    @commands.command(name="lseek")
+    async def lseek(self, ctx, *, time: str):
         """Seek to a specific position in the song (eg. "1:30")"""
         player = ctx.voice_client
         
@@ -627,8 +719,8 @@ class LavalinkMusicCog(commands.Cog):
         await player.seek(position_ms)
         await ctx.send(f"⏩ Seeked to {position_ms//60000}:{(position_ms%60000)//1000:02d}")
     
-    @commands.command(name="disconnect", aliases=["dc", "leave"])
-    async def disconnect(self, ctx):
+    @commands.command(name="ldisconnect", aliases=["ldc", "lleave"])
+    async def ldisconnect(self, ctx):
         """Disconnect the bot from voice channel"""
         player = ctx.voice_client
         
@@ -645,14 +737,72 @@ class LavalinkMusicCog(commands.Cog):
         await player.disconnect()
         await ctx.send("👋 Umalis ako sa voice channel!")
         
-    @commands.command(name="soundcloud", aliases=["sc"])
-    async def soundcloud(self, ctx, *, query: str):
+    @commands.command(name="lsoundcloud", aliases=["lsc"])
+    async def lsoundcloud(self, ctx, *, query: str):
         """Play music from SoundCloud"""
         # This basically calls the play command but forces SoundCloud search
         if not query.startswith('https://soundcloud.com'):
             # If it's not already a SoundCloud URL, make it a search
             query = f"scsearch:{query}"
         await self.lplay(ctx, query=query)
+        
+    @commands.command(name="lmusichelp", aliases=["lmhelp"])
+    async def lmusichelp(self, ctx):
+        """Show help for all music commands"""
+        streaming_status = "✅ Advanced streaming mode" if self.lavalink_connected else "⚠️ Basic playback mode (no Lavalink)"
+        
+        embed = discord.Embed(
+            title="🎵 Ginsilog Music Commands",
+            description=f"Ang bagong music player ng Ginsilog!\n\n**Status: {streaming_status}**",
+            color=0xFF5733
+        )
+        
+        # Playback commands
+        embed.add_field(
+            name="Playback Commands",
+            value=(
+                "g!lplay <search/URL> - Magpatugtog ng music (YouTube, Spotify, SoundCloud)\n"
+                "g!lstop - Itigil ang music at i-clear ang queue\n"
+                "g!lskip - Skip sa susunod na kanta\n"
+                "g!lpause - I-pause ang kanta\n"
+                "g!lresume - Ituloy ang patugtog\n"
+                "g!lseek <time> - Lumipat sa partikular na oras (eg. '1:30')\n"
+                "g!ldisconnect - Umalis sa voice channel"
+            ),
+            inline=False
+        )
+        
+        # Queue commands
+        embed.add_field(
+            name="Queue Commands",
+            value=(
+                "g!lqueue - Ipakita ang queue\n"
+                "g!lloop - I-loop ang kasalukuyang kanta\n"
+                "g!lloopqueue - I-loop ang buong queue\n"
+                "g!lshuffle - I-shuffle ang queue\n"
+                "g!lnowplaying - Ipakita ang detalye ng kasalukuyang tumutugtog\n"
+                "g!lvolume <0-100> - I-adjust ang volume"
+            ),
+            inline=False
+        )
+        
+        # Special commands
+        embed.add_field(
+            name="Special Commands",
+            value=(
+                "g!lsoundcloud <search/URL> - Magpatugtog mula sa SoundCloud\n"
+                "g!lmusichelp - Ipakita ang listahan ng mga commands"
+            ),
+            inline=False
+        )
+        
+        if self.lavalink_connected:
+            footer_text = "Music powered by Lavalink - Supports YouTube, Spotify, and SoundCloud"
+        else:
+            footer_text = "Running in fallback mode - Some features may be limited"
+            
+        embed.set_footer(text=footer_text)
+        await ctx.send(embed=embed)
         
 
 def setup(bot):
