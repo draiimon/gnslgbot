@@ -36,7 +36,7 @@ class Config:
     # Bot personality settings
     BOT_LANGUAGE = "Tagalog"  
     BOT_PERSONALITY = "Aggressively Rude and Insulting"  # Added personality descriptor
-    BOT_CREATOR = "Mason Calix 2025"
+    BOT_CREATOR = "Mason Calox 2025"
     
     # UI settings
     EMBED_COLOR_PRIMARY = 0xFF5733  # Bright orange-red
