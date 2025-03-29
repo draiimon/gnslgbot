@@ -1,0 +1,18 @@
+An unexpected error occurred while connecting Node(identifier=_I6eIzoMHEkxs4qZ, uri=https://lavalink.lexnet.cc:443, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.lexnet.cc:443 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=_I6eIzoMHEkxs4qZ, uri=https://lavalink.lexnet.cc:443, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.lexnet.cc:443 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+172.31.128.40 - - [29/Mar/2025 13:38:15] "GET / HTTP/1.1" 200 -
+An unexpected error occurred while connecting Node(identifier=_I6eIzoMHEkxs4qZ, uri=https://lavalink.lexnet.cc:443, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.lexnet.cc:443 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=_I6eIzoMHEkxs4qZ, uri=https://lavalink.lexnet.cc:443, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.lexnet.cc:443 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=_I6eIzoMHEkxs4qZ, uri=https://lavalink.lexnet.cc:443, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.lexnet.cc:443 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+Automated greetings disabled during maintenance
+An unexpected error occurred while connecting Node(identifier=_I6eIzoMHEkxs4qZ, uri=https://lavalink.lexnet.cc:443, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.lexnet.cc:443 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=_I6eIzoMHEkxs4qZ, uri=https://lavalink.lexnet.cc:443, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.lexnet.cc:443 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues
+An unexpected error occurred while connecting Node(identifier=_I6eIzoMHEkxs4qZ, uri=https://lavalink.lexnet.cc:443, status=NodeStatus.CONNECTING, players=0) to Lavalink: "Cannot connect to host lavalink.lexnet.cc:443 ssl:default [Name or service not known]"
+If this error persists or wavelink is unable to reconnect, please see: https://github.com/PythonistaGuild/Wavelink/issues

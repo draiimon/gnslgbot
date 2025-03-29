@@ -130,8 +130,11 @@ class LavalinkMusicCog(commands.Cog):
             print(f"❌ Failed to connect to primary Lavalink server: {e}")
             print("⚠️ Trying alternative Lavalink servers...")
         
-        # If primary server failed, try alternative servers
+        # Debug server list
         if hasattr(Config, 'ALT_LAVALINK_SERVERS'):
+            print(f"DEBUG: Found {len(Config.ALT_LAVALINK_SERVERS)} alternative servers")
+            
+            # Try each alternative server
             for i, server in enumerate(Config.ALT_LAVALINK_SERVERS):
                 try:
                     host = server['host']
@@ -141,18 +144,24 @@ class LavalinkMusicCog(commands.Cog):
                     
                     print(f"🔄 Trying alternative Lavalink server {i+1}: {host}:{port} (Secure: {secure})")
                     
-                    nodes = [
-                        wavelink.Node(
-                            uri=f'{"https" if secure else "http"}://{host}:{port}', 
-                            password=password
-                        )
-                    ]
-                    await wavelink.Pool.connect(nodes=nodes, client=self.bot)
+                    # Clear previous nodes from pool
+                    await wavelink.Pool.disconnect()
+                    
+                    # Create a new node
+                    node = wavelink.Node(
+                        uri=f'{"https" if secure else "http"}://{host}:{port}', 
+                        password=password
+                    )
+                    
+                    # Connect using a single node
+                    await wavelink.Pool.connect(nodes=[node], client=self.bot)
                     self.lavalink_connected = True
                     print(f"✅ Successfully connected to alternative Lavalink server: {host}:{port}")
                     return
                 except Exception as alt_error:
                     print(f"❌ Failed to connect to alternative Lavalink server {host}: {alt_error}")
+        else:
+            print("DEBUG: No ALT_LAVALINK_SERVERS found in Config")
         
         # If all servers failed
         print("❌ All Lavalink servers failed to connect")
