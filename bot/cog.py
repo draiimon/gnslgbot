@@ -498,8 +498,37 @@ class ChatCog(commands.Cog):
 
             utility_embed.description += f"\n\n{utility_text}"
 
-            # Only add footer to the last embed (games is now the last one)
-            games_embed.set_footer(
+            # MUSIC COMMANDS CONTAINER with orange left border
+            music_embed = discord.Embed(
+                title="**🎵 MUSIC COMMANDS 🎵**                                                                                                                                                                                                                                                                                                                                                                                                                           ",
+                description="**KANTAHAN MO NAMAN AKO GAGO:**                                                                                                                                                                                                                                                                                                                                                                                                                           ",
+                color=discord.Color.orange()  # Orange for music
+            )
+            music_embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1345733998357512215/1355508565347143720/Untitled_design_3.png?ex=67e92f3a&is=67e7ddba&hm=579b82f09e02b6d6c83d54831273c3dd4a99b0f90ab268c08dedd4c2660503e6&")
+
+            music_commands = {
+                "g!play <song>": "Patugtugin ang kanta (YouTube or Spotify)",
+                "g!pause": "I-pause ang kanta",
+                "g!resume": "I-resume ang kanta",
+                "g!skip": "Skip sa next song",
+                "g!stop": "Ihinto ang playback at i-clear ang queue",
+                "g!queue": "Tignan ang playlist queue",
+                "g!shuffle": "I-shuffle ang queue",
+                "g!loop": "Toggle repeat mode",
+                "g!nowplaying": "Display current song",
+                "g!volume <0-100>": "Adjust volume ng player",
+                "g!search <query>": "Search songs sa YouTube"
+            }
+
+            # Add music commands to description
+            music_text = ""
+            for cmd, desc in music_commands.items():
+                music_text += f"• **{cmd}** - {desc}\n"
+
+            music_embed.description += f"\n\n{music_text}"
+            
+            # Only add footer to the last embed (music is now the last one)
+            music_embed.set_footer(
                 text="⚡ GINSILOG BOT 2025 EDITION ⚡ | Gawa ni Mason Calix",
                 icon_url=owner_avatar)
 
@@ -509,9 +538,10 @@ class ChatCog(commands.Cog):
             # ECONOMY COMMAND
             # UTILITY COMMANDS 🔧
             # GAMES COMMANDS
+            # MUSIC COMMANDS 🎵
             await ctx.send(embeds=[
                 header_embed, ai_embed, economy_embed, utility_embed,
-                games_embed
+                games_embed, music_embed
             ])
 
         except Exception as e:

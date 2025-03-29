@@ -26,6 +26,7 @@ speechrecognition = "^3.14.2"
 pytube = "^15.0.0"
 wavelink = "^3.4.1"
 yt-dlp = "^2025.3.27"
+spotipy = "^2.25.1"
 
 [build-system]
 requires = ["poetry-core"]
