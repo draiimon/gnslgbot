@@ -54,22 +54,30 @@ class Config:
     
     # Alternative Lavalink servers (fallbacks)
     ALT_LAVALINK_SERVERS = [
+        # Singapore/HK region servers - faster connection from Philippines
         {
-            'host': 'lavalink2.lexnet.cc',
-            'port': 443, 
-            'password': 'lexn3tl4v4',
-            'secure': True
-        },
-        {
-            'host': 'lavalink.devamop.in',
-            'port': 443,
-            'password': 'DevamOP',
-            'secure': True
+            'host': 'lavalink.clxud.lol',
+            'port': 2333, 
+            'password': 'youshallnotpass',
+            'secure': False
         },
         {
             'host': 'lava.link',
             'port': 80,
             'password': 'anything as a password',
             'secure': False
+        },
+        {
+            'host': 'lavalink.api.noaxa.tw',
+            'port': 443,
+            'password': 'noaxaiscool',
+            'secure': True
+        },
+        # International servers as last resorts
+        {
+            'host': 'lavalink.devamop.in',
+            'port': 443,
+            'password': 'DevamOP',
+            'secure': True
         }
     ]
