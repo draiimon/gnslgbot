@@ -3,13 +3,48 @@ import psycopg2
 import psycopg2.extras
 from datetime import datetime
 import pytz
+import time
+import sys
 
 # Get the database URL from environment variables
 DATABASE_URL = os.getenv('DATABASE_URL')
 
-def get_connection():
-    """Create a connection to the PostgreSQL database"""
-    return psycopg2.connect(DATABASE_URL)
+def get_connection(max_retries=5, retry_delay=2):
+    """Create a connection to the PostgreSQL database with retry logic
+    
+    Args:
+        max_retries (int): Maximum number of connection attempts
+        retry_delay (int): Delay between retries in seconds
+        
+    Returns:
+        Connection: PostgreSQL database connection
+    """
+    retry_count = 0
+    last_error = None
+    
+    # Retry logic for database connection
+    while retry_count < max_retries:
+        try:
+            # If we're on Render, the DATABASE_URL should be set correctly
+            if DATABASE_URL:
+                print(f"Connecting to database (attempt {retry_count + 1}/{max_retries})...")
+                return psycopg2.connect(DATABASE_URL)
+            else:
+                print("ERROR: No DATABASE_URL environment variable found.")
+                print("Make sure to set DATABASE_URL in your environment or .env file.")
+                sys.exit(1)
+        except psycopg2.OperationalError as e:
+            last_error = e
+            retry_count += 1
+            if retry_count < max_retries:
+                print(f"Database connection failed, retrying in {retry_delay} seconds... ({retry_count}/{max_retries})")
+                time.sleep(retry_delay)
+            else:
+                print(f"Failed to connect to database after {max_retries} attempts: {e}")
+                raise
+    
+    # If we got here, we've exhausted all retries
+    raise last_error if last_error else Exception("Failed to connect to database")
 
 def init_db():
     """Initialize the database with required tables"""
