@@ -19,21 +19,18 @@ services:
   # Discord Bot
   - type: web
     name: ginsilog-bot
-    env: docker
-    plan: standard
-    autoDeploy: true
-    healthCheckPath: /
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
     envVars:
       - key: DISCORD_TOKEN
         sync: false
       - key: GROQ_API_KEY
-        sync: false 
+        sync: false
       - key: SPOTIFY_CLIENT_ID
         sync: false
       - key: SPOTIFY_CLIENT_SECRET
         sync: false
       - key: DATABASE_URL
-        fromService:
-          type: pserv
-          name: ginsilog-postgres
-          envVarKey: POSTGRES_URL_NON_POOLING
+        sync: false
