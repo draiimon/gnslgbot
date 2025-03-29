@@ -189,22 +189,49 @@ class AudioCog(commands.Cog):
         
         # Get the user's channel
         channel = ctx.author.voice.channel
+        print(f"Attempting to join channel: {channel.name} (ID: {channel.id})")
         
         try:
+            # Check if wavelink is working
+            if not self.wavelink_connected:
+                return await ctx.send("**ERROR:** Wavelink/Lavalink is not connected! Please try again later.")
+                
             # Check if already in a voice channel
             player = ctx.guild.voice_client
             if player and player.channel and player.channel.id == channel.id:
                 return await ctx.send("**BOBO!** NASA VOICE CHANNEL MO NA AKO!")
             elif player:
+                print(f"Already connected to a different channel, disconnecting from {player.channel.name}")
                 await player.disconnect()
-                
-            # Connect to the user's channel
-            player = await channel.connect(cls=wavelink.Player)
-            await ctx.send(f"**SIGE!** PAPASOK NA KO SA {channel.name}!")
+            
+            print("Creating new wavelink player...")
+            # Connect to the user's channel with more debug info
+            try:
+                # Special handling for wavelink 2.6.3
+                player = await channel.connect(cls=wavelink.Player)
+                await ctx.send(f"**SIGE!** PAPASOK NA KO SA {channel.name}!")
+                print(f"Successfully connected to {channel.name}")
+                return
+            except Exception as connect_error:
+                print(f"Detailed connect error: {connect_error}")
+                # Try alternative method
+                try:
+                    print("Trying alternative connection method...")
+                    # Try direct connection without wavelink
+                    player = await channel.connect()
+                    await ctx.send(f"**CONNECTED!** But not using Wavelink. Some features may not work.")
+                    print(f"Connected to {channel.name} without Wavelink")
+                    return
+                except Exception as alt_error:
+                    print(f"Alternative connection failed: {alt_error}")
+                    raise Exception(f"Failed to connect: {connect_error} | Alt error: {alt_error}")
             
         except Exception as e:
-            await ctx.send(f"**ERROR:** {str(e)}")
+            error_message = f"**ERROR:** {str(e)}"
             print(f"Error joining voice channel: {e}")
+            import traceback
+            traceback.print_exc()
+            await ctx.send(error_message[:1900])  # Discord message length limit
     
     @commands.command(name="leavevc")
     async def leavevc(self, ctx):
@@ -230,7 +257,7 @@ class AudioCog(commands.Cog):
         
         # Check if wavelink is working
         if not self.wavelink_connected:
-            return await ctx.send("**ERROR:** Wavelink/Lavalink is not connected!")
+            return await ctx.send("**ERROR:** Wavelink/Lavalink is not connected yet! Try again later.")
         
         # Check rate limiting
         if is_rate_limited(ctx.author.id):
@@ -243,45 +270,78 @@ class AudioCog(commands.Cog):
         
         try:
             # Generate TTS
+            print(f"Generating TTS for message: '{message}'")
             tts = gTTS(text=message, lang='tl', slow=False)
             
             # Create a unique filename for this TTS request
             filename = f"{self.temp_dir}/tts_{ctx.message.id}.mp3"
+            print(f"Saving TTS to file: {filename}")
             
             # Save to file
             tts.save(filename)
             
             # Verify file exists
-            if not os.path.exists(filename) or os.path.getsize(filename) == 0:
-                raise Exception("Failed to generate audio file")
+            if not os.path.exists(filename):
+                raise Exception("Failed to generate audio file - file does not exist")
+            
+            if os.path.getsize(filename) == 0:
+                raise Exception("Failed to generate audio file - file is empty")
+                
+            print(f"TTS file generated successfully: {filename} ({os.path.getsize(filename)} bytes)")
             
             # Store in database
             with open(filename, "rb") as f:
                 audio_data = f.read()
                 audio_id = store_audio_tts(ctx.author.id, message, audio_data)
+                print(f"Stored TTS in database with ID: {audio_id}")
             
-            # Get or create the player
-            player = ctx.guild.voice_client
-            if not player or not player.channel:
-                player = await ctx.author.voice.channel.connect(cls=wavelink.Player)
+            # Get or create the player with comprehensive error handling
+            print("Getting or creating voice client...")
+            try:
+                player = ctx.guild.voice_client
+                if not player or not player.channel:
+                    print(f"Not connected to voice, joining {ctx.author.voice.channel.name}")
+                    # Try to connect
+                    try:
+                        player = await ctx.author.voice.channel.connect(cls=wavelink.Player)
+                    except Exception as connect_error:
+                        print(f"Error connecting with wavelink.Player: {connect_error}")
+                        # Try regular connection if wavelink fails
+                        player = await ctx.author.voice.channel.connect()
+                        print("Connected with regular player instead of wavelink.Player")
+                else:
+                    print(f"Already connected to {player.channel.name}")
+            except Exception as vc_error:
+                raise Exception(f"Failed to connect to voice channel: {vc_error}")
             
             # Play the track using Lavalink (local file)
             try:
-                # Convert our local file to a wavelink track
-                # Use a different approach for local files in wavelink 2.6.3
-                node = wavelink.NodePool.get_node()
+                print("Attempting to play audio through Lavalink...")
+                # Check if we have a node
+                try:
+                    node = wavelink.NodePool.get_node()
+                    if not node:
+                        raise Exception("No Lavalink node available")
+                    print(f"Using node: {node}")
+                except Exception as node_error:
+                    raise Exception(f"Lavalink node error: {node_error}")
                 
                 # Get filename as url and encode the path
                 local_url = f"local:/{os.path.abspath(filename)}"
+                print(f"Local URL: {local_url}")
 
                 # Get track from the Node directly with proper query
+                print(f"Fetching track from node...")
                 result = await node.get_tracks(query=local_url)
+                
                 if not result:
-                    raise Exception("Failed to load audio file")
+                    raise Exception("Failed to load audio file - no tracks returned")
                     
+                print(f"Got tracks: {len(result)} tracks")
                 track = result[0]
                 
                 # Play the track
+                print(f"Playing track: {track}")
                 await player.play(track)
                 
                 # Delete the processing message
@@ -294,17 +354,24 @@ class AudioCog(commands.Cog):
                 await asyncio.sleep(0.5)
                 try:
                     os.remove(filename)
+                    print(f"Removed temporary file: {filename}")
                 except Exception as e:
                     print(f"Error removing file: {e}")
                 
                 # Clean up old database entries
                 cleanup_old_audio_tts(keep_count=20)
+                print("Cleaned up old TTS entries")
                 
             except Exception as play_error:
+                print(f"Detailed play error: {play_error}")
+                import traceback
+                traceback.print_exc()
                 raise Exception(f"Error playing audio: {play_error}")
             
         except Exception as e:
             print(f"⚠️ TTS ERROR: {e}")
+            import traceback
+            traceback.print_exc()
             
             # Try to delete processing message
             try:
@@ -312,8 +379,9 @@ class AudioCog(commands.Cog):
             except:
                 pass
             
-            # Send error message
-            await ctx.send(f"**ERROR:** {str(e)}", delete_after=10)
+            # Send error message (truncate if too long)
+            error_msg = f"**ERROR:** {str(e)}"
+            await ctx.send(error_msg[:1900], delete_after=15)
     
     @commands.command(name="replay")
     async def replay(self, ctx):
@@ -324,13 +392,14 @@ class AudioCog(commands.Cog):
         
         # Check if wavelink is working
         if not self.wavelink_connected:
-            return await ctx.send("**ERROR:** Wavelink/Lavalink is not connected!")
+            return await ctx.send("**ERROR:** Wavelink/Lavalink is not connected yet! Try again later.")
         
         # Send processing message
         processing_msg = await ctx.send("**SANDALI LANG!** Hinahanap ko yung audio...")
         
         try:
             # Get latest audio from database
+            print("Fetching latest audio from database...")
             latest_audio = get_latest_audio_tts()
             
             if not latest_audio or not latest_audio[1]:
@@ -339,34 +408,61 @@ class AudioCog(commands.Cog):
             
             audio_id = latest_audio[0]
             audio_data = latest_audio[1]
+            print(f"Found audio with ID: {audio_id}, size: {len(audio_data)} bytes")
             
             # Save to temporary file
             filename = f"{self.temp_dir}/replay_{ctx.message.id}.mp3"
+            print(f"Saving audio to temporary file: {filename}")
             with open(filename, "wb") as f:
                 f.write(audio_data)
             
-            # Get or create the player
-            player = ctx.guild.voice_client
-            if not player or not player.channel:
-                player = await ctx.author.voice.channel.connect(cls=wavelink.Player)
+            # Get or create the player with comprehensive error handling
+            print("Getting or creating voice client...")
+            try:
+                player = ctx.guild.voice_client
+                if not player or not player.channel:
+                    print(f"Not connected to voice, joining {ctx.author.voice.channel.name}")
+                    # Try to connect
+                    try:
+                        player = await ctx.author.voice.channel.connect(cls=wavelink.Player)
+                    except Exception as connect_error:
+                        print(f"Error connecting with wavelink.Player: {connect_error}")
+                        # Try regular connection if wavelink fails
+                        player = await ctx.author.voice.channel.connect()
+                        print("Connected with regular player instead of wavelink.Player")
+                else:
+                    print(f"Already connected to {player.channel.name}")
+            except Exception as vc_error:
+                raise Exception(f"Failed to connect to voice channel: {vc_error}")
             
             # Play the track using Lavalink (local file)
             try:
-                # Convert our local file to a wavelink track
-                # Use a different approach for local files in wavelink 2.6.3
-                node = wavelink.NodePool.get_node()
+                print("Attempting to play audio through Lavalink...")
+                # Check if we have a node
+                try:
+                    node = wavelink.NodePool.get_node()
+                    if not node:
+                        raise Exception("No Lavalink node available")
+                    print(f"Using node: {node}")
+                except Exception as node_error:
+                    raise Exception(f"Lavalink node error: {node_error}")
                 
                 # Get filename as url and encode the path
                 local_url = f"local:/{os.path.abspath(filename)}"
+                print(f"Local URL: {local_url}")
 
                 # Get track from the Node directly with proper query
+                print(f"Fetching track from node...")
                 result = await node.get_tracks(query=local_url)
+                
                 if not result:
-                    raise Exception("Failed to load audio file")
+                    raise Exception("Failed to load audio file - no tracks returned")
                     
+                print(f"Got tracks: {len(result)} tracks")
                 track = result[0]
                 
                 # Play the track
+                print(f"Playing track: {track}")
                 await player.play(track)
                 
                 # Delete the processing message
@@ -379,14 +475,20 @@ class AudioCog(commands.Cog):
                 await asyncio.sleep(0.5)
                 try:
                     os.remove(filename)
+                    print(f"Removed temporary file: {filename}")
                 except Exception as e:
                     print(f"Error removing file: {e}")
                 
             except Exception as play_error:
+                print(f"Detailed play error: {play_error}")
+                import traceback
+                traceback.print_exc()
                 raise Exception(f"Error playing audio: {play_error}")
             
         except Exception as e:
             print(f"⚠️ REPLAY ERROR: {e}")
+            import traceback
+            traceback.print_exc()
             
             # Try to delete processing message
             try:
@@ -394,8 +496,9 @@ class AudioCog(commands.Cog):
             except:
                 pass
             
-            # Send error message
-            await ctx.send(f"**ERROR:** {str(e)}", delete_after=10)
+            # Send error message (truncate if too long)
+            error_msg = f"**ERROR:** {str(e)}"
+            await ctx.send(error_msg[:1900], delete_after=15)
             
     @commands.command(name="play")
     async def play(self, ctx, *, query: str):
@@ -439,8 +542,9 @@ class AudioCog(commands.Cog):
                     # Just tracks
                     await player.add_tracks(ctx, tracks)
             else:
-                # Search for the song on YouTube
-                tracks = await wavelink.YouTubeTrack.search(query=query)
+                # Search for the song on YouTube - fix keyword arguments error
+                # In wavelink 2.6.3, search doesn't accept keyword arguments
+                tracks = await wavelink.YouTubeTrack.search(query)
                 await player.add_tracks(ctx, tracks)
             
             # Delete the searching message
