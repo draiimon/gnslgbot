@@ -289,7 +289,7 @@ class AudioCog(commands.Cog):
     
     @commands.command(name="vc")
     async def vc(self, ctx, *, message: str):
-        """Text-to-speech using gTTS with Lavalink playback"""
+        """Text-to-speech using gTTS with direct discord.py audio playback"""
         # Check if user is in a voice channel
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
@@ -330,54 +330,50 @@ class AudioCog(commands.Cog):
                 audio_id = store_audio_tts(ctx.author.id, message, audio_data)
                 print(f"Stored TTS in database with ID: {audio_id}")
             
-            # Make sure to copy the file to a location accessible by Lavalink
-            temp_path = f"/tmp/tts_{ctx.message.id}.mp3"
-            shutil.copy2(filename, temp_path)
-            # Create a local file url for Lavalink (shorter path is more reliable)
-            file_url = f"file:///{temp_path}"
-            print(f"File URL for Lavalink: {file_url}")
+            # First, disconnect any existing wavelink player
+            voice_client = ctx.guild.voice_client
+            voice_channel = ctx.author.voice.channel
             
-            # Get or create a Lavalink Player
-            print("Getting or creating Wavelink Player...")
-            try:
-                # Check if we're already connected
-                player = ctx.guild.voice_client
+            # If there's a wavelink player, disconnect it
+            if voice_client and isinstance(voice_client, wavelink.Player):
+                print("Disconnecting existing wavelink player")
+                await voice_client.disconnect()
+                voice_client = None
                 
-                # Connect if not connected or if it's not a wavelink player
-                if not player or not isinstance(player, wavelink.Player) or not player.is_connected:
-                    # Make sure any existing connection is closed first
-                    if player:
-                        await player.disconnect()
+            # Connect with a regular discord voice client
+            if not voice_client:
+                print(f"Connecting to {voice_channel.name} with discord.py voice client")
+                voice_client = await voice_channel.connect()
+            elif voice_client.channel != voice_channel:
+                print(f"Moving to {voice_channel.name}")
+                await voice_client.move_to(voice_channel)
+                
+            # Set up FFmpeg options with explicit options for error prevention
+            ffmpeg_options = {
+                'options': '-vn -loglevel error -threads 1',  # Disable video and limit CPU usage
+                'before_options': '-nostdin -nostats'  # Prevents stdin hangups
+            }
+            
+            # Create audio source with proper error handling
+            try:
+                source = discord.FFmpegPCMAudio(
+                    source=filename,
+                    executable="ffmpeg",  # Explicitly set the FFmpeg executable
+                    **ffmpeg_options
+                )
+                
+                # Add a volume transformer to normalize audio
+                source = discord.PCMVolumeTransformer(source, volume=0.5)
+                
+                # Play the audio with a callback to handle completion
+                def after_playing(error):
+                    if error:
+                        print(f"Play error: {error}")
+                    else:
+                        print("TTS playback completed successfully")
                         
-                    # Connect with a Wavelink Player
-                    channel = ctx.author.voice.channel
-                    player = await channel.connect(cls=wavelink.Player)
-                    print(f"Connected to {channel.name} with Wavelink Player")
-                    
-                # If connected but in a different channel, move to the user's channel    
-                elif player.channel.id != ctx.author.voice.channel.id:
-                    await player.move_to(ctx.author.voice.channel)
-                    print(f"Moved player to {ctx.author.voice.channel.name}")
-                    
-            except Exception as connect_error:
-                raise Exception(f"Failed to connect to voice channel: {connect_error}")
-            
-            # Play audio using Lavalink
-            try:
-                # First check if there's a valid Lavalink node
-                node = wavelink.NodePool.get_node()
-                if not node:
-                    raise Exception("No Lavalink node available - check if Lavalink server is running")
-                
-                # Get the track from the file URL
-                tracks = await node.get_tracks(wavelink.tracks.Playable, file_url)
-                
-                if not tracks:
-                    raise Exception("Failed to load audio into Lavalink - no tracks found")
-                
-                # Play the track
-                await player.play(tracks[0])
-                print(f"Successfully started playing TTS audio via Lavalink")
+                print("Starting FFmpeg playback")
+                voice_client.play(source, after=after_playing)
                 
                 # Delete the processing message
                 await processing_msg.delete()
@@ -386,8 +382,8 @@ class AudioCog(commands.Cog):
                 await ctx.send(f"🔊 **SPEAKING:** {message}", delete_after=10)
                 
                 # Wait for audio to finish (estimate based on file size - ~10KB = ~5 seconds)
-                # This prevents file deletion while the audio is still playing
-                estimated_duration = max(5, min(30, os.path.getsize(filename) / 2000))
+                # This prevents the bot from doing other voice activities while TTS is playing
+                estimated_duration = max(5, min(30, os.path.getsize(filename) / 2000)) 
                 await asyncio.sleep(estimated_duration)
                 
                 # Clean up the file
@@ -402,7 +398,7 @@ class AudioCog(commands.Cog):
                 print("Cleaned up old TTS entries")
                 
             except Exception as play_error:
-                raise Exception(f"Failed to play audio via Lavalink: {play_error}")
+                raise Exception(f"Failed to play audio via FFmpeg: {play_error}")
                 
         except Exception as e:
             print(f"⚠️ TTS ERROR: {e}")
@@ -421,7 +417,7 @@ class AudioCog(commands.Cog):
     
     @commands.command(name="replay")
     async def replay(self, ctx):
-        """Replay last TTS message from database using Lavalink"""
+        """Replay last TTS message from database using direct discord.py audio playback"""
         # Check if user is in a voice channel
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
@@ -444,54 +440,50 @@ class AudioCog(commands.Cog):
                 
             print(f"Saved replay audio to file: {filename}")
             
-            # Make sure to copy the file to a location accessible by Lavalink
-            temp_path = f"/tmp/replay_{ctx.message.id}.mp3"
-            shutil.copy2(filename, temp_path)
-            # Create a local file url for Lavalink (shorter path is more reliable)
-            file_url = f"file:///{temp_path}"
-            print(f"File URL for Lavalink (replay): {file_url}")
+            # First, disconnect any existing wavelink player
+            voice_client = ctx.guild.voice_client
+            voice_channel = ctx.author.voice.channel
             
-            # Get or create a Lavalink Player
-            print("Getting or creating Wavelink Player for replay...")
-            try:
-                # Check if we're already connected
-                player = ctx.guild.voice_client
+            # If there's a wavelink player, disconnect it
+            if voice_client and isinstance(voice_client, wavelink.Player):
+                print("Disconnecting existing wavelink player for replay")
+                await voice_client.disconnect()
+                voice_client = None
                 
-                # Connect if not connected or if it's not a wavelink player
-                if not player or not isinstance(player, wavelink.Player) or not player.is_connected:
-                    # Make sure any existing connection is closed first
-                    if player:
-                        await player.disconnect()
+            # Connect with a regular discord voice client
+            if not voice_client:
+                print(f"Connecting to {voice_channel.name} with discord.py voice client for replay")
+                voice_client = await voice_channel.connect()
+            elif voice_client.channel != voice_channel:
+                print(f"Moving to {voice_channel.name} for replay")
+                await voice_client.move_to(voice_channel)
+                
+            # Set up FFmpeg options with explicit options for error prevention
+            ffmpeg_options = {
+                'options': '-vn -loglevel error -threads 1',  # Disable video and limit CPU usage
+                'before_options': '-nostdin -nostats'  # Prevents stdin hangups
+            }
+            
+            # Create audio source with proper error handling
+            try:
+                source = discord.FFmpegPCMAudio(
+                    source=filename,
+                    executable="ffmpeg",  # Explicitly set the FFmpeg executable
+                    **ffmpeg_options
+                )
+                
+                # Add a volume transformer to normalize audio
+                source = discord.PCMVolumeTransformer(source, volume=0.5)
+                
+                # Play the audio with a callback to handle completion
+                def after_playing(error):
+                    if error:
+                        print(f"Replay error: {error}")
+                    else:
+                        print("Replay playback completed successfully")
                         
-                    # Connect with a Wavelink Player
-                    channel = ctx.author.voice.channel
-                    player = await channel.connect(cls=wavelink.Player)
-                    print(f"Connected to {channel.name} with Wavelink Player")
-                    
-                # If connected but in a different channel, move to the user's channel    
-                elif player.channel.id != ctx.author.voice.channel.id:
-                    await player.move_to(ctx.author.voice.channel)
-                    print(f"Moved player to {ctx.author.voice.channel.name}")
-                    
-            except Exception as connect_error:
-                raise Exception(f"Failed to connect to voice channel: {connect_error}")
-            
-            # Play audio using Lavalink
-            try:
-                # First check if there's a valid Lavalink node
-                node = wavelink.NodePool.get_node()
-                if not node:
-                    raise Exception("No Lavalink node available - check if Lavalink server is running")
-                
-                # Get the track from the file URL
-                tracks = await node.get_tracks(wavelink.tracks.Playable, file_url)
-                
-                if not tracks:
-                    raise Exception("Failed to load replay audio into Lavalink - no tracks found")
-                
-                # Play the track
-                await player.play(tracks[0])
-                print(f"Successfully started playing replay audio via Lavalink")
+                print("Starting FFmpeg playback for replay")
+                voice_client.play(source, after=after_playing)
                 
                 # Delete the processing message
                 await processing_msg.delete()
@@ -500,8 +492,8 @@ class AudioCog(commands.Cog):
                 await ctx.send(f"🔊 **REPLAYING:** Last message", delete_after=10)
                 
                 # Wait for audio to finish (estimate based on file size - ~10KB = ~5 seconds)
-                # This prevents file deletion while the audio is still playing
-                estimated_duration = max(5, min(30, os.path.getsize(filename) / 2000))
+                # This prevents the bot from doing other voice activities while replay is playing
+                estimated_duration = max(5, min(30, os.path.getsize(filename) / 2000)) 
                 await asyncio.sleep(estimated_duration)
                 
                 # Clean up the file
@@ -512,7 +504,7 @@ class AudioCog(commands.Cog):
                     print(f"Error removing replay file: {e}")
                 
             except Exception as play_error:
-                raise Exception(f"Failed to play replay audio via Lavalink: {play_error}")
+                raise Exception(f"Failed to play replay audio via FFmpeg: {play_error}")
             
         except Exception as e:
             # Try to delete processing message
