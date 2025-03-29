@@ -26,12 +26,12 @@ class Config:
     RATE_LIMIT_PERIOD = 60   
 
     # Conversation memory settings
-    MAX_CONTEXT_MESSAGES = 5  # Reduced for shorter context
+    MAX_CONTEXT_MESSAGES = 10  # Increased for better conversation memory and coherence
 
     # Groq API settings
     GROQ_MODEL = "gemma2-9b-it"  # Using Gemma 2 9B instruct model through Groq (correct model name)
-    MAX_TOKENS = 200  # Further reduced for even shorter, more concise responses
-    TEMPERATURE = 1.9  # Even higher temperature for more unpredictable and varied responses
+    MAX_TOKENS = 200  # Keep this to ensure concise responses
+    TEMPERATURE = 0.7  # Lowered to be much more coherent and human-like
 
     # Bot personality settings
     BOT_LANGUAGE = "Tagalog"  
