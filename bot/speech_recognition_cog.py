@@ -51,8 +51,8 @@ class SpeechRecognitionCog(commands.Cog):
             print("❌ Could not find AI response handler - AI responses won't work!")
     
     @commands.command()
-    async def listen(self, ctx):
-        """Start listening for voice commands in your current voice channel"""
+    async def listen(self, ctx, *, question: str = None):
+        """Start listening for voice commands in your current voice channel or ask a direct question"""
         if not ctx.author.voice:
             await ctx.send("**TANGA KA!** You need to be in a voice channel first!")
             return
@@ -73,8 +73,15 @@ class SpeechRecognitionCog(commands.Cog):
         if ctx.guild.id not in self.tts_queue:
             self.tts_queue[ctx.guild.id] = []
         
+        # DIRECT QUESTION MODE - Process the question immediately if provided with the command
+        if question:
+            # Process the question directly
+            await self.handle_voice_command(ctx.guild.id, ctx.author.id, question)
+            return
+        
+        # LISTENING MODE - If no question was provided, start listening mode
         # Inform user
-        await ctx.send(f"🎤 **GAME NA!** I'm now in **{voice_channel.name}**! Say \"Ginslog Bot\" followed by your question.")
+        await ctx.send(f"🎤 **GAME NA!** I'm now in **{voice_channel.name}**! Just type your message and I'll respond!")
         
         # Start listening for audio (in a separate task)
         if ctx.guild.id in self.listening_tasks and not self.listening_tasks[ctx.guild.id].done():
@@ -84,7 +91,7 @@ class SpeechRecognitionCog(commands.Cog):
         self.listening_tasks[ctx.guild.id] = asyncio.create_task(self.start_listening_for_speech(ctx))
         
         # Speak a welcome message
-        await self.speak_message(ctx.guild.id, "Ginslog Bot is now listening! Say my name followed by your question.")
+        await self.speak_message(ctx.guild.id, "Ginslog Bot is now listening! Just type your message in chat and I'll respond!")
     
     async def start_listening_for_speech(self, ctx):
         """Listen for voice commands using a Discord-compatible approach"""
@@ -98,19 +105,16 @@ class SpeechRecognitionCog(commands.Cog):
         # Log that we're starting to listen
         print(f"🎧 Starting voice listening in {voice_channel.name} for guild {guild_id}")
         
-        # Inform channel we're ready for voice commands
-        await ctx.send("🎤 **READY TO RECEIVE VOICE COMMANDS!** I can't listen directly to the voice channel due to Discord limitations in this environment.")
-        await ctx.send("💡 **Use the `!listen transcript <your text>` command** to simulate what you would say with your voice.")
-        await ctx.send("📝 **Example:** `!listen transcript Ginslog Bot what is the weather today?`")
+        # Inform channel we're ready for voice commands - SIMPLIFIED MODE
+        await ctx.send("🎤 **GINSLOG BOT IS READY!** Just type your messages in this channel and I'll respond!")
         
-        # Wait for user to use the text command to simulate voice
+        # In listening mode, just keep the task alive to maintain the connection
         while guild_id in self.listening_guilds:
             try:
-                # Every 60 seconds, remind users how to use the voice command simulation
-                await ctx.send("🔄 **REMINDER:** Since I can't hear your voice directly in this environment, use `!listen transcript Ginslog Bot <your question>` to simulate voice commands.", delete_after=20)
+                # Just keep the task alive and monitor the voice channel
                 await asyncio.sleep(60)
             except Exception as e:
-                print(f"⚠️ Error in speech recognition: {e}")
+                print(f"⚠️ Error in listening task: {e}")
                 await asyncio.sleep(10)
         
         print(f"🛑 Stopped listening in guild {guild_id}")
@@ -149,9 +153,11 @@ class SpeechRecognitionCog(commands.Cog):
         # Check if we're actively listening in this guild
         if message.guild.id not in self.listening_guilds:
             return
-            
-        # Check for "!listen transcript" which is a special command to simulate speech recognition
-        # This is useful for testing speech recognition without actual voice input
+        
+        # SIMPLIFIED APPROACH - Direct processing of any message in channels where listening is active
+        # This makes it much easier for users to interact
+        
+        # Option 1: If user is using old format with !listen transcript, still support it
         if message.content.startswith("!listen transcript "):
             # Extract the simulated transcript
             transcript = message.content[18:].strip()
@@ -162,6 +168,14 @@ class SpeechRecognitionCog(commands.Cog):
                 command = transcript.lower().replace("ginslog bot", "").strip()
                 if command:
                     await self.handle_voice_command(message.guild.id, message.author.id, command)
+                    
+        # Option 2: SIMPLIFIED - Just process any normal message as a voice command directly
+        # This makes it much easier for users since they can just type normally
+        else:
+            # Treat any message as a voice command when in listening mode
+            command = message.content.strip()
+            if command and not command.startswith(self.bot.command_prefix):  # Skip actual bot commands
+                await self.handle_voice_command(message.guild.id, message.author.id, command)
     
     async def handle_voice_command(self, guild_id, user_id, command):
         """Process a voice command from a user"""
