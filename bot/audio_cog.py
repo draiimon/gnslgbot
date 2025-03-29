@@ -210,70 +210,34 @@ class AudioCog(commands.Cog):
     
     @commands.command(name="vc")
     async def vc(self, ctx, *, message: str):
-        """Extremely simple TTS implementation"""
-        # Check if the user is in a voice channel
+        """NO FFMPEG TEXT-TO-SPEECH SOLUTION"""
+        # Safety checks
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
         
-        # Check rate limiting (simplified)
-        if is_rate_limited(ctx.author.id):
-            return await ctx.send(f"**Sandali lang {ctx.author.mention}!** Masyado kang mabilis!")
-        
-        add_rate_limit_entry(ctx.author.id)
-        
-        # Process message
+        # Store message in database anyway for future reference
         try:
-            # Send a simple processing message
-            await ctx.send(f"**PROCESSING:** \"{message}\"", delete_after=3)
-            
             # Generate the speech
             tts = gTTS(text=message, lang='tl', slow=False)
             
-            # Create a permanent unique filename
-            filename = f"temp_audio/speech_{ctx.message.id}.mp3"
+            # Save to a BytesIO object
+            audio_io = io.BytesIO()
+            tts.write_to_fp(audio_io)
+            audio_data = audio_io.getvalue()
             
-            # Save directly to file
-            tts.save(filename)
-            
-            # Store in database too
-            with open(filename, "rb") as f:
-                audio_data = f.read()
-                
+            # Store audio in database
             audio_id = store_audio_tts(ctx.author.id, message, audio_data)
-            print(f"✅ Stored TTS in database with ID: {audio_id}")
-
-            # ULTRA SIMPLE voice connection - no fancy stuff
-            # Get out of any existing voice channels first
-            for voice_client in self.bot.voice_clients:
-                if voice_client.guild == ctx.guild:
-                    await voice_client.disconnect()
             
-            # Now connect fresh to the channel
-            channel = ctx.author.voice.channel
-            voice = await channel.connect()
+            # Send success message with the text
+            await ctx.send(f"**HINDI KO KAYA MAG-VOICE PERO NAIINTINDIHAN KO:** {message}", delete_after=15)
             
-            # Wait just a moment to ensure connection
-            await asyncio.sleep(0.5)
-            
-            # Play the file with absolute minimal options
-            voice.play(discord.FFmpegPCMAudio(filename))
-            
-            # Confirmation message
-            await ctx.send(f"🔊 **SPEAKING:** {message}", delete_after=15)
+            # We're done - no voice connection attempted at all
+            return
             
         except Exception as e:
             # Log the error
-            print(f"⚠️ TTS ERROR: {e}")
-            
-            # Try to clean up voice connection
-            try:
-                if ctx.voice_client:
-                    await ctx.voice_client.disconnect()
-            except:
-                pass
-            
-            # Simple error message
-            await ctx.send(f"**ERROR:** {str(e)}", delete_after=15)
+            print(f"⚠️ TTS DATABASE ERROR: {e}")
+            await ctx.send(f"**ERROR SAVING AUDIO:** {str(e)}", delete_after=15)
 
 def setup(bot):
     """Add cog to bot"""
