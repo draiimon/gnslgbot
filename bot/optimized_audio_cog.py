@@ -204,7 +204,7 @@ class AudioCog(commands.Cog):
     
     @commands.command(name="vc")
     async def vc(self, ctx, *, message: str):
-        """Text-to-speech using Edge TTS with direct Discord playback (TURBO 2025 Method)"""
+        """Text-to-speech using Edge TTS with direct Discord playback (2025 Method)"""
         # Check if user is in a voice channel
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
@@ -215,65 +215,95 @@ class AudioCog(commands.Cog):
         
         add_rate_limit_entry(ctx.author.id)
         
-        # OPTIMIZATION: Connect to voice channel FIRST before generating TTS
-        # This makes the bot connect instantly and feels much more responsive
-        voice_channel = ctx.author.voice.channel
-        voice_client = ctx.voice_client
+        # Send processing message
+        processing_msg = await ctx.send("**SANDALI LANG!** Ginagawa ko pa yung audio...")
         
-        # Connect immediately, even before TTS is ready
-        if not voice_client:
-            await ctx.send(f"**PAPASOK AGAD SA VOICE CHANNEL!** TEKA LANG...")
-            voice_client = await voice_channel.connect()
-        elif voice_client.channel.id != voice_channel.id:
-            await voice_client.move_to(voice_channel)
-        
-        # Start TTS generation as background task so user doesn't have to wait
-        # Run language detection and TTS generation in the background
-        ctx.bot.loop.create_task(self._process_tts(ctx, message, voice_client))
-        
-        # Immediately confirm that we're processing
-        return await ctx.send(f"**BINABASA KO NA AGAD YANG MESSAGE MO!** 🔊 Pinaproseso: {message}", delete_after=10)
-    
-    async def _process_tts(self, ctx, message, voice_client):
-        """Background processor for TTS - runs while user continues chatting"""
         try:
             # Generate TTS using edge_tts
             print(f"Generating Edge TTS for message: '{message}'")
             mp3_filename = f"{self.temp_dir}/tts_{ctx.message.id}.mp3"
             
-            # FAST LANGUAGE DETECTION
-            # Simplified version for faster processing
-            def detect_language_fast(text):
+            # Create Edge TTS communicator - using the newest highest quality multilingual voice model
+            # Best voices 2025:
+            # - fil-PH-AngeloNeural (Filipino male)
+            # - fil-PH-BlessicaNeural (Filipino female)
+            # - en-US-GuyNeural (English premium)
+            # - zh-CN-YunxiNeural (Chinese)
+            # - ja-JP-KenjiNeural (Japanese)
+            
+            # INTELLIGENT VOICE SELECTION BY LANGUAGE DETECTION
+            # Choose the most appropriate voice based on the message content
+            
+            def detect_language(text):
+                """
+                Simple language detection based on common words and patterns
+                Returns the most likely language code for the best voice
+                """
                 text = text.lower()
                 
-                # Quick checks for common patterns
-                if any('\uac00' <= char <= '\ud7a3' for char in text):  # Korean 
-                    return "ko"
-                if any(('\u3040' <= char <= '\u309f') or ('\u30a0' <= char <= '\u30ff') for char in text):  # Japanese
-                    return "ja"
-                if any('\u4e00' <= char <= '\u9fff' for char in text):  # Chinese
-                    return "zh"
-                    
-                # Fast English vs Tagalog check
-                eng_count = sum(1 for word in ['the', 'is', 'and', 'to', 'you'] if word in text.split())
-                tag_count = sum(1 for word in ['ang', 'ng', 'sa', 'mo', 'ko', 'gago'] if word in text)
+                # Check for Filipino/Tagalog words and patterns
+                tagalog_words = ['ako', 'ikaw', 'siya', 'tayo', 'kami', 'kayo', 'sila', 
+                                 'ng', 'sa', 'ang', 'mga', 'naman', 'talaga', 'lang',
+                                 'po', 'opo', 'salamat', 'kamusta', 'kumain', 'mahal',
+                                 'gago', 'putang', 'tangina', 'bobo', 'tanga']
                 
-                return "en" if eng_count > tag_count else "fil"
+                # Check for English words and patterns
+                english_words = ['i', 'you', 'he', 'she', 'we', 'they', 'the', 'a', 'an',
+                                'is', 'are', 'was', 'were', 'have', 'has', 'had',
+                                'will', 'would', 'could', 'should', 'hello', 'please', 'thank']
+                
+                # Check for Chinese characters
+                chinese_chars = ['的', '一', '是', '不', '了', '在', '人', '有', '我',
+                              '他', '这', '中', '大', '来', '上', '国', '个', '到', '说']
+                
+                # Check for Japanese characters (hiragana, katakana range)
+                japanese_pattern = any(
+                    ('\u3040' <= char <= '\u309f') or  # Hiragana
+                    ('\u30a0' <= char <= '\u30ff')      # Katakana
+                    for char in text
+                )
+                
+                # Check for Korean characters
+                korean_pattern = any('\uac00' <= char <= '\ud7a3' for char in text)
+                
+                # Count language indicators
+                tagalog_count = sum(word in text for word in tagalog_words)
+                english_count = sum(word in text.split() for word in english_words)
+                chinese_count = sum(char in text for char in chinese_chars)
+                
+                # Determine primary language
+                language_scores = {
+                    "fil": tagalog_count * 2,  # Give Filipino higher weight for our use case
+                    "en": english_count,
+                    "zh": chinese_count * 3,   # Chinese needs fewer characters to be detected
+                    "ja": 10 if japanese_pattern else 0,
+                    "ko": 10 if korean_pattern else 0
+                }
+                
+                # Get language with highest score
+                primary_language = max(language_scores.items(), key=lambda x: x[1])
+                
+                # If no strong language detected, default to Filipino
+                if primary_language[1] <= 1:
+                    return "fil"
+                    
+                return primary_language[0]
             
-            # Detect language - fast version
-            detected_lang = detect_language_fast(message)
+            # Detect language
+            detected_lang = detect_language(message)
             
             # Choose appropriate voice based on detected language
             voices = {
                 "fil": "fil-PH-AngeloNeural",     # Filipino male
-                "en": "en-US-GuyNeural",          # English male (premium quality) 
+                "en": "en-US-GuyNeural",          # English male (premium quality)
                 "zh": "zh-CN-YunxiNeural",        # Chinese male (high quality)
                 "ja": "ja-JP-KenjiNeural",        # Japanese male
                 "ko": "ko-KR-InJoonNeural"        # Korean male
             }
             
             # Get voice based on detected language
-            voice = voices.get(detected_lang, "fil-PH-AngeloNeural")
+            voice = voices.get(detected_lang, "fil-PH-AngeloNeural")  # Default to Filipino if language not supported
+            
             print(f"Detected language: {detected_lang}, using voice: {voice}")
             
             # Use direct text without SSML to ensure compatibility
@@ -283,33 +313,63 @@ class AudioCog(commands.Cog):
             await tts.save(mp3_filename)
             print(f"Edge TTS file generated successfully: {mp3_filename}")
             
-            # Store in database (do this in background)
+            # Verify file exists and has content
+            if not os.path.exists(mp3_filename):
+                raise Exception("Failed to generate Edge TTS file - file does not exist")
+            
+            if os.path.getsize(mp3_filename) == 0:
+                raise Exception("Failed to generate Edge TTS file - file is empty")
+                
+            print(f"Edge TTS file saved: {mp3_filename} ({os.path.getsize(mp3_filename)} bytes)")
+            
+            # Store in database
             with open(mp3_filename, "rb") as f:
                 audio_data = f.read()
                 audio_id = store_audio_tts(ctx.author.id, message, audio_data)
                 print(f"Stored Edge TTS in database with ID: {audio_id}")
             
-            # OPTIMIZED AUDIO PROCESSING - Faster conversion
+            # Connect to the voice channel
+            voice_channel = ctx.author.voice.channel
+            
+            # FALLBACK METHOD FIRST - Use our PCMStream method directly
+            # This works even without opus library loaded
             try:
+                # Get existing voice client or create a new one
+                voice_client = ctx.voice_client
+                if not voice_client:
+                    print(f"Connecting to voice channel: {voice_channel.name}")
+                    voice_client = await voice_channel.connect()
+                elif voice_client.channel.id != voice_channel.id:
+                    print(f"Moving to different voice channel: {voice_channel.name}")
+                    await voice_client.move_to(voice_channel)
+                
                 # Convert MP3 to WAV with proper format for Discord
                 from pydub import AudioSegment
                 wav_filename = f"{self.temp_dir}/tts_wav_{ctx.message.id}.wav"
                 
-                # FASTER CONVERSION: Use lower quality but faster conversion for improved responsiveness
+                # Convert using pydub with HIGH QUALITY settings (stereo, highest quality)
                 audio = AudioSegment.from_mp3(mp3_filename)
-                audio = audio.set_frame_rate(48000).set_channels(2)
-                audio.export(wav_filename, format="wav")
+                audio = audio.set_frame_rate(48000).set_channels(2)  # HIGH QUALITY: stereo, highest sample rate
+                audio.export(wav_filename, format="wav", parameters=["-q:a", "0"])
                 
                 # Use our custom PCM streaming
                 source = self.PCMStream(wav_filename)
                 
-                # Wait for any current playback to finish
+                # Check if already playing and wait for it to finish
                 if voice_client.is_playing():
+                    print("Audio already playing, waiting for it to finish first...")
+                    await ctx.send("**SANDALI LANG!** May pinapatugtog pa ako!", delete_after=5)
                     while voice_client.is_playing():
-                        await asyncio.sleep(0.2)  # Check more frequently
+                        await asyncio.sleep(0.5)
                 
-                # Now play the audio
                 voice_client.play(source)
+                
+                # Success message for direct PCM method
+                try:
+                    await processing_msg.delete()
+                except:
+                    pass  # Message may have been deleted already
+                await ctx.send(f"🔊 **SPEAKING:** {message}", delete_after=10)
                 
                 # Wait for playback to finish
                 while voice_client.is_playing():
@@ -326,7 +386,6 @@ class AudioCog(commands.Cog):
                 try:
                     print(f"PCM method failed: {pcm_error}, trying FFmpeg with optimized settings...")
                     voice_client = ctx.voice_client
-                    voice_channel = ctx.author.voice.channel
                     if not voice_client:
                         voice_client = await voice_channel.connect()
                     
@@ -349,6 +408,10 @@ class AudioCog(commands.Cog):
                     print(f"Playing TTS audio with optimized FFmpeg settings: {mp3_filename}")
                     
                     # Success message
+                    try:
+                        await processing_msg.delete()
+                    except:
+                        pass  # Message may have been deleted already
                     await ctx.send(f"🔊 **SPEAKING (FFmpeg Mode):** {message}", delete_after=10)
                     
                     # Wait for the audio to finish playing
@@ -358,6 +421,9 @@ class AudioCog(commands.Cog):
                 except Exception as ffmpeg_error:
                     # Both methods failed
                     print(f"Both PCM and FFmpeg playback failed: {ffmpeg_error}")
+                    
+                    # Even if playback fails, we've still generated the TTS
+                    await processing_msg.delete()
                     await ctx.send(f"🔊 **TTS GENERATED:** {message}\n\n(Audio generated but couldn't be played. Error: {str(pcm_error)[:100]}...)", delete_after=15)
             
             # Clean up the files once we're done
@@ -376,100 +442,15 @@ class AudioCog(commands.Cog):
             import traceback
             traceback.print_exc()
             
+            # Try to delete processing message
+            try:
+                await processing_msg.delete()
+            except:
+                pass
+            
             # Send error message (truncate if too long)
             error_msg = f"**ERROR:** {str(e)}"
             await ctx.send(error_msg[:1900], delete_after=15)
-    
-    @commands.command(name="play")
-    async def play(self, ctx, *, query: str):
-        """Play audio from a YouTube URL or search query"""
-        # Check if user is in a voice channel
-        if not ctx.author.voice:
-            return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
-        
-        # Connect to voice channel if not already connected
-        voice_client = ctx.voice_client
-        if not voice_client:
-            voice_channel = ctx.author.voice.channel
-            voice_client = await voice_channel.connect()
-            print(f"Connected to voice channel: {voice_channel.name}")
-        
-        # Send processing message
-        processing_msg = await ctx.send(f"**SANDALI LANG!** Hinahanap ko pa yang `{query}`...")
-        
-        # Check if the query is a URL or a search term
-        is_url = "youtube.com" in query or "youtu.be" in query or "spotify.com" in query
-        
-        # For direct URL playback with FFmpeg
-        try:
-            # Create high quality FFmpeg options for best audio quality
-            ffmpeg_options = {
-                'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-                'options': '-vn -af "bass=g=2.5,equalizer=f=110:width_type=h:width=100:g=4" -b:a 192k'
-            }
-            
-            # Create audio source
-            audio = discord.FFmpegPCMAudio(query if is_url else f"ytsearch:{query}", **ffmpeg_options)
-            
-            # Apply volume transformer
-            audio = discord.PCMVolumeTransformer(audio, volume=0.8)
-            
-            # Wait if something is already playing
-            if voice_client.is_playing():
-                await processing_msg.edit(content="**SANDALI LANG!** May pinapatugtog pa ako...")
-                voice_client.stop()
-            
-            # Play the audio
-            voice_client.play(audio)
-            
-            # Success message with different response based on URL or search
-            if is_url:
-                await processing_msg.edit(content=f"**TUMUTUGTOG NA!** 🎵 Playing from URL: {query}")
-            else:
-                await processing_msg.edit(content=f"**TUMUTUGTOG NA!** 🎵 Playing result for: {query}")
-            
-        except Exception as e:
-            await processing_msg.edit(content=f"**ERROR!** Hindi mahanap o ma-play yang {query}.\nError: {str(e)[:100]}")
-            print(f"Error playing audio: {e}")
-    
-    @commands.command(name="stop")
-    async def stop(self, ctx):
-        """Stop playback and clear queue"""
-        voice_client = ctx.voice_client
-        if not voice_client or not voice_client.is_connected():
-            return await ctx.send("**BOBO!** Wala naman ako sa voice channel!")
-        
-        if voice_client.is_playing():
-            voice_client.stop()
-            await ctx.send("**INIHINTO KO NA!** Cancelled playback.")
-        else:
-            await ctx.send("**TANGA!** Wala naman akong pinapatugtog!")
-    
-    @commands.command(name="pause")
-    async def pause(self, ctx):
-        """Pause current playback"""
-        voice_client = ctx.voice_client
-        if not voice_client or not voice_client.is_playing():
-            return await ctx.send("**TANGA!** Wala naman akong pinapatugtog!")
-        
-        if voice_client.is_paused():
-            return await ctx.send("**BOBO!** Naka-pause na nga eh!")
-        
-        voice_client.pause()
-        await ctx.send("**PAUSE MUNA!** Music paused.")
-    
-    @commands.command(name="resume")
-    async def resume(self, ctx):
-        """Resume paused playback"""
-        voice_client = ctx.voice_client
-        if not voice_client or not voice_client.is_connected():
-            return await ctx.send("**TANGA!** Wala naman ako sa voice channel!")
-        
-        if not voice_client.is_paused():
-            return await ctx.send("**BOBO!** Hindi naman naka-pause eh!")
-        
-        voice_client.resume()
-        await ctx.send("**TULOY ANG TUGTUGAN!** Music resumed.")
     
     @commands.command(name="replay")
     async def replay(self, ctx):
