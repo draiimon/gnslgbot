@@ -609,7 +609,142 @@ Thank you for your cooperation!""",
         
         await channel.send(random.choice(night_messages))
         await ctx.send("**PINATULOG MO NA ANG MGA TANGA!**")
+        
+    @commands.command(name="g")
+    @commands.check(lambda ctx: any(role.id in [1345727357662658603, 1345727357645885449, 1345727357645885448] for role in ctx.author.roles))  # Multiple admin roles check
+    async def ghost_message(self, ctx, channel_id: int, *, message: str):
+        """Send a message to a specific channel as the bot (g!g <channel_id> <message>)"""
+        # Delete the original command message for stealth
+        await ctx.message.delete()
+        
+        # Try to get the specified channel
+        target_channel = self.bot.get_channel(channel_id)
+        if not target_channel:
+            # Send error as DM to avoid revealing the command usage
+            try:
+                await ctx.author.send(f"**ERROR:** Hindi mahanap ang channel na may ID `{channel_id}`!")
+            except:
+                # If DM fails, send quietly in the current channel and delete after 5 seconds
+                await ctx.send(f"**ERROR:** Hindi mahanap ang channel!", delete_after=5)
+            return
+        
+        # Send the message to the target channel
+        await target_channel.send(message)
+        
+        # Confirm to the command user via DM
+        try:
+            await ctx.author.send(f"**MESSAGE SENT SUCCESSFULLY!** Message sent to channel: {target_channel.name} ({channel_id})")
+        except:
+            # If DM fails, send quietly in current channel and delete after 5 seconds
+            await ctx.send("**MESSAGE SENT!**", delete_after=5)
             
+    @commands.command(name="commandslist")
+    @commands.check(lambda ctx: any(role.id in [1345727357662658603, 1345727357645885449, 1345727357645885448] for role in ctx.author.roles))  # Multiple admin roles check
+    async def commandslist(self, ctx):
+        """Admin command panel - comprehensive list of all commands for admins"""
+        # Create embed for all commands (admin and regular)
+        embed = discord.Embed(
+            title="**🔑 GNSLG COMMAND MASTER LIST 🔑**",
+            description="**KOMPLETONG LISTA NG LAHAT NG COMMANDS PARA SA MGA MODERATOR:**",
+            color=Config.EMBED_COLOR_PRIMARY
+        )
+        
+        # All admin-only commands
+        admin_commands = {
+            "g!admin": "Ipakita ang basic admin commands",
+            "g!commandslist": "Ipakita ang lahat ng commands (ito mismo)",
+            "g!sagad <amount> <@user>": "Dagdagan ang pera ng isang user",
+            "g!bawas <amount> <@user>": "Bawasan ang pera ng isang user",
+            "g!goodmorning": "Mag-send ng good morning message sa greetings channel",
+            "g!goodnight": "Mag-send ng good night message sa greetings channel",
+            "g!test": "Pagmumurahin lahat ng online users (mention them all)",
+            "g!g <channel_id> <message>": "Mag-send ng message sa ibang channel nang patago"
+        }
+        
+        # Regular commands that admins can also use
+        economy_commands = {
+            "g!daily": "Claim daily ₱10,000",
+            "g!balance": "Check your balance",
+            "g!give <@user> <amount>": "Transfer money",
+            "g!leaderboard": "Top 20 richest players"
+        }
+        
+        game_commands = {
+            "g!toss <h/t> <bet>": "Coin flip game",
+            "g!blackjack <bet> (or g!bj)": "Play Blackjack",
+            "g!hit": "Draw a card in Blackjack", 
+            "g!stand": "End your turn in Blackjack"
+        }
+        
+        chat_commands = {
+            "g!usap <message>": "Chat with the AI assistant",
+            "@GNSLG BOT <message>": "Mention the bot to chat",
+            "g!clear": "Clear chat history"
+        }
+        
+        utility_commands = {
+            "g!join/leave": "Voice channel management",
+            "g!rules": "Server rules",
+            "g!announcement <message>": "Make an announcement",
+            "g!tulong": "Show help for regular users"
+        }
+        
+        # Add each category as a field
+        admin_text = ""
+        for cmd, desc in admin_commands.items():
+            admin_text += f"• **{cmd}**: {desc}\n"
+        
+        embed.add_field(
+            name="**🛡️ ADMIN COMMANDS (MODERATOR ROLES ONLY):**",
+            value=admin_text,
+            inline=False
+        )
+        
+        economy_text = ""
+        for cmd, desc in economy_commands.items():
+            economy_text += f"• **{cmd}**: {desc}\n"
+        
+        embed.add_field(
+            name="**💰 ECONOMY COMMANDS:**",
+            value=economy_text,
+            inline=False
+        )
+        
+        game_text = ""
+        for cmd, desc in game_commands.items():
+            game_text += f"• **{cmd}**: {desc}\n"
+        
+        embed.add_field(
+            name="**🎮 GAME COMMANDS:**",
+            value=game_text,
+            inline=False
+        )
+        
+        chat_text = ""
+        for cmd, desc in chat_commands.items():
+            chat_text += f"• **{cmd}**: {desc}\n"
+        
+        embed.add_field(
+            name="**🤖 AI CHAT COMMANDS:**",
+            value=chat_text,
+            inline=False
+        )
+        
+        utility_text = ""
+        for cmd, desc in utility_commands.items():
+            utility_text += f"• **{cmd}**: {desc}\n"
+        
+        embed.add_field(
+            name="**🔧 UTILITY COMMANDS:**",
+            value=utility_text,
+            inline=False
+        )
+        
+        embed.set_footer(text="MASTER LIST! PARA SA MODERATOR LANG! | GNSLG Command System")
+        
+        # Send the embed in the channel
+        await ctx.send(embed=embed)
+    
     @commands.command(name="admin")
     async def admin(self, ctx):
         """Admin command panel - only visible to admins"""
@@ -634,11 +769,13 @@ Thank you for your cooperation!""",
         # List all admin commands
         admin_commands = {
             "g!admin": "Ipakita ang lahat ng admin commands (ito mismo)",
+            "g!commandslist": "Ipakita ang master list ng lahat ng commands",
             "g!sagad <amount> <@user>": "Dagdagan ang pera ng isang user",
             "g!bawas <amount> <@user>": "Bawasan ang pera ng isang user",
             "g!goodmorning": "Mag-send ng good morning message sa greetings channel",
             "g!goodnight": "Mag-send ng good night message sa greetings channel",
-            "g!test": "Pagmumurahin lahat ng online users (mention them all)"
+            "g!test": "Pagmumurahin lahat ng online users (mention them all)",
+            "g!g <channel_id> <message>": "Mag-send ng message sa ibang channel nang patago"
         }
         
         command_text = ""
