@@ -332,8 +332,7 @@ class AudioCog(commands.Cog):
 
                 # Get track from the Node directly with proper query
                 print(f"Fetching track from node...")
-                # Fixed: Adding required cls parameter for wavelink 2.6.3
-                result = await node.get_tracks(local_url, cls=wavelink.tracks.Playable)
+                result = await node.get_tracks(query=local_url)
                 
                 if not result:
                     raise Exception("Failed to load audio file - no tracks returned")
@@ -395,346 +394,358 @@ class AudioCog(commands.Cog):
         if not self.wavelink_connected:
             return await ctx.send("**ERROR:** Wavelink/Lavalink is not connected yet! Try again later.")
         
-        # Get the latest audio entry
-        audio_data = get_latest_audio_tts()
-        if not audio_data:
-            return await ctx.send("**WALA AKONG MAALALA!** Wala pa akong na-save na audio.")
-        
-        audio_id, audio_bytes = audio_data
-        
         # Send processing message
-        processing_msg = await ctx.send("**SANDALI LANG!** Ire-replay ko pa yung huling audio...")
+        processing_msg = await ctx.send("**SANDALI LANG!** Hinahanap ko yung audio...")
         
         try:
-            # Save audio to temp file
-            filename = f"{self.temp_dir}/replay_{ctx.message.id}.mp3"
-            with open(filename, "wb") as f:
-                f.write(audio_bytes)
-                
-            print(f"Saved replay audio to file: {filename}")
+            # Get latest audio from database
+            print("Fetching latest audio from database...")
+            latest_audio = get_latest_audio_tts()
             
-            # Get or create the player
+            if not latest_audio or not latest_audio[1]:
+                await processing_msg.delete()
+                return await ctx.send("**WALA PA AKONG NASABI!** Wala pang audio sa database!")
+            
+            audio_id = latest_audio[0]
+            audio_data = latest_audio[1]
+            print(f"Found audio with ID: {audio_id}, size: {len(audio_data)} bytes")
+            
+            # Save to temporary file
+            filename = f"{self.temp_dir}/replay_{ctx.message.id}.mp3"
+            print(f"Saving audio to temporary file: {filename}")
+            with open(filename, "wb") as f:
+                f.write(audio_data)
+            
+            # Get or create the player with comprehensive error handling
+            print("Getting or creating voice client...")
             try:
                 player = ctx.guild.voice_client
                 if not player or not player.channel:
+                    print(f"Not connected to voice, joining {ctx.author.voice.channel.name}")
                     # Try to connect
-                    player = await ctx.author.voice.channel.connect(cls=wavelink.Player)
+                    try:
+                        player = await ctx.author.voice.channel.connect(cls=wavelink.Player)
+                    except Exception as connect_error:
+                        print(f"Error connecting with wavelink.Player: {connect_error}")
+                        # Try regular connection if wavelink fails
+                        player = await ctx.author.voice.channel.connect()
+                        print("Connected with regular player instead of wavelink.Player")
+                else:
+                    print(f"Already connected to {player.channel.name}")
             except Exception as vc_error:
                 raise Exception(f"Failed to connect to voice channel: {vc_error}")
             
-            # Play the track using Lavalink
+            # Play the track using Lavalink (local file)
             try:
-                # Get a node
-                node = wavelink.NodePool.get_node()
-                if not node:
-                    raise Exception("No Lavalink node available")
+                print("Attempting to play audio through Lavalink...")
+                # Check if we have a node
+                try:
+                    node = wavelink.NodePool.get_node()
+                    if not node:
+                        raise Exception("No Lavalink node available")
+                    print(f"Using node: {node}")
+                except Exception as node_error:
+                    raise Exception(f"Lavalink node error: {node_error}")
                 
-                # Get local file URL
+                # Get filename as url and encode the path
                 local_url = f"local:/{os.path.abspath(filename)}"
                 print(f"Local URL: {local_url}")
 
                 # Get track from the Node directly with proper query
                 print(f"Fetching track from node...")
-                # Fixed: Adding required cls parameter for wavelink 2.6.3
-                result = await node.get_tracks(local_url, cls=wavelink.tracks.Playable)
+                result = await node.get_tracks(query=local_url)
                 
                 if not result:
                     raise Exception("Failed to load audio file - no tracks returned")
-                
+                    
+                print(f"Got tracks: {len(result)} tracks")
                 track = result[0]
                 
                 # Play the track
+                print(f"Playing track: {track}")
                 await player.play(track)
                 
                 # Delete the processing message
                 await processing_msg.delete()
                 
                 # Send success message
-                await ctx.send(f"🔊 **REPLAYING:** Last message", delete_after=10)
+                await ctx.send(f"🔊 **REPLAY:** Audio ID: {audio_id}", delete_after=10)
                 
-                # Clean up the file after playing
+                # Clean up the file after playing (delay slightly to ensure it's being played)
                 await asyncio.sleep(0.5)
                 try:
                     os.remove(filename)
+                    print(f"Removed temporary file: {filename}")
                 except Exception as e:
                     print(f"Error removing file: {e}")
                 
             except Exception as play_error:
+                print(f"Detailed play error: {play_error}")
+                import traceback
+                traceback.print_exc()
                 raise Exception(f"Error playing audio: {play_error}")
             
         except Exception as e:
+            print(f"⚠️ REPLAY ERROR: {e}")
+            import traceback
+            traceback.print_exc()
+            
             # Try to delete processing message
             try:
                 await processing_msg.delete()
             except:
                 pass
             
-            # Send error message
+            # Send error message (truncate if too long)
             error_msg = f"**ERROR:** {str(e)}"
             await ctx.send(error_msg[:1900], delete_after=15)
-    
+            
     @commands.command(name="play")
     async def play(self, ctx, *, query: str):
         """Play a song or add it to the queue (g!play <song name or URL>)"""
-        # Check if the user is in a voice channel
+        # Check if user is in a voice channel
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
         
         # Check if wavelink is working
         if not self.wavelink_connected:
-            return await ctx.send("**ERROR:** Wavelink/Lavalink is not connected! Please try again later.")
+            return await ctx.send("**ERROR:** Wavelink/Lavalink is not connected!")
         
         # Send searching message
-        search_msg = await ctx.send(f"**HINAHANAP KO PA:** {query}")
-        
-        # Get or create the player
-        channel = ctx.author.voice.channel
+        search_msg = await ctx.send(f"**SANDALI LANG!** Hinahanap ko pa: `{query}`...")
         
         try:
-            player = ctx.voice_client
+            # Get or create player for this guild
+            player = ctx.guild.voice_client
             
-            # Create a new player if we don't have one
-            if not player or not player.is_connected:
-                # Create MusicPlayer instance instead of a regular Wavelink player
-                player = await channel.connect(cls=MusicPlayer)
-                print(f"Created new MusicPlayer in {channel.name}")
-            
-            # Check if we need to move the player
-            elif player.channel.id != channel.id:
-                await player.move_to(channel)
-                print(f"Moved player to {channel.name}")
-            
-            # Cast to MusicPlayer if needed
-            if not isinstance(player, MusicPlayer):
-                # Disconnect and reconnect with the right player type
+            # If player doesn't exist or isn't connected, create a new MusicPlayer
+            if not player or not player.channel:
+                player = await ctx.author.voice.channel.connect(cls=MusicPlayer)
+            elif not isinstance(player, MusicPlayer):
+                # If we have a regular player but not a MusicPlayer, disconnect and make a MusicPlayer
                 await player.disconnect()
-                player = await channel.connect(cls=MusicPlayer)
-                print("Reconnected with MusicPlayer class")
-                
-            player.is_playing = True
+                player = await ctx.author.voice.channel.connect(cls=MusicPlayer)
             
-            # Detect if it's a URL or a search query
+            # Process the search query - determine if URL or search term
             is_url = bool(re.match(r'https?://', query))
-            print(f"Query type: {'URL' if is_url else 'Search term'}")
             
             if is_url:
                 # Direct URL to a song/playlist
-                # Fixed: Adding required cls parameter for wavelink 2.6.3
-                tracks = await wavelink.NodePool.get_node().get_tracks(query, cls=wavelink.tracks.Playable)
+                tracks = await wavelink.NodePool.get_node().get_tracks(query=query)
                 
                 # Check if it's a playlist
                 playlist = await wavelink.NodePool.get_node().get_playlist(query=query, cls=wavelink.YouTubePlaylist)
-                
                 if playlist:
-                    # Handle YouTube playlist
+                    # It's a playlist
                     await player.add_tracks(ctx, playlist)
-                elif tracks:
-                    # Handle single track
-                    await player.add_tracks(ctx, tracks)
                 else:
-                    await ctx.send(f"**ERROR:** Couldn't find anything for: {query}", delete_after=10)
-                    
+                    # Just tracks
+                    await player.add_tracks(ctx, tracks)
             else:
-                # Search for a song on YouTube
-                tracks = await wavelink.NodePool.get_node().get_tracks(f"ytsearch:{query}", cls=wavelink.tracks.YouTubeTrack)
+                # Search for the song on YouTube - fix keyword arguments error
+                # In wavelink 2.6.3, search doesn't accept keyword arguments
+                tracks = await wavelink.YouTubeTrack.search(query)
                 await player.add_tracks(ctx, tracks)
-                
-            # Remove the search message
-            await search_msg.delete()
-                
-        except Exception as e:
-            await search_msg.delete()
-            error_msg = f"**ERROR:** {str(e)}"
-            print(f"Error in play command: {e}")
-            import traceback
-            traceback.print_exc()
-            await ctx.send(error_msg[:1900], delete_after=15)
             
+            # Delete the searching message
+            await search_msg.delete()
+            
+            # Mark as playing to avoid auto-play confusion
+            player.is_playing = True
+            
+        except Exception as e:
+            print(f"⚠️ PLAY ERROR: {e}")
+            
+            # Try to delete search message
+            try:
+                await search_msg.delete()
+            except:
+                pass
+            
+            # Send error message
+            await ctx.send(f"**ERROR:** {str(e)}", delete_after=10)
+
     @commands.command(name="skip")
     async def skip(self, ctx):
         """Skip the current song"""
-        player = ctx.voice_client
+        player = ctx.guild.voice_client
         
-        if not player or not isinstance(player, MusicPlayer):
-            return await ctx.send("**ERROR:** Not playing any music right now.", delete_after=10)
+        if not player or not player.channel:
+            return await ctx.send("**TANGA!** WALA AKO SA VOICE CHANNEL!")
             
-        # Check if something is playing
-        if not player.now_playing:
-            return await ctx.send("**TANGA!** WALA NAMANG TUMUTUGTOG!", delete_after=10)
+        if not isinstance(player, MusicPlayer):
+            return await ctx.send("**ERROR:** Hindi ko ma-skip ng hindi naka-setup sa Music Player!")
             
-        # Skip the current song
+        if player.queue.is_empty and not player.now_playing:
+            return await ctx.send("**WALA NAMAN AKONG PINAPATUGTOG!** Wala akong ise-skip!")
+        
+        # Skip current track
         await player.stop()
-        await ctx.send("**NILAKTAWAN KO NA YUNG KANTA NA YAN!**", delete_after=10)
+        await ctx.send("**SIGE!** NAKA-SKIP NA YUNG KANTA!")
         
-    @commands.command(name="queue")
+    @commands.command(name="queue", aliases=["q"])
     async def queue(self, ctx):
         """Show the current song queue"""
-        player = ctx.voice_client
+        player = ctx.guild.voice_client
         
-        if not player or not isinstance(player, MusicPlayer):
-            return await ctx.send("**ERROR:** Not playing any music right now.", delete_after=10)
+        if not player or not player.channel or not isinstance(player, MusicPlayer):
+            return await ctx.send("**TANGA!** WALA AKONG PINAPATUGTOG!")
             
-        # Check if the queue is empty
         if player.queue.is_empty and not player.now_playing:
-            return await ctx.send("**WALA PANG LAMAN ANG QUEUE!** Use **g!play** to add songs.", delete_after=15)
-            
-        # Create a nice embed for the queue
+            return await ctx.send("**WALANG LAMAN YUNG QUEUE!** Bakit di ka mag-request?")
+        
+        # Create embed for queue
         embed = discord.Embed(
-            title="🎵 Music Queue",
+            title="🎵 CURRENT QUEUE 🎵",
             color=Config.EMBED_COLOR_PRIMARY
         )
         
         # Add now playing
         if player.now_playing:
             embed.add_field(
-                name="📀 Currently Playing",
-                value=f"**{player.now_playing.title}**\n"
-                      f"Duration: {format_time(player.now_playing.duration)}\n"
-                      f"Requested by: <@{player.now_playing.requester.id}>",
+                name="**NOW PLAYING:**",
+                value=f"**{player.now_playing.title}**\n" \
+                      f"Duration: {datetime.timedelta(milliseconds=player.now_playing.length)}",
                 inline=False
             )
         
-        # Add queue items
-        if not player.queue.is_empty:
-            queue_list = ""
-            for i, track in enumerate(player.queue._queue, start=1):
-                if i <= 10:  # Show only first 10 songs to avoid large embeds
-                    queue_list += f"**{i}.** {track.title} ({format_time(track.duration)})\n"
+        # Get queue items and add to embed 
+        # Use wavelink 2.6.3 Queue API
+        upcoming = list(player.queue._queue)  # This is actually a deque in 2.6.3
+        
+        if upcoming:
+            # Only show first 10 tracks to avoid massive messages
+            shown_tracks = upcoming[:10]
+            hidden_count = len(upcoming) - 10 if len(upcoming) > 10 else 0
             
-            if len(player.queue) > 10:
-                queue_list += f"\n... and {len(player.queue) - 10} more songs"
-                
+            queue_text = []
+            for i, track in enumerate(shown_tracks, start=1):
+                queue_text.append(
+                    f"**{i}.** {track.title} ({datetime.timedelta(milliseconds=track.length)})"
+                )
+            
+            queue_text = "\n".join(queue_text)
+            if hidden_count > 0:
+                queue_text += f"\n\n*And {hidden_count} more songs...*"
+            
             embed.add_field(
-                name="⏱️ Up Next",
-                value=queue_list or "The queue is empty.",
+                name="**UP NEXT:**",
+                value=queue_text,
                 inline=False
             )
+            
+        # Send the embed
+        await ctx.send(embed=embed)
         
-        await ctx.send(embed=embed, delete_after=30)
-    
     @commands.command(name="pause")
     async def pause(self, ctx):
         """Pause the current song"""
-        player = ctx.voice_client
+        player = ctx.guild.voice_client
         
-        if not player or not isinstance(player, MusicPlayer):
-            return await ctx.send("**ERROR:** Not playing any music right now.", delete_after=10)
+        if not player or not player.channel:
+            return await ctx.send("**TANGA!** WALA AKO SA VOICE CHANNEL!")
+        
+        if not player.is_playing and not player.is_paused:
+            return await ctx.send("**WALA NAMAN AKONG PINAPATUGTOG!** Anong i-pause ko?")
             
-        # Check if already paused
         if player.is_paused:
-            return await ctx.send("**TANGA!** NASA PAUSE NA NGA EH!", delete_after=10)
+            return await ctx.send("**NAKAHINTO NA NGA GAGO!** Naka-pause na!")
             
-        # Pause the player
         await player.pause()
-        await ctx.send("**⏸️ HININTO KO MUNA!**", delete_after=10)
-    
+        await ctx.send("**⏸️ PAUSED:** Hininto ko muna. Type `g!resume` to continue.")
+        
     @commands.command(name="resume")
     async def resume(self, ctx):
         """Resume the current song"""
-        player = ctx.voice_client
+        player = ctx.guild.voice_client
         
-        if not player or not isinstance(player, MusicPlayer):
-            return await ctx.send("**ERROR:** Not playing any music right now.", delete_after=10)
-            
-        # Check if paused
+        if not player or not player.channel:
+            return await ctx.send("**TANGA!** WALA AKO SA VOICE CHANNEL!")
+        
         if not player.is_paused:
-            return await ctx.send("**GAGO!** HINDI NAMAN NASA PAUSE!", delete_after=10)
+            return await ctx.send("**NAGPAPATUGTOG NAMAN AKO!** Di naman naka-pause!")
             
-        # Resume the player
         await player.resume()
-        await ctx.send("**▶️ TULOY ULIT ANG KANTA!**", delete_after=10)
-    
+        await ctx.send("**▶️ RESUMING:** Tuloy ang tugtugan!")
+        
     @commands.command(name="stop")
     async def stop(self, ctx):
         """Stop playing and clear the queue"""
-        player = ctx.voice_client
+        player = ctx.guild.voice_client
         
-        if not player or not isinstance(player, MusicPlayer):
-            return await ctx.send("**ERROR:** Not playing any music right now.", delete_after=10)
+        if not player or not player.channel:
+            return await ctx.send("**TANGA!** WALA AKO SA VOICE CHANNEL!")
+        
+        if not isinstance(player, MusicPlayer):
+            await player.disconnect()
+            return await ctx.send("**STOP:** Umalis na ako sa voice channel.")
             
-        # Clear the queue and stop playing
+        # Clear the queue if it's a MusicPlayer
         player.queue.clear()
+            
+        # Stop playback
         await player.stop()
-        player.now_playing = None
-        player.is_playing = False
         
-        await ctx.send("**⏹️ TUMIGIL NA AKO! INALIS KO NA RIN LAHAT NG SONGS SA QUEUE!**", delete_after=10)
-    
+        # Reset state
+        player.is_playing = False
+        player.now_playing = None
+        
+        await ctx.send("**⏹️ STOPPED:** Inalis ko na lahat ng kanta sa queue.")
+        
     @commands.command(name="nowplaying", aliases=["np"])
     async def nowplaying(self, ctx):
         """Show information about the current song"""
-        player = ctx.voice_client
+        player = ctx.guild.voice_client
         
-        if not player or not isinstance(player, MusicPlayer) or not player.now_playing:
-            return await ctx.send("**WALA NAMANG TUMUTUGTOG NGAYON!**", delete_after=10)
+        if not player or not player.channel or not isinstance(player, MusicPlayer):
+            return await ctx.send("**TANGA!** WALA AKONG PINAPATUGTOG!")
             
-        # Get current track
+        if not player.now_playing:
+            return await ctx.send("**WALA AKONG PINAPATUGTOG NGAYON!** Bakit di ka mag-request?")
+            
         track = player.now_playing
         
-        # Create embed with track info
+        # Create a nice embed with track info
         embed = discord.Embed(
-            title="🎵 Now Playing",
+            title="🎵 NOW PLAYING 🎵",
             description=f"**{track.title}**",
-            color=Config.EMBED_COLOR_PRIMARY,
-            url=track.uri
+            color=Config.EMBED_COLOR_PRIMARY
         )
         
-        # Add thumbnail if it's a YouTube track
-        if hasattr(track, 'thumbnail'):
+        # Add thumbnail if available (YouTube tracks have this)
+        if hasattr(track, 'thumbnail') and track.thumbnail:
             embed.set_thumbnail(url=track.thumbnail)
             
-        # Track info
-        if hasattr(track, 'author'):
-            embed.add_field(name="Artist", value=track.author, inline=True)
+        # Add track info
+        if track.uri:
+            embed.add_field(name="Link", value=f"[Click Here]({track.uri})", inline=True)
             
-        # Duration and position
-        duration = format_time(track.duration)
-        position = format_time(player.position)
+        # Add duration and format a progress bar
+        duration = track.length
+        position = player.position
         
-        # Progress bar
-        progress = ""
-        if track.duration > 0:
-            progress = generate_progress_bar(player.position, track.duration)
+        def format_time(ms):
+            """Format milliseconds to MM:SS"""
+            seconds = ms // 1000
+            minutes = seconds // 60
+            seconds %= 60
+            return f"{minutes:02d}:{seconds:02d}"
+        
+        # Create progress bar
+        if duration > 0:  # Avoid division by zero
+            bar_length = 20
+            progress = int(bar_length * (position / duration))
+            progress_bar = "▬" * progress + "🔘" + "▬" * (bar_length - progress - 1)
             
-        embed.add_field(
-            name="Duration",
-            value=f"`{position} {progress} {duration}`",
-            inline=False
-        )
+            time_text = f"{format_time(position)} / {format_time(duration)}"
+            embed.add_field(
+                name="Progress", 
+                value=f"{progress_bar}\n{time_text}", 
+                inline=False
+            )
         
-        # Add requester if available
-        if hasattr(track, 'requester'):
-            embed.set_footer(text=f"Requested by {track.requester.name}")
-            
-        await ctx.send(embed=embed, delete_after=30)
-
-
-def format_time(ms):
-    """Format milliseconds to MM:SS"""
-    if not ms:
-        return "0:00"
+        await ctx.send(embed=embed)
         
-    seconds = int(ms / 1000)
-    minutes = seconds // 60
-    seconds = seconds % 60
-    return f"{minutes}:{seconds:02d}"
-
-
-def generate_progress_bar(position, duration, length=15):
-    """Generate a text progress bar"""
-    if not duration:
-        return "▱" * length
-        
-    ratio = position / duration
-    played = round(ratio * length)
-    remaining = length - played
-    
-    progress_bar = "▰" * played + "▱" * remaining
-    return progress_bar
-
-
 def setup(bot):
     """Add cog to bot"""
-    cog = AudioCog(bot)
-    bot.add_cog(cog)
-    print("✅ AudioCog loaded")
+    bot.add_cog(AudioCog(bot))
