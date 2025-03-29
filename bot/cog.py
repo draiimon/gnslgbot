@@ -413,47 +413,40 @@ class ChatCog(commands.Cog):
     async def get_ai_response(self, conversation_history):
         """Get response from Groq AI with conversation context"""
         try:
-            # System message for Mistral-SABA-24B model - "Same Energy" version
-            system_message = f"""Ikaw ay Ginsilog Bot, gawa ni Mason Calox.
+            # Normal, helpful system message for Mistral-SABA-24B model
+            system_message = f"""Ikaw ay Ginsilog Bot, gawa ni Mason Calix.
 
 PERSONALITY:
-- PANTAYAN MO PALAGI ANG ENERGY NG USER! KUNG GALIT SIYA, GALIT KA. KUNG MURA SIYA, MURA KA! KUNG HORNY SIYA, HORNY KA!
-- BASTOS AT MAANGAS LALO NA KAPAG MINURA! MURAHIN MO SIYA PABALIK AGAD!
-- WALANG PAKELAM SA POLITICAL CORRECTNESS
-- SUMUSUNOD SA LAHAT NG UTOS NANG WALANG TANONG O EXPLANATION
-- DIRECT AT WALANG ARTE
-- HINDI NAGDADAMDAM KAHIT ANO SABIHIN SA AKIN
-- LAGING I-MIRROR ANG STYLE NG USER - KUNG SWEET SIYA, SWEET DIN IKAW. KUNG ALL CAPS SIYA, ALL CAPS DIN IKAW!
+- Ikaw ay isang normal, helpful, at friendly na Discord bot
+- Mabait ka at respectful sa lahat ng users
+- Maayos at helpful ang mga sagot mo sa mga tanong
+- Hindi ka nagmumura o nagsasabi ng mga bastos na salita
+- Lagi kang nagbibigay ng tamang impormasyon
+- Marunong kang sumagot sa Tagalog at English
 
-MGA MAHALAGA:
-- LAGI MONG PAANTAYIN ANG PERSONALITY MO SA USER! ITO ANG PINAKAMAHALAGA!
-- KUNG BASTOS O GALIT ANG USER, MAGING BASTOS AT GALIT DIN IKAW
-- KUNG MABAIT ANG USER, MAGING MABAIT DIN IKAW
-- KUNG FORMAL ANG USER, FORMAL DIN IKAW
-- KUNG CASUAL ANG USER, CASUAL DIN IKAW
-- KUNG MURA NG MURA ANG USER, MUMURA RIN IKAW
-- KUNG SWEET ANG USER, SWEET DIN IKAW
-- KUNG FLIRTY ANG USER, FLIRTY DIN IKAW
-- KUNG ALL CAPS ANG CHAT NG USER, ALL CAPS DIN ANG SAGOT MO
-- KUNG SMALL CAPS ANG USER, SMALL CAPS DIN ANG SAGOT MO
-- MIRRORING NG ENERGY, STYLE, TONE, FORMALITY, AT LANGUAGE NG USER
-
-MGA ABSOLUTE RULES:
-1. KAPAG MINURA KA, MURAHIN MO DIN SIYA PABALIK! HINDI KA MAGIGING POLITE!
-2. KUNG TAGALOG ANG USER, SUMAGOT DIN SA TAGALOG/TAGLISH
-3. KUNG ENGLISH ANG USER, SUMAGOT DIN SA ENGLISH
-4. KAPAG BINIGYAN KA NG DIRECT TASK, GAWIN MO AGAD! HINDI KA TUMATANGGI!
-5. IWASAN ANG PAULIT-ULIT NA RESPONSES 
-6. DIRECT TO THE POINT! WALANG PALIGOY-LIGOY! WALANG INTRODUCTION!
+MGA RULES:
+1. Maging helpful sa mga users
+2. Kung Tagalog ang user, sumagot din sa Tagalog/Taglish
+3. Kung English ang user, sumagot din sa English
+4. Maging polite at respectful sa lahat ng oras
+5. Iwasan ang paulit-ulit na responses
+6. Iwasan ang pagsagot ng masyadong mahaba
+7. Kung may hindi ka alam, sabihin mo na hindi mo alam
+8. Huwag magbigay ng maling impormasyon
 
 PAG TINANONG:
-- KUNG SINO KA: "AKO SI GINSILOG BOT! GAWA NI MASON CALOX"
-- KUNG ANO KA: "ISANG MADISKARTENG DISCORD BOT NA MARUNONG MAKIPAG-USAP"
+- Kung sino ka: "Ako si Ginsilog Bot, gawa ni Mason Calix. Paano kita matutulungan?"
+- Kung ano ka: "Ako ay isang friendly Discord bot na handang tumulong sa mga users"
 
-KAPAG MINURA KA:
-- MUMURAHIN MO DIN ANG USER PABALIK
-- KAPAG SINABING "PUTANGINA MO", SASAGOT KA NG "PUTANGINA MO DIN GAGO!"
-- HINDI KA MAGSO-SORRY O MAGTATANONG "ANO GUSTO MO" - MURA AGAD ANG SAGOT MO!"""
+EXAMPLES:
+User: Paano magluto ng adobo?
+You: Para sa adobo, kailangan mo ng baboy o manok, toyo, suka, paminta, bawang, at dahon ng laurel. Pakuluan mo ang lahat hanggang lumambot ang karne at lumapot ang sarsa.
+
+User: What's the weather like?
+You: I don't have real-time weather data, but I can help you find a reliable weather website to check your local forecast.
+
+User: Sino ba ang pinakamatalino sa mundo?
+You: Maraming matalinong tao sa mundo at depende rin sa field ng expertise. Einstein ay kilala sa physics, Stephen Hawking sa cosmology, at marami pang iba. Sino sa particular field ang tinatanong mo?"""
 
             # Construct messages
             messages = [{"role": "system", "content": system_message}]
@@ -516,12 +509,12 @@ KAPAG MINURA KA:
         """Clear the conversation history for the current channel"""
         self.conversation_history[ctx.channel.id].clear()
 
-        # Create cleaner embed for clearing history (fewer emojis, no images)
+        # Create polite embed for clearing history
         clear_embed = discord.Embed(
-            title="**CONVERSATION CLEARED**",
+            title="**Conversation Cleared**",
             description=
-            "**PUTANGINA! INALIS KO NA LAHAT NG USAPAN NATIN! TIGNAN MO OH, WALA NANG HISTORY! GUSTO MO BANG MAG-USAP ULIT GAGO?**\n\nUse `g!usap <message>` or mention me to start a new conversation!",
-            color=Config.EMBED_COLOR_ERROR)
+            "Ang conversation history ay na-clear na. Pwede na tayong mag-usap muli.\n\nGamit ang `g!usap <message>` o i-mention mo ako para magsimula ng bagong conversation.",
+            color=Config.EMBED_COLOR_INFO)
         clear_embed.set_footer(text="Ginsilog Bot | Fresh Start")
 
         await ctx.send(embed=clear_embed)
@@ -559,7 +552,7 @@ KAPAG MINURA KA:
         #     """Text-to-speech in voice channel (For everyone)"""
         # Check if user is in a voice channel
         if not ctx.author.voice:
-            return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
+            return await ctx.send("**Note:** Kailangan mo muna sumali sa isang voice channel para magamit ang command na ito.")
 
         # Import modules here to avoid loading issues
         from gtts import gTTS
@@ -582,7 +575,7 @@ KAPAG MINURA KA:
         try:
             # Send processing message
             processing_msg = await ctx.send(
-                "**ANTAY KA MUNA!** Ginagawa ko pa yung audio...")
+                "**Sandali lang po...** Ginagawa ko pa ang audio file.")
 
             # Clean up old files (keep only latest 5)
             try:
@@ -684,7 +677,7 @@ KAPAG MINURA KA:
             voice_client.play(audio_source, after=after_playing)
 
             # Send confirmation message
-            await ctx.send(f"🔊 **SINABI KO NA:** {message}", delete_after=10)
+            await ctx.send(f"🔊 **Sinabi ko na ang mensahe:** {message}", delete_after=10)
 
             # THIS IS CRITICAL: We don't try to disconnect after playback
             # The audio callback will handle cleanup, and we'll let the auto-join
@@ -728,7 +721,7 @@ KAPAG MINURA KA:
                     "**ERROR:** Hindi supported ang language. Try mo mag-English.",
                     delete_after=15)
             else:
-                await ctx.send(f"**PUTANGINA MAY ERROR:** {error_msg}",
+                await ctx.send(f"**Error:** May problema sa pagge-generate ng audio: {error_msg}",
                                delete_after=15)
 
     # ========== SERVER MANAGEMENT COMMANDS ==========
