@@ -261,8 +261,12 @@ class AudioCog(commands.Cog):
             # Create an FFmpeg audio source
             source = discord.FFmpegPCMAudio(filename)
             
-            # Play the audio
-            player.play(source)
+            # Play the audio - note: If this is a wavelink.Player, we need to await, 
+            # otherwise for a regular discord.VoiceClient we don't
+            if isinstance(player, wavelink.Player):
+                await player.play(source)
+            else:
+                player.play(source)
             return True
         except Exception as e:
             print(f"Direct playback failed: {e}")
@@ -379,7 +383,11 @@ class AudioCog(commands.Cog):
                     print("Final method: Using pure discord.py...")
                     # Try using discord.py audio
                     source = discord.FFmpegPCMAudio(executable="ffmpeg", source=filename)
-                    player.play(source)
+                    # Check if it's a wavelink.Player or regular discord.VoiceClient
+                    if isinstance(player, wavelink.Player):
+                        await player.play(source)
+                    else:
+                        player.play(source)
                     success = True
                     print("Successfully played using pure discord.py")
                 except Exception as e:
@@ -495,7 +503,11 @@ class AudioCog(commands.Cog):
                 try:
                     # Try using discord.py audio
                     source = discord.FFmpegPCMAudio(executable="ffmpeg", source=filename)
-                    player.play(source)
+                    # Check if it's a wavelink.Player or regular discord.VoiceClient
+                    if isinstance(player, wavelink.Player):
+                        await player.play(source)
+                    else:
+                        player.play(source)
                     success = True
                 except Exception as e:
                     error_msg += f"\nFinal method failed: {e}"
