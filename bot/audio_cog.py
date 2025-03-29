@@ -103,12 +103,16 @@ class AudioCog(commands.Cog):
         self.players = {}
 
     async def cog_load(self):
-        """Initialize wavelink and connect to nodes"""
-        print("Initializing Wavelink...")
+        """Initialize audio systems (TTS works without Lavalink)"""
+        print("Initializing Audio Systems...")
         
-        # Setup Wavelink nodes
+        # For our updated 2025 approach, we don't need Lavalink for TTS
+        # We now use direct Discord voice client playback
+        # But we'll still try to connect for music playback commands
+        
+        # Setup Wavelink nodes (optional - only needed for music playback)
         try:
-            # Create our node - using Wavelink 2.6.3 API
+            # Create our node - using Wavelink 2.6.3 API (optional now)
             self.node = wavelink.Node(
                 uri='http://localhost:2333',
                 password='youshallnotpass',
@@ -116,19 +120,20 @@ class AudioCog(commands.Cog):
                 secure=False
             )
             
-            # Connect to our node with wavelink 2.6.3 API
+            # Connect to our node with wavelink 2.6.3 API (optional now)
             await wavelink.NodePool.connect(client=self.bot, nodes=[self.node])
             self.wavelink_connected = True
-            print("✅ Connected to Lavalink node!")
+            print("✅ Connected to Lavalink node! (Music playback enabled)")
             
             # Setup track end event handling
             self.bot.add_listener(self.on_wavelink_track_end, "on_wavelink_track_end")
             
         except Exception as e:
-            print(f"❌ ERROR: Could not connect to Lavalink node: {e}")
+            print(f"ℹ️ NOTE: Lavalink not available: {e}")
+            print("ℹ️ TTS will work fine, but music playback commands won't work")
             self.wavelink_connected = False
         
-        print("✅ Audio Cog loaded")
+        print("✅ Audio Cog loaded with 2025 TTS implementation")
         
     async def on_wavelink_track_end(self, player: wavelink.Player, track: Playable, reason):
         """Called when a track finishes playing"""
