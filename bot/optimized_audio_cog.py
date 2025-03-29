@@ -67,17 +67,17 @@ class AudioCog(commands.Cog):
         # Dictionary to store voice clients and queues per guild
         self.guild_audio_data = {}
         
-        # ULTRA-ZERO-LATENCY FFMPEG AUDIO SETTINGS FOR INSTANT TTS - OPTIMIZED FOR SPEED
-        # These settings prioritize ultra-fast playback with minimal processing overhead
+        # ZERO-LATENCY FFMPEG SETTINGS WITH NORMAL VOICE QUALITY
+        # Balances instant response with natural sounding voice
         self.ffmpeg_options = {
-            'options': '-ac 1 -ar 24000 -vn -b:a 96k -bufsize 64k -f wav',
+            'options': '-ac 2 -ar 48000 -vn -b:a 128k -bufsize 128k',  # Normal voice pitch/quality
             'before_options': '-nostdin -threads 4 -probesize 1k -analyzeduration 0'
         }
         
-        # For direct pipe streaming (even faster)
+        # For direct pipe streaming
         self.pipe_ffmpeg_options = {
             'pipe': True,
-            'options': '-ac 1 -ar 24000 -f wav -vn -b:a 96k -bufsize 64k',
+            'options': '-ac 2 -ar 48000 -f wav -vn -b:a 128k',  # Normal voice settings
             'before_options': '-nostdin'
         }
         
@@ -478,16 +478,17 @@ class AudioCog(commands.Cog):
             print(f"⚡️ ULTRA-FAST TTS: '{message_text}' (Detected: {detected_lang}, Using voice: {voice_used})")
             
             # The magic: Set up FFmpeg pipe command for real-time streaming
+            # BUT keeping original voice quality (avoiding chipmunk effect)
             import subprocess
-            ffmpeg_cmd = ["ffmpeg", "-i", mp3_filename, "-ac", "1", "-ar", "24000", "-f", "wav", "pipe:1"]
+            ffmpeg_cmd = ["ffmpeg", "-i", mp3_filename, "-ac", "2", "-ar", "48000", "-f", "wav", "pipe:1"]
             
             # Execute FFmpeg process with pipe to stdout
             ffmpeg_process = subprocess.Popen(ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
             
             # Create audio source directly from pipe for instant playback
-            # This eliminates file writing delay completely - streaming directly from ffmpeg
+            # This eliminates file writing delay completely while keeping normal voice
             audio_source = discord.FFmpegPCMAudio(ffmpeg_process.stdout, pipe=True, **{
-                'options': '-ac 1 -ar 24000',
+                'options': '-ac 2 -ar 48000',  # Restored to normal values for voice
                 'before_options': '-nostdin'
             })
             
@@ -736,16 +737,16 @@ class AudioCog(commands.Cog):
                         voice_client = await voice_channel.connect()
                     
                     # PIPE-BASED STREAMING: Ultra-fast real-time audio playback
-                    # Set up FFmpeg command for direct pipe streaming
+                    # Set up FFmpeg command for direct pipe streaming - with normal voice settings
                     import subprocess
-                    ffmpeg_cmd = ["ffmpeg", "-i", mp3_filename, "-ac", "1", "-ar", "24000", "-f", "wav", "pipe:1"]
+                    ffmpeg_cmd = ["ffmpeg", "-i", mp3_filename, "-ac", "2", "-ar", "48000", "-f", "wav", "pipe:1"]
                     
                     # Execute FFmpeg as a process with pipe to stdout
                     ffmpeg_process = subprocess.Popen(ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
                     
                     # Create audio source directly from pipe (zero file I/O latency)
                     audio_source = discord.FFmpegPCMAudio(ffmpeg_process.stdout, pipe=True, **{
-                        'options': '-ac 1 -ar 24000',
+                        'options': '-ac 2 -ar 48000',  # Normal voice settings - avoid chipmunk
                         'before_options': '-nostdin'
                     })
                     
