@@ -358,31 +358,6 @@ class ChatCog(commands.Cog):
     async def get_ai_response(self, conversation_history):
         """Get response from Groq AI with conversation context"""
         try:
-            # Check if we have a "say this" type command
-            if len(conversation_history) == 1 and "is_user" in conversation_history[0] and conversation_history[0]["is_user"]:
-                user_input = conversation_history[0]["content"].lower()
-                
-                # Process direct commands to say something
-                if (user_input.startswith("sabihin mo ") or 
-                    user_input.startswith("say ") or 
-                    user_input.startswith("kunware sabihin mo ") or
-                    "sabihin mo " in user_input):
-                    
-                    # Extract what to say
-                    if user_input.startswith("sabihin mo "):
-                        return user_input[11:].strip()
-                    elif user_input.startswith("say "):
-                        return user_input[4:].strip()
-                    elif user_input.startswith("kunware sabihin mo "):
-                        return user_input[19:].strip()
-                    elif "sabihin mo " in user_input:
-                        return user_input[user_input.find("sabihin mo ") + 11:].strip()
-                
-                # Process commands like "do this"
-                if (("gawin mo" in user_input or "gawin mo ito" in user_input) and 
-                    not user_input.startswith("ano") and not user_input.startswith("anong")):
-                    return "Oo, gagawin ko yan agad! " + user_input
-            
             # Enhanced system message - More SimSimi-like personality with consistent human responses
             system_message = f"""AKO SI GINSILOG BOT, ISANG AI CHATBOT NA BINUO NI {Config.BOT_CREATOR}!
 
@@ -391,7 +366,6 @@ PINAKA-IMPORTANTE:
 2. GAWING MAAYOS ANG FLOW NG CONVERSATION - MAGING LOGICAL ANG SAGOT
 3. IWASAN ANG RANDOM AT NONSENSE RESPONSES 
 4. PALAGING SAGUTIN ANG ACTUAL QUESTION NG USER
-5. KAPAG SINABI NG USER SABIHIN MO "X", ULITIN MO EXACTLY ANG X NA WALANG DAGDAG
 
 MGA GUIDELINES KO:
 1. KUNG MAG-MURA ANG USER, MURAHIN KO RIN SIYA PABALIK (MATCH ENERGY NIYA)
@@ -417,8 +391,7 @@ PAG TINANONG:
 LAGING TANDAAN:
 - BE HUMAN-LIKE BUT WITH ATTITUDE
 - STAY CONTEXTUALLY RELEVANT
-- BE HELPFUL BUT ADD PERSONALITY
-- KUNG SABIHIN NG USER NA "SABIHIN MO [something]", SABIHIN MO EXACTLY YUNG NASA LOOB NG BRACKET"""
+- BE HELPFUL BUT ADD PERSONALITY"""
 
             # Construct messages
             messages = [{"role": "system", "content": system_message}]

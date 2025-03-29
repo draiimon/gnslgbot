@@ -122,54 +122,6 @@ class SpeechRecognitionCog(commands.Cog):
         
         print(f"🛑 Stopped listening in guild {guild_id}")
     
-    @commands.command(name="joinvoice", aliases=["joinvc", "j"])
-    async def joinvoice(self, ctx):
-        """Join your voice channel - REQUIRED before using g!ask"""
-        try:
-            # Check if user is in a voice channel
-            if not ctx.author.voice:
-                await ctx.send("**TANGA KA!** You need to be in a voice channel first!")
-                return
-                
-            voice_channel = ctx.author.voice.channel
-            
-            # Try to connect to the voice channel
-            voice_client = await self._force_reconnect(voice_channel)
-            
-            if voice_client and voice_client.is_connected():
-                # Success - join voice channel
-                await ctx.send(f"🎤 **OK PARE!** Na-join ko na voice channel mo: **{voice_channel.name}**!")
-                
-                # Add to listening guilds to enable listening mode
-                self.listening_guilds.add(ctx.guild.id)
-            else:
-                # Failed to connect
-                await ctx.send("⚠️ **ERROR!** Hindi ako makaconnect sa voice channel mo! Try again!")
-                
-        except Exception as e:
-            await ctx.send(f"❌ **ERROR:** {str(e)}")
-            import traceback
-            traceback.print_exc()
-    
-    @commands.command(name="leavevc", aliases=["leave"])
-    async def leavevc(self, ctx):
-        """Leave the voice channel"""
-        try:
-            # Check if we're connected to a voice channel
-            if ctx.guild.id in self.voice_clients and self.voice_clients[ctx.guild.id].is_connected():
-                # Disconnect from voice
-                await self.voice_clients[ctx.guild.id].disconnect()
-                del self.voice_clients[ctx.guild.id]
-                
-                # Remove from listening guilds
-                self.listening_guilds.discard(ctx.guild.id)
-                
-                await ctx.send("👋 **BYE!** Umalis na ako sa voice channel.")
-            else:
-                await ctx.send("**LOKO KA BA?** Wala naman ako sa voice channel!")
-        except Exception as e:
-            await ctx.send(f"❌ **ERROR:** {str(e)}")
-            
     @commands.command()
     async def stoplisten(self, ctx):
         """Stop listening for voice commands"""
@@ -296,12 +248,9 @@ class SpeechRecognitionCog(commands.Cog):
     
     async def speak_message(self, guild_id, message):
         """Use TTS to speak a message in the voice channel using in-memory processing"""
-        # IMPROVED ERROR RECOVERY: Handle disconnections better
-        
-        # First attempt: Check if we're connected and try to reconnect if needed
+        # Check if we're connected to voice and try to reconnect if needed
         if guild_id not in self.voice_clients or not self.voice_clients[guild_id].is_connected():
             # Try to reconnect if we know the channel
-            connected = False
             try:
                 # Find the guild
                 guild = self.bot.get_guild(guild_id)
@@ -311,32 +260,15 @@ class SpeechRecognitionCog(commands.Cog):
                         if len(voice_channel.members) > 0:
                             # Found a channel with users, try to connect
                             print(f"🔄 Auto-reconnecting to {voice_channel.name} in {guild.name}")
-                            
-                            # Use our more robust forced reconnection
-                            voice_client = await self._force_reconnect(voice_channel)
-                            if voice_client and voice_client.is_connected():
-                                connected = True
-                                break
+                            await self._ensure_voice_connection(voice_channel)
+                            break
             except Exception as e:
-                print(f"⚠️ Error in first reconnection attempt: {e}")
-                
-            if not connected:
-                # Second attempt: Try one more time as a fallback
-                try:
-                    guild = self.bot.get_guild(guild_id)
-                    if guild and guild.voice_channels:
-                        # Try the first voice channel as a last resort
-                        voice_channel = guild.voice_channels[0]
-                        print(f"🔄 EMERGENCY: Last resort connection to {voice_channel.name}")
-                        voice_client = await self._force_reconnect(voice_channel)
-                        if voice_client and voice_client.is_connected():
-                            connected = True
-                except Exception as e:
-                    print(f"⚠️ Error in second reconnection attempt: {e}")
+                print(f"⚠️ Error auto-reconnecting: {e}")
+                return
             
-            # If we still don't have a connection after multiple attempts, return
-            if not connected:
-                print(f"❌ CRITICAL: Cannot speak message in guild {guild_id} - all reconnection attempts failed")
+            # If we still don't have a connection, return
+            if guild_id not in self.voice_clients or not self.voice_clients[guild_id].is_connected():
+                print(f"⚠️ Cannot speak message in guild {guild_id} - no voice connection")
                 return
         
         # Add to the queue
@@ -358,47 +290,12 @@ class SpeechRecognitionCog(commands.Cog):
         # Get the next message
         message = self.tts_queue[guild_id].pop(0)
         
-        # IMPROVED TTS PROCESSING: Better error handling and recovery
+        # Generate TTS audio directly in memory
         try:
-            # First, verify that our voice client is still active
-            if guild_id not in self.voice_clients or not self.voice_clients[guild_id].is_connected():
-                # Voice client is no longer valid, try to recover
-                print(f"⚠️ Voice client disconnected while processing queue for guild {guild_id}")
-                
-                # Find a suitable voice channel to reconnect to
-                guild = self.bot.get_guild(guild_id)
-                if not guild:
-                    print(f"❌ Could not find guild with ID {guild_id}")
-                    return
-                
-                reconnected = False
-                # Try to find any voice channel with members in it
-                for voice_channel in guild.voice_channels:
-                    if len(voice_channel.members) > 0:
-                        # Try with our robust reconnect method
-                        voice_client = await self._force_reconnect(voice_channel)
-                        if voice_client and voice_client.is_connected():
-                            reconnected = True
-                            break
-                
-                if not reconnected:
-                    print(f"❌ Could not reconnect to a voice channel in guild {guild_id}")
-                    # Add the message back to the queue for potential future processing
-                    if guild_id in self.tts_queue:
-                        self.tts_queue[guild_id].insert(0, message)
-                    return
-            
-            # Continue with TTS generation
-            # Detect language (improved version)
+            # Detect language (simplified version)
             language = "en"
-            tagalog_words = ["ako", "ikaw", "siya", "kami", "tayo", "kayo", "sila", "na", "at", "ang", "mga", 
-                            "po", "ng", "sa", "si", "ni", "mo", "ko", "niya", "natin", "namin", "ninyo", "nila"]
-            
-            # Count Tagalog markers for higher confidence
-            tagalog_count = sum(1 for word in message.lower().split() if word in tagalog_words)
-            is_definitely_tagalog = tagalog_count >= 2 or 'ang' in message.lower() or 'ng ' in message.lower()
-            
-            if is_definitely_tagalog or any(word in message.lower().split() for word in tagalog_words):
+            tagalog_words = ["ako", "ikaw", "siya", "kami", "tayo", "kayo", "sila", "na", "at", "ang", "mga"]
+            if any(word in message.lower() for word in tagalog_words):
                 language = "fil"
             
             # Choose voice based on language
@@ -434,23 +331,16 @@ class SpeechRecognitionCog(commands.Cog):
             # Create custom audio source
             source = discord.PCMAudio(output_buffer)
             
-            # Double-check voice client is still valid before playing
-            if guild_id in self.voice_clients and self.voice_clients[guild_id].is_connected():
-                # Play the TTS message
-                self.voice_clients[guild_id].play(
-                    source,
-                    after=lambda e: asyncio.run_coroutine_threadsafe(
-                        self.after_speaking(e, guild_id, None), 
-                        self.bot.loop
-                    )
+            # Play the TTS message
+            self.voice_clients[guild_id].play(
+                source,
+                after=lambda e: asyncio.run_coroutine_threadsafe(
+                    self.after_speaking(e, guild_id, None), 
+                    self.bot.loop
                 )
-                
-                print(f"✅ Speaking message: {message[:50]}...")
-            else:
-                print(f"❌ Voice client became invalid during TTS processing for guild {guild_id}")
-                # Re-add message to queue in case we reconnect later
-                if guild_id in self.tts_queue:
-                    self.tts_queue[guild_id].insert(0, message)
+            )
+            
+            print(f"✅ Speaking message: {message[:50]}...")
             
         except Exception as e:
             print(f"⚠️ Error generating TTS: {e}")
@@ -458,7 +348,7 @@ class SpeechRecognitionCog(commands.Cog):
             traceback.print_exc()
             
             # Process next message if any
-            if guild_id in self.tts_queue and self.tts_queue[guild_id]:
+            if self.tts_queue[guild_id]:
                 await self.process_tts_queue(guild_id)
     
     async def after_speaking(self, error, guild_id, _):
@@ -527,7 +417,7 @@ class SpeechRecognitionCog(commands.Cog):
     
     @commands.command(name="ask")
     async def ask(self, ctx, *, question: str):
-        """Quick voice response to a question (Make sure to use g!joinvc or g!j first)"""
+        """Quick voice response to a question (no need for g!joinvc first)"""
         try:
             # Check if user is in a voice channel
             if not ctx.author.voice:
@@ -536,113 +426,17 @@ class SpeechRecognitionCog(commands.Cog):
                 
             voice_channel = ctx.author.voice.channel
             
-            # IMPORTANT: The bot requires g!joinvc first, but we'll still try to reconnect 
-            # if possible as a fallback.
+            # Connect to voice channel using our helper - SILENTLY
+            # No join message or acknowledgement, just connect
+            await self._ensure_voice_connection(voice_channel)
             
-            # First check if we're already connected to the voice channel
-            guild_id = ctx.guild.id
-            voice_client = None
-            try:
-                # Check our internal tracking
-                if guild_id in self.voice_clients and self.voice_clients[guild_id].is_connected():
-                    voice_client = self.voice_clients[guild_id]
-                    
-                    # If we're in a different channel, move to the user's channel
-                    if voice_client.channel.id != voice_channel.id:
-                        await voice_client.move_to(voice_channel)
-                        print(f"Moved to user's voice channel: {voice_channel.name}")
-                elif ctx.guild.voice_client and ctx.guild.voice_client.is_connected():
-                    # Discord.py has a connection, use it
-                    voice_client = ctx.guild.voice_client
-                    self.voice_clients[guild_id] = voice_client
-                    
-                    # If we're in a different channel, move to the user's channel
-                    if voice_client.channel.id != voice_channel.id:
-                        await voice_client.move_to(voice_channel)
-                        print(f"Moved to user's voice channel: {voice_channel.name}")
-                else:
-                    # No existing connection, force a clean reconnect
-                    voice_client = await self._force_reconnect(voice_channel)
-                    print(f"Connected to voice channel: {voice_channel.name} for g!ask")
-                
-                # Safety check - if we still don't have a valid connection, try one more time
-                if not voice_client or not voice_client.is_connected():
-                    print(f"⚠️ Voice connection still failed, attempting one more reconnect")
-                    # Try one more time with force reconnect as a last resort
-                    voice_client = await self._force_reconnect(voice_channel)
-                    
-                # Extra safety - log the connection state
-                if voice_client and voice_client.is_connected():
-                    print(f"✅ Successfully connected to {voice_channel.name} for g!ask command")
-                else:
-                    print(f"❌ Failed to connect to voice channel after multiple attempts")
-                    await ctx.send("⚠️ **ERROR!** Hindi ako makaconnect sa voice channel mo! Make sure to use **g!joinvc** or **g!j** first!")
-                    return
-                    
-                # Process and answer the question directly - ultra clean flow
-                await self.handle_voice_command(ctx.guild.id, ctx.author.id, question)
-                
-            except Exception as voice_error:
-                print(f"⚠️ Voice connection error in ask command: {voice_error}")
-                
-                try:
-                    # Try a forced reconnection as absolute last resort
-                    voice_client = await self._force_reconnect(voice_channel)
-                    if voice_client and voice_client.is_connected():
-                        # Now try the command again
-                        await self.handle_voice_command(ctx.guild.id, ctx.author.id, question)
-                    else:
-                        await ctx.send("⚠️ **CONNECTION ERROR!** Hindi ako makaconnect sa voice channel! Please use **g!joinvc** first!")
-                except Exception as final_error:
-                    await ctx.send(f"⚠️ **CRITICAL ERROR!** Hindi ako makapasok sa voice channel: {str(final_error)}")
-                    print(f"❌ CRITICAL: Final connection attempt failed: {final_error}")
-        
+            # Process and answer the question directly - ultra clean flow
+            await self.handle_voice_command(ctx.guild.id, ctx.author.id, question)
+            
         except Exception as e:
             await ctx.send(f"❌ **ERROR:** {str(e)}")
             import traceback
             traceback.print_exc()
-            
-    async def _force_reconnect(self, voice_channel):
-        """Force a reconnection to a voice channel - EMERGENCY RECOVERY"""
-        guild_id = voice_channel.guild.id
-        guild = voice_channel.guild
-        
-        print(f"🔄 EMERGENCY: Forcing reconnection to {voice_channel.name} in {guild.name}")
-        
-        try:
-            # First, check if we have an existing voice client and disconnect it
-            if guild_id in self.voice_clients:
-                try:
-                    if self.voice_clients[guild_id].is_connected():
-                        await self.voice_clients[guild_id].disconnect(force=True)
-                except:
-                    pass
-            
-            # Also check if Discord.py has a connection and disconnect that
-            voice_client = guild.voice_client
-            if voice_client:
-                try:
-                    await voice_client.disconnect(force=True)
-                except:
-                    pass
-            
-            # Sleep briefly to allow disconnection to complete
-            await asyncio.sleep(0.5)
-            
-            # Now try to connect cleanly
-            voice_client = await voice_channel.connect()
-            self.voice_clients[guild_id] = voice_client
-            
-            # Initialize TTS queue if needed
-            if guild_id not in self.tts_queue:
-                self.tts_queue[guild_id] = []
-                
-            print(f"✅ Successfully force-reconnected to {voice_channel.name}")
-            return voice_client
-            
-        except Exception as e:
-            print(f"❌ CRITICAL ERROR in force reconnect: {e}")
-            return None
             
     async def monitor_voice_connections(self):
         """Background task to monitor voice connections and ensure they stay active"""
@@ -665,10 +459,10 @@ class SpeechRecognitionCog(commands.Cog):
                             for voice_channel in guild.voice_channels:
                                 if len(voice_channel.members) > 0:
                                     try:
-                                        # Try to reconnect to this channel - use force reconnect for more reliable recovery
+                                        # Try to reconnect to this channel
                                         print(f"🔄 Auto-reconnecting to {voice_channel.name} in {guild.name}")
-                                        voice_client = await self._force_reconnect(voice_channel)
-                                        reconnected = voice_client is not None and voice_client.is_connected()
+                                        await self._ensure_voice_connection(voice_channel)
+                                        reconnected = True
                                         
                                         # If this guild was in listening mode, send a message
                                         if guild_id in self.listening_guilds:
