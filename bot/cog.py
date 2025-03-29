@@ -35,14 +35,25 @@ class ChatCog(commands.Cog):
         if message.author.bot:
             return
             
-        # Check if the bot is mentioned in the message
-        if self.bot.user in message.mentions:
-            # Extract the content without the mention
-            content = message.content.replace(f'<@{self.bot.user.id}>', '').strip()
+        # Enhanced mention detection - check multiple ways
+        is_mentioned = False
+        content = message.content
+        
+        # Check if the bot is directly mentioned
+        if self.bot.user.id in [user.id for user in message.mentions]:
+            is_mentioned = True
+            # Clean up the mention in different possible formats
+            content = content.replace(f'<@{self.bot.user.id}>', '').strip()
+            content = content.replace(f'<@!{self.bot.user.id}>', '').strip()
+            
+        # Only proceed if the bot was mentioned    
+        if is_mentioned:
+            # Debug log for mention detection
+            print(f"✅ Bot mentioned by {message.author.name} with content: {content}")
             
             # Skip if there's no actual content after removing the mention
             if not content:
-                await message.channel.send("Oy, bakit mo ako tinatawag? May gusto ka bang sabihin?")
+                await message.channel.send(f"**Oy {message.author.mention}!** Bakit mo ako tinatawag? May gusto ka bang sabihin?")
                 return
                 
             # Check for rate limiting
@@ -63,7 +74,7 @@ class ChatCog(commands.Cog):
                 self.add_to_conversation(message.channel.id, True, content)
                 self.add_to_conversation(message.channel.id, False, response)
                 
-                # Send AI response as plain text
+                # Send AI response as plain text - no embed to match SimSimi style
                 await message.channel.send(response)
 
     # ========== HELPER FUNCTIONS ==========
@@ -265,7 +276,7 @@ class ChatCog(commands.Cog):
         categories = {
             "🤖 AI CHAT": {
                 "g!usap <message>": "Chat with the AI assistant",
-                "@GNSLG BOT <message>": "Mention the bot to chat",
+                "@Ginsilog BOT <message>": "Mention the bot to chat",
                 "g!clear": "Clear chat history"
             },
             "💰 ECONOMY": {
@@ -307,7 +318,7 @@ class ChatCog(commands.Cog):
         """Get response from Groq AI with conversation context"""
         try:
             # Enhanced system message - SimSimi-like personality that adapts to user's input
-            system_message = f"""AKO SI GNSLG BOT, ISANG AI CHATBOT NA BINUO NI {Config.BOT_CREATOR}!
+            system_message = f"""AKO SI GINSILOG BOT, ISANG AI CHATBOT NA BINUO NI {Config.BOT_CREATOR}!
 
 PINAKA-IMPORTANTE: 
 1. PALAGING MAGING CONCISE AT DIRECT - IWASANG HUMABA
@@ -407,7 +418,7 @@ LAGI KONG TANDAAN:
             description="**PUTANGINA! INALIS KO NA LAHAT NG USAPAN NATIN! TIGNAN MO OH, WALA NANG HISTORY! GUSTO MO BANG MAG-USAP ULIT GAGO?**\n\nUse `g!usap <message>` or mention me to start a new conversation!",
             color=Config.EMBED_COLOR_ERROR
         )
-        clear_embed.set_footer(text="GNSLG Bot | Fresh Start")
+        clear_embed.set_footer(text="Ginsilog Bot | Fresh Start")
         
         await ctx.send(embed=clear_embed)
     
@@ -683,7 +694,7 @@ Thank you for your cooperation!""",
         
         chat_commands = {
             "g!usap <message>": "Chat with the AI assistant",
-            "@GNSLG BOT <message>": "Mention the bot to chat",
+            "@Ginsilog BOT <message>": "Mention the bot to chat",
             "g!clear": "Clear chat history"
         }
         
@@ -745,7 +756,7 @@ Thank you for your cooperation!""",
             inline=False
         )
         
-        embed.set_footer(text="MASTER LIST! PARA SA MODERATOR LANG! | GNSLG Command System")
+        embed.set_footer(text="MASTER LIST! PARA SA MODERATOR LANG! | Ginsilog Command System")
         
         # Send the embed in the channel
         await ctx.send(embed=embed)
@@ -766,7 +777,7 @@ Thank you for your cooperation!""",
         
         # Create embed for admin commands
         embed = discord.Embed(
-            title="**🔑 GNSLG ADMIN COMMANDS 🔑**",
+            title="**🔑 GINSILOG ADMIN COMMANDS 🔑**",
             description="**LISTA NG MGA ADMIN COMMANDS PARA SA MGA BOSS:**",
             color=Config.EMBED_COLOR_PRIMARY
         )
@@ -793,7 +804,7 @@ Thank you for your cooperation!""",
             inline=False
         )
         
-        embed.set_footer(text="ADMIN LANG PWEDE GUMAMIT NITO! | GNSLG Admin Panel")
+        embed.set_footer(text="ADMIN LANG PWEDE GUMAMIT NITO! | Ginsilog Admin Panel")
         
         # Send the embed in the channel
         await ctx.send(embed=embed)
@@ -806,7 +817,7 @@ Thank you for your cooperation!""",
         
         # Create the embed with cleaner design (fewer emojis)
         embed = discord.Embed(
-            title="**GNSLG LEADERBOARD - MAYAMAN VS. DUKHA**",
+            title="**GINSILOG LEADERBOARD - MAYAMAN VS. DUKHA**",
             description="**TANGINA MO! IKAW KAYA NASAAN DITO? SIGURADONG WALA KA DITO KASI WALA KANG KWENTANG PLAYER!**\n\n" + 
                        "**TOP MAYAMAN NG SERVER**",
             color=Config.EMBED_COLOR_PRIMARY
@@ -836,7 +847,7 @@ Thank you for your cooperation!""",
         embed.description += f"\n\n{leaderboard_text}"
         
         # Add motivational footer (insulting style but cleaner)
-        embed.set_footer(text="DAPAT ANDITO KA SA TAAS! KUNGDI MAGTIPID KA GAGO! | GNSLG Economy System")
+        embed.set_footer(text="DAPAT ANDITO KA SA TAAS! KUNGDI MAGTIPID KA GAGO! | Ginsilog Economy System")
         
         # Send the embed
         await ctx.send(embed=embed)
