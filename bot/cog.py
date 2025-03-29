@@ -1889,6 +1889,17 @@ class ChatCog(commands.Cog):
                         1345727357612195885: "🛑",  # 𝐁𝐎𝐁𝐎
                     }
                     
+                    # Bots to ignore in our server (these should never be renamed)
+                    BOTS_TO_IGNORE = [
+                        self.bot.user.id,  # Our own bot
+                        411916947773587456,  # Jockie Music
+                        294882584201003009,  # Sesh
+                        234395307759108106,  # Groovy
+                        235088799074484224,  # Rhythm 
+                        472911936951156740,  # Queue
+                        547905866255433758,  # Ear Tensifier
+                    ]
+                    
                     # Role names for display in log
                     role_names = {
                         1345727357662658603: "𝐇𝐈𝐆𝐇",
@@ -1925,8 +1936,62 @@ class ChatCog(commands.Cog):
                     failed_count = 0
                     
                     for member in guild.members:
-                        # Skip bots
-                        if member.bot:
+                        # Skip bots that are in our ignore list
+                        if member.bot and member.id in BOTS_TO_IGNORE:
+                            skipped_count += 1
+                            continue
+                            
+                        # Skip users with higher roles than the bot (like server owner)
+                        # We'll record them but suggest a manual update via DM
+                        bot_member = guild.get_member(self.bot.user.id)
+                        if bot_member and member.top_role >= bot_member.top_role and not member.bot:
+                            try:
+                                # If we have a permission issue, store the desired name for manual use
+                                # Get the highest role they should have emoji for
+                                highest_emoji = None
+                                highest_role_name = None
+                                for role in member_roles:
+                                    if role.id in role_emoji_map:
+                                        highest_emoji = role_emoji_map[role.id]
+                                        highest_role_name = role_names[role.id]
+                                        break
+                                        
+                                if highest_emoji:
+                                    # Clean name of emojis
+                                    clean_name = member.display_name
+                                    # Special case for cloud emoji (both variants)
+                                    clean_name = clean_name.replace("☁️", "").replace("☁", "")
+                                    # Handle all other emojis from the role map
+                                    for emoji_value in role_emoji_map.values():
+                                        while emoji_value in clean_name:
+                                            clean_name = clean_name.replace(emoji_value, '')
+                                    clean_name = clean_name.strip()
+                                    
+                                    # Unicode conversion
+                                    formatted_name = to_unicode_bold(clean_name)
+                                    suggested_name = f"{formatted_name} {highest_emoji}"
+                                    
+                                    # Log the information for manual handling
+                                    print(f"[HighRole] Need manual update for {member.name}: Change to '{suggested_name}' (Has {highest_role_name})")
+                                    
+                                    # If this is the first time seeing this high-role user, send them a DM
+                                    high_role_key = f"high_role_dm_{member.id}"
+                                    if high_role_key not in self.user_message_timestamps:
+                                        try:
+                                            # We'll try to DM them with the suggested name
+                                            dm_embed = discord.Embed(
+                                                title="🏆 Nickname Format Suggestion",
+                                                description=f"Hi {member.name},\n\nAs a high-role member of the server, I can't automatically update your nickname. If you'd like to match the server format, please consider updating your nickname to:\n\n**{suggested_name}**\n\nThis matches your {highest_role_name} role.",
+                                                color=0x5865F2
+                                            )
+                                            await member.send(embed=dm_embed)
+                                            self.user_message_timestamps[high_role_key] = time.time()
+                                            print(f"[HighRole] Sent DM to {member.name} with nickname suggestion")
+                                        except Exception as e:
+                                            print(f"[HighRole] Couldn't DM {member.name}: {e}")
+                            except Exception as e:
+                                print(f"[HighRole] Error processing high-role user {member.name}: {e}")
+                            
                             skipped_count += 1
                             continue
                         
