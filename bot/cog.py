@@ -1770,20 +1770,20 @@ class ChatCog(commands.Cog):
             emoji = role_emoji_map[highest_matched_role_id]
             role_name = role_names[highest_matched_role_id]
             
-            # Format the name
+            # Format the name - completely rewritten for reliability
             original_name = member.display_name
             
-            # More thorough emoji cleanup - remove any trailing emoji
+            # Step 1: Remove ALL role emojis from the name, regardless of position
             clean_name = original_name
-            # First check for duplicated emojis (like "☁️ ☁️")
             for emoji_value in role_emoji_map.values():
-                while True:
-                    if clean_name.endswith(emoji_value):
-                        clean_name = clean_name[:-len(emoji_value)].strip()
-                    else:
-                        break
+                # Keep removing this emoji until there are none left
+                while emoji_value in clean_name:
+                    clean_name = clean_name.replace(emoji_value, '')
             
-            # Convert to Unicode bold style
+            # Step 2: Remove any extra spaces that might be left
+            clean_name = clean_name.strip()
+            
+            # Step 3: Convert to Unicode bold style
             formatted_name = to_unicode_bold(clean_name)
             
             # Add the role emoji
