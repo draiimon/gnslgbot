@@ -1,6 +1,25 @@
 version: '3.8'
 
 services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=ginsilog
+      - POSTGRES_PASSWORD=dbpassword
+      - POSTGRES_DB=ginsilogbot
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - bot-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ginsilog -d ginsilogbot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # Lavalink music server
   lavalink:
     image: ghcr.io/lavalink-devs/lavalink:latest
@@ -18,7 +37,10 @@ services:
     build: .
     restart: unless-stopped
     depends_on:
-      - lavalink
+      postgres:
+        condition: service_healthy
+      lavalink:
+        condition: service_started
     env_file:
       - .env
     volumes:
@@ -29,12 +51,17 @@ services:
       - LAVALINK_HOST=lavalink
       - LAVALINK_PORT=2333
       - LAVALINK_PASSWORD=youshallnotpass
+      - DATABASE_URL=postgresql://ginsilog:dbpassword@postgres:5432/ginsilogbot
     ports:
       - "5000:5000"
     networks:
       - bot-network
     # Keeping the container running
     tty: true
+
+volumes:
+  postgres_data:
+    driver: local
 
 networks:
   bot-network:

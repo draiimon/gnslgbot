@@ -1,13 +1,28 @@
 services:
+  # PostgreSQL Database
+  - type: pserv
+    name: ginsilog-postgres
+    plan: standard
+    env: docker
+    disk:
+      name: postgres-data
+      mountPath: /var/lib/postgresql/data
+      sizeGB: 10
+    envVars:
+      - key: POSTGRES_USER
+        value: ginsilog
+      - key: POSTGRES_PASSWORD
+        generateValue: true
+      - key: POSTGRES_DB
+        value: ginsilogbot
+
+  # Discord Bot
   - type: web
     name: ginsilog-bot
     env: docker
     plan: standard
-    # Redirect HTTP traffic to HTTPS
     autoDeploy: true
-    # A health check to verify the app is running
     healthCheckPath: /
-    # Environment variables
     envVars:
       - key: DISCORD_TOKEN
         sync: false
@@ -17,3 +32,8 @@ services:
         sync: false
       - key: SPOTIFY_CLIENT_SECRET
         sync: false
+      - key: DATABASE_URL
+        fromService:
+          type: pserv
+          name: ginsilog-postgres
+          envVarKey: POSTGRES_URL_NON_POOLING
