@@ -1075,10 +1075,10 @@ class ChatCog(commands.Cog):
             
             # Multiple embeds in a single message with different containers
             
-            # Header container
+            # Header container - Added spaces for consistent width
             header_embed = discord.Embed(
-                title="**🌟 GINSILOG BOT MASTER COMMAND LIST 🌟**",
-                description="**KUMPLETO AT MAGANDANG LISTA NG LAHAT NG COMMANDS PARA SA MGA MODERATOR!**",
+                title="**🌟 GINSILOG BOT MASTER COMMAND LIST 🌟**                                   ",
+                description="**KUMPLETO AT MAGANDANG LISTA NG LAHAT NG COMMANDS PARA SA MGA MODERATOR!**                                   ",
                 color=discord.Color.from_rgb(255, 59, 59)  # Bright red
             )
             
@@ -1086,10 +1086,10 @@ class ChatCog(commands.Cog):
             if self.bot.user and self.bot.user.avatar:
                 header_embed.set_thumbnail(url=self.bot.user.avatar.url)
             
-            # ADMIN COMMANDS CONTAINER
+            # ADMIN COMMANDS CONTAINER - Added spaces for consistent width
             admin_embed = discord.Embed(
-                title="**🛡️ ADMIN COMMANDS 🛡️**",
-                description="**EXCLUSIVE COMMANDS PARA SA MGA MODERATORS LANG:**",
+                title="**🛡️ ADMIN COMMANDS 🛡️**                                   ",
+                description="**EXCLUSIVE COMMANDS PARA SA MGA MODERATORS LANG:**                                   ",
                 color=discord.Color.red()  # Red for admin commands
             )
             
@@ -1127,10 +1127,10 @@ class ChatCog(commands.Cog):
             
             admin_embed.description += f"\n\n{admin_text}"
             
-            # ECONOMY COMMANDS CONTAINER
+            # ECONOMY COMMANDS CONTAINER - Added spaces for consistent width
             economy_embed = discord.Embed(
-                title="**💰 ECONOMY COMMANDS 💰**",
-                description="**PERA AT ECONOMY SYSTEM:**",
+                title="**💰 ECONOMY COMMANDS 💰**                                   ",
+                description="**PERA AT ECONOMY SYSTEM:**                                   ",
                 color=discord.Color.gold()  # Gold for economy
             )
             
@@ -1148,10 +1148,10 @@ class ChatCog(commands.Cog):
             
             economy_embed.description += f"\n\n{economy_text}"
             
-            # GAME COMMANDS CONTAINER
+            # GAME COMMANDS CONTAINER - Added spaces for consistent width
             game_embed = discord.Embed(
-                title="**🎮 GAME COMMANDS 🎮**",
-                description="**LARO AT GAMES NA PWEDE PANG-PATAY ORAS:**",
+                title="**🎮 GAME COMMANDS 🎮**                                   ",
+                description="**LARO AT GAMES NA PWEDE PANG-PATAY ORAS:**                                   ",
                 color=discord.Color.purple()  # Purple for games
             )
             
@@ -1169,10 +1169,10 @@ class ChatCog(commands.Cog):
             
             game_embed.description += f"\n\n{game_text}"
             
-            # AI CHAT COMMANDS CONTAINER
+            # AI CHAT COMMANDS CONTAINER - Added spaces for consistent width
             chat_embed = discord.Embed(
-                title="**🤖 AI CHAT COMMANDS 🤖**",
-                description="**MAG-CHAT AT KAUSAPIN ANG BOT:**",
+                title="**🤖 AI CHAT COMMANDS 🤖**                                   ",
+                description="**MAG-CHAT AT KAUSAPIN ANG BOT:**                                   ",
                 color=discord.Color.blue()  # Blue for AI/chat
             )
             
@@ -1191,10 +1191,10 @@ class ChatCog(commands.Cog):
             
             chat_embed.description += f"\n\n{chat_text}"
             
-            # UTILITY COMMANDS CONTAINER
+            # UTILITY COMMANDS CONTAINER - Added spaces for consistent width
             utility_embed = discord.Embed(
-                title="**🔧 UTILITY COMMANDS 🔧**",
-                description="**MISCELLANEOUS AT IBA PANG HELPFUL COMMANDS:**",
+                title="**🔧 UTILITY COMMANDS 🔧**                                   ",
+                description="**MISCELLANEOUS AT IBA PANG HELPFUL COMMANDS:**                                   ",
                 color=discord.Color.green()  # Green for utility
             )
             
