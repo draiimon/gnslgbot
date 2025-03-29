@@ -490,6 +490,27 @@ files = [
 ]
 
 [[package]]
+name = "edge-tts"
+version = "7.0.0"
+description = "Microsoft Edge's TTS"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "edge_tts-7.0.0-py3-none-any.whl", hash = "sha256:c99e91caba83c28e6f1fff1098a8188f541ba9615944c7a6f8f5625e02848044"},
+    {file = "edge_tts-7.0.0.tar.gz", hash = "sha256:bd5db0c05bb7fd973397922f70fc8371c7be2bb4911f9c38bd38c14ed7b52a2d"},
+]
+
+[package.dependencies]
+aiohttp = ">=3.8.0,<4.0.0"
+certifi = ">=2023.11.17"
+srt = ">=3.4.1,<4.0.0"
+tabulate = ">=0.4.4,<1.0.0"
+typing-extensions = ">=4.1.0,<5.0.0"
+
+[package.extras]
+dev = ["black", "isort", "mypy", "pylint", "types-tabulate"]
+
+[[package]]
 name = "flask"
 version = "3.1.0"
 description = "A simple framework for building complex web applications."
@@ -1362,6 +1383,30 @@ files = [
 ]
 
 [[package]]
+name = "srt"
+version = "3.5.3"
+description = "A tiny library for parsing, modifying, and composing SRT files."
+optional = false
+python-versions = ">=2.7"
+files = [
+    {file = "srt-3.5.3.tar.gz", hash = "sha256:4884315043a4f0740fd1f878ed6caa376ac06d70e135f306a6dc44632eed0cc0"},
+]
+
+[[package]]
+name = "tabulate"
+version = "0.9.0"
+description = "Pretty-print tabular data"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "tabulate-0.9.0-py3-none-any.whl", hash = "sha256:024ca478df22e9340661486f85298cff5f6dcdba14f3813e8830015b9ed1948f"},
+    {file = "tabulate-0.9.0.tar.gz", hash = "sha256:0095b12bf5966de529c0feb1fa08671671b3368eec77d7ef7ab114be2c068b3c"},
+]
+
+[package.extras]
+widechars = ["wcwidth"]
+
+[[package]]
 name = "tqdm"
 version = "4.67.1"
 description = "Fast, Extensible Progress Meter"
@@ -1547,4 +1592,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "870bffacceba1758c40287deca835f3631fe1ba2bc1d0e44ca05d67b5f9d8be7"
+content-hash = "864d590306db9b0f3e880d2c7ad92e82b9c32e4d479cdc1dc1eeadc546922097"

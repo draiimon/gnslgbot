@@ -291,7 +291,7 @@ class AudioCog(commands.Cog):
     
     @commands.command(name="vc")
     async def vc(self, ctx, *, message: str):
-        """Text-to-speech using gTTS and YouTube as a workaround"""
+        """Text-to-speech using Edge TTS API (no FFmpeg required)"""
         # Check if user is in a voice channel
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
@@ -306,88 +306,71 @@ class AudioCog(commands.Cog):
         processing_msg = await ctx.send("**SANDALI LANG!** Ginagawa ko pa yung audio...")
         
         try:
-            # Generate TTS
-            print(f"Generating TTS for message: '{message}'")
-            tts = gTTS(text=message, lang='tl', slow=False)
-            
-            # Create a unique filename for this TTS request
+            # Generate TTS using edge_tts
+            print(f"Generating Edge TTS for message: '{message}'")
             filename = f"{self.temp_dir}/tts_{ctx.message.id}.mp3"
-            print(f"Saving TTS to file: {filename}")
             
-            # Save to file
-            tts.save(filename)
+            # Import edge_tts here so we don't add import overhead if not used
+            import edge_tts
             
-            # Verify file exists
+            # Create Edge TTS communicator - use Tagalog/Filipino voice
+            # Options: fil-PH-AngeloNeural (male), fil-PH-BlessicaNeural (female)
+            # If these fail, fallback to en-US-JennyNeural or en-US-ChristopherNeural
+            tts = edge_tts.Communicate(text=message, voice="fil-PH-BlessicaNeural")
+            
+            # Generate audio using Edge TTS API
+            await tts.save(filename)
+            print(f"Edge TTS file generated successfully: {filename}")
+            
+            # Verify file exists and has content
             if not os.path.exists(filename):
-                raise Exception("Failed to generate audio file - file does not exist")
+                raise Exception("Failed to generate Edge TTS file - file does not exist")
             
             if os.path.getsize(filename) == 0:
-                raise Exception("Failed to generate audio file - file is empty")
+                raise Exception("Failed to generate Edge TTS file - file is empty")
                 
-            print(f"TTS file generated successfully: {filename} ({os.path.getsize(filename)} bytes)")
+            print(f"Edge TTS file saved: {filename} ({os.path.getsize(filename)} bytes)")
             
             # Store in database
             with open(filename, "rb") as f:
                 audio_data = f.read()
                 audio_id = store_audio_tts(ctx.author.id, message, audio_data)
-                print(f"Stored TTS in database with ID: {audio_id}")
+                print(f"Stored Edge TTS in database with ID: {audio_id}")
                 
-            # Instead of directly playing local files, we'll use a workaround
-            # TTS files won't play with Lavalink and discord.py requires opus libraries
-            # So we'll play a silent YouTube clip instead to get things working
+            # Now directly play the audio using discord.py's voice client
+            # This approach bypasses Wavelink/Lavalink completely for TTS
+            voice_client = ctx.guild.voice_client
+            voice_channel = ctx.author.voice.channel
             
-            # Get or create a MusicPlayer
-            channel = ctx.author.voice.channel
-            
+            # If we have a wavelink player, disconnect it
+            if voice_client and isinstance(voice_client, wavelink.Player):
+                print("Disconnecting existing wavelink player")
+                await voice_client.disconnect()
+                voice_client = None
+                
+            # Connect with regular discord voice client
+            if not voice_client or not voice_client.is_connected():
+                print(f"Connecting to {voice_channel.name} for Edge TTS playback")
+                voice_client = await voice_channel.connect()
+            elif voice_client.channel != voice_channel:
+                print(f"Moving to {voice_channel.name} for Edge TTS playback")
+                await voice_client.move_to(voice_channel)
+                
+            # Try direct playback with discord.py (no opus needed with this approach)
             try:
-                # Check if we're already connected
-                player = ctx.guild.voice_client
+                # Create audio source directly - no PCM conversion needed for Edge TTS
+                source = discord.FFmpegOpusAudio(source=filename)
                 
-                # Connect if not connected or if it's not a wavelink player
-                if not player or not isinstance(player, wavelink.Player) or not player.is_connected:
-                    # Make sure any existing connection is closed first
-                    if player:
-                        await player.disconnect()
-                        
-                    # Connect with a Wavelink Player
-                    player = await channel.connect(cls=wavelink.Player)
-                    print(f"Connected to {channel.name} with Wavelink Player for TTS workaround")
-                    
-                # If connected but in a different channel, move to the user's channel    
-                elif player.channel.id != ctx.author.voice.channel.id:
-                    await player.move_to(ctx.author.voice.channel)
-                    print(f"Moved player to {ctx.author.voice.channel.name}")
-                    
-            except Exception as connect_error:
-                raise Exception(f"Failed to connect to voice channel: {connect_error}")
-            
-            # Use a very short silent YouTube audio instead of local file
-            # This is a workaround since local files are problematic
-            silent_audio_url = "https://www.youtube.com/watch?v=UOZ_7-zcpg0"  # Short silent audio
-            
-            try:
-                # Get the track from YouTube 
-                node = wavelink.NodePool.get_node()
-                if not node:
-                    raise Exception("No Lavalink node available - check if Lavalink server is running")
+                print("Starting Edge TTS playback")
+                voice_client.play(source)
                 
-                # Use YouTube silent audio as a workaround
-                tracks = await node.get_tracks(wavelink.tracks.YouTubeTrack, silent_audio_url)
-                
-                if not tracks:
-                    raise Exception("Failed to load workaround audio from YouTube")
-                
-                # Play the track at low volume - this effectively creates audio with very low volume
-                await player.set_volume(1)  # Very low volume
-                await player.play(tracks[0])
-                
-                # Delete the processing message and send success message
+                # Success message
                 await processing_msg.delete()
                 await ctx.send(f"🔊 **SPEAKING:** {message}", delete_after=10)
                 
-                # Wait for an appropriate duration (estimate based on message length)
+                # Wait for estimated duration
                 word_count = len(message.split())
-                estimated_duration = max(1, min(10, word_count / 2))  # ~2 words per second
+                estimated_duration = max(3, min(15, word_count / 2))  # ~2 words per second
                 await asyncio.sleep(estimated_duration)
                 
                 # Clean up the file
@@ -402,10 +385,28 @@ class AudioCog(commands.Cog):
                 print("Cleaned up old TTS entries")
                 
             except Exception as play_error:
-                raise Exception(f"Failed to use TTS workaround: {play_error}")
+                print(f"Edge TTS direct playback error: {play_error}")
                 
+                # Fall back to basic FFmpeg Audio (no opus)
+                try:
+                    # Basic FFmpeg source as fallback
+                    source = discord.FFmpegAudio(source=filename, executable='ffmpeg')
+                    voice_client.play(source)
+                    
+                    # Success message for fallback
+                    await processing_msg.delete()
+                    await ctx.send(f"🔊 **SPEAKING (Fallback Mode):** {message}", delete_after=10)
+                    
+                    # Wait for audio to finish based on file size
+                    # We know the estimated duration from file size (better than counting words)
+                    estimated_duration = max(3, min(15, os.path.getsize(filename) / 2000))
+                    await asyncio.sleep(estimated_duration)
+                    
+                except Exception as fallback_error:
+                    raise Exception(f"Edge TTS playback failed (both methods): {fallback_error}")
+            
         except Exception as e:
-            print(f"⚠️ TTS ERROR: {e}")
+            print(f"⚠️ EDGE TTS ERROR: {e}")
             import traceback
             traceback.print_exc()
             
@@ -421,7 +422,7 @@ class AudioCog(commands.Cog):
     
     @commands.command(name="replay")
     async def replay(self, ctx):
-        """Replay last TTS message from database using YouTube as a workaround"""
+        """Replay last TTS message from database using direct audio playback"""
         # Check if user is in a voice channel
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
@@ -444,61 +445,39 @@ class AudioCog(commands.Cog):
                 
             print(f"Saved replay audio to file: {filename}")
             
-            # Instead of directly playing local files, we'll use a workaround
-            # TTS files won't play with Lavalink and discord.py requires opus libraries
-            # So we'll play a silent YouTube clip instead
+            # Now directly play the audio using discord.py's voice client
+            # This approach bypasses Wavelink/Lavalink completely for TTS
+            voice_client = ctx.guild.voice_client
+            voice_channel = ctx.author.voice.channel
             
-            # Get or create a MusicPlayer
-            channel = ctx.author.voice.channel
+            # If we have a wavelink player, disconnect it
+            if voice_client and isinstance(voice_client, wavelink.Player):
+                print("Disconnecting existing wavelink player for replay")
+                await voice_client.disconnect()
+                voice_client = None
+                
+            # Connect with regular discord voice client
+            if not voice_client or not voice_client.is_connected():
+                print(f"Connecting to {voice_channel.name} for replay playback")
+                voice_client = await voice_channel.connect()
+            elif voice_client.channel != voice_channel:
+                print(f"Moving to {voice_channel.name} for replay playback")
+                await voice_client.move_to(voice_channel)
             
+            # Try direct playback with discord.py (no opus needed with this approach)
             try:
-                # Check if we're already connected
-                player = ctx.guild.voice_client
+                # Create audio source directly - no PCM conversion needed
+                source = discord.FFmpegOpusAudio(source=filename)
                 
-                # Connect if not connected or if it's not a wavelink player
-                if not player or not isinstance(player, wavelink.Player) or not player.is_connected:
-                    # Make sure any existing connection is closed first
-                    if player:
-                        await player.disconnect()
-                        
-                    # Connect with a Wavelink Player
-                    player = await channel.connect(cls=wavelink.Player)
-                    print(f"Connected to {channel.name} with Wavelink Player for replay workaround")
-                    
-                # If connected but in a different channel, move to the user's channel    
-                elif player.channel.id != ctx.author.voice.channel.id:
-                    await player.move_to(ctx.author.voice.channel)
-                    print(f"Moved player to {ctx.author.voice.channel.name}")
-                    
-            except Exception as connect_error:
-                raise Exception(f"Failed to connect to voice channel: {connect_error}")
-            
-            # Use a very short silent YouTube audio instead of local file
-            # This is a workaround since local files are problematic
-            silent_audio_url = "https://www.youtube.com/watch?v=UOZ_7-zcpg0"  # Short silent audio
-            
-            try:
-                # Get the track from YouTube 
-                node = wavelink.NodePool.get_node()
-                if not node:
-                    raise Exception("No Lavalink node available - check if Lavalink server is running")
+                print("Starting replay playback")
+                voice_client.play(source)
                 
-                # Use YouTube silent audio as a workaround
-                tracks = await node.get_tracks(wavelink.tracks.YouTubeTrack, silent_audio_url)
-                
-                if not tracks:
-                    raise Exception("Failed to load workaround audio from YouTube")
-                
-                # Play the track at low volume - this effectively creates audio with very low volume
-                await player.set_volume(1)  # Very low volume
-                await player.play(tracks[0])
-                
-                # Delete the processing message and send success message
+                # Success message
                 await processing_msg.delete()
                 await ctx.send(f"🔊 **REPLAYING:** Last message", delete_after=10)
                 
-                # Wait for an appropriate duration (estimate based on file size)
-                estimated_duration = max(3, min(15, os.path.getsize(filename) / 4000))
+                # Wait for estimated duration
+                estimated_duration = max(3, min(15, os.path.getsize(filename) / 2000))
                 await asyncio.sleep(estimated_duration)
                 
                 # Clean up the file
@@ -509,9 +488,30 @@ class AudioCog(commands.Cog):
                     print(f"Error removing replay file: {e}")
                 
             except Exception as play_error:
-                raise Exception(f"Failed to use replay workaround: {play_error}")
+                print(f"Replay direct playback error: {play_error}")
+                
+                # Fall back to basic FFmpeg Audio (no opus)
+                try:
+                    # Basic FFmpeg source as fallback
+                    source = discord.FFmpegAudio(source=filename, executable='ffmpeg')
+                    voice_client.play(source)
+                    
+                    # Success message for fallback
+                    await processing_msg.delete()
+                    await ctx.send(f"🔊 **REPLAYING (Fallback Mode):** Last message", delete_after=10)
+                    
+                    # Wait for audio to finish - estimate based on file size
+                    estimated_duration = max(3, min(15, os.path.getsize(filename) / 2000))
+                    await asyncio.sleep(estimated_duration)
+                    
+                except Exception as fallback_error:
+                    raise Exception(f"Replay playback failed (both methods): {fallback_error}")
             
         except Exception as e:
+            print(f"⚠️ REPLAY ERROR: {e}")
+            import traceback
+            traceback.print_exc()
+            
             # Try to delete processing message
             try:
                 await processing_msg.delete()

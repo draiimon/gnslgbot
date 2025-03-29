@@ -20,6 +20,7 @@ pydub = "^0.25.1"
 lavalink = "^5.9.0"
 wavelink = "2.6.3"
 psycopg2-binary = "^2.9.10"
+edge-tts = "^7.0.0"
 
 [build-system]
 requires = ["poetry-core"]
