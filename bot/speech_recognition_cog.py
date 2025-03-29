@@ -31,6 +31,9 @@ class SpeechRecognitionCog(commands.Cog):
         self.default_voice = "en-US-GuyNeural"
         self.user_voice_prefs = {}  # user_id: "male" or "female"
         
+        # Track most recently active users in each guild for voice preferences
+        self.last_user_speech = {}  # user_id: timestamp
+        
         # Get Groq client from the bot (assuming it's stored there)
         self.get_ai_response = None  # This will be set when the cog is loaded
         
@@ -184,6 +187,79 @@ class SpeechRecognitionCog(commands.Cog):
         """Process a voice command from a user"""
         print(f"🗣️ Processing voice command from user {user_id}: '{command}'")
         
+        # Update last user speech timestamp
+        self.last_user_speech[user_id] = time.time()
+        
+        # First, check if this is a voice change request
+        voice_change_patterns = [
+            "palit voice", "palit boses", "gawin mong lalaki voice", "babae voice", 
+            "gusto ko lalaki", "gusto ko babae", "lalaki na voice", "babae na voice",
+            "change voice", "voice to male", "voice to female", "male voice", "female voice"
+        ]
+        
+        # Check if the command contains any voice change patterns
+        is_voice_change = any(pattern in command.lower() for pattern in voice_change_patterns)
+        
+        # Additional voice change detection - smart patterns based on AI context
+        ai_voice_commands = [
+            "change your voice", "use male voice", "use female voice", 
+            "speak like a man", "speak like a woman", "speak as a man", "speak as a woman",
+            "as a man", "as a woman", "switch to male", "switch to female",
+            "be a man", "be a woman", "talk like a guy", "talk like a girl",
+            "palit ka voice", "palit ka boses", "maging lalaki ka", "maging babae ka"
+        ]
+        
+        ai_instruction_change = any(pattern in command.lower() for pattern in ai_voice_commands)
+        
+        if is_voice_change or ai_instruction_change:
+            # Determine gender from command
+            male_patterns = ["lalaki", "male", "guy", "boy", "man", "as a man", "like a man", "speak as a man"]
+            female_patterns = ["babae", "female", "girl", "woman", "as a woman", "like a woman", "speak as a woman"]
+            
+            # Default to male if command doesn't specify
+            cmd_lower = command.lower()
+            gender = "m"  # Default
+            
+            # Determine gender based on what's in the command
+            if any(pattern in cmd_lower for pattern in female_patterns):
+                gender = "f"
+            elif any(pattern in cmd_lower for pattern in male_patterns):
+                gender = "m"
+            
+            # Find the audio cog
+            audio_cog = None
+            for cog_name, cog in self.bot.cogs.items():
+                if "audio" in cog_name.lower():
+                    audio_cog = cog
+                    break
+            
+            if audio_cog:
+                try:
+                    # Update user voice preference in the audio cog
+                    audio_cog.user_voice_preferences[user_id] = gender
+                    gender_name = "male" if gender == "m" else "female"
+                    
+                    # Get the guild and a text channel
+                    guild = self.bot.get_guild(guild_id)
+                    if guild:
+                        # Find a suitable text channel
+                        for channel in guild.text_channels:
+                            if channel.permissions_for(guild.me).send_messages:
+                                await channel.send(f"**VOICE CHANGED TO {gender_name.upper()}!** 👨 🔊")
+                                break
+                    
+                    # Speak a confirmation with the new voice
+                    await self.speak_message(guild_id, f"Voice changed to {gender_name}. This is how I sound now!")
+                    
+                    # Log the change
+                    print(f"✅ User {user_id} changed voice preference to {gender_name} through AI")
+                    return True
+                except Exception as e:
+                    print(f"❌ Error changing voice through cog: {e}")
+                    import traceback
+                    traceback.print_exc()
+        
+        # Continue with regular command processing
         # First, check if we have the AI response handler
         if not self.get_ai_response:
             print("❌ ERROR: No AI response handler available!")
@@ -298,10 +374,45 @@ class SpeechRecognitionCog(commands.Cog):
             if any(word in message.lower() for word in tagalog_words):
                 language = "fil"
             
-            # Choose voice based on language
-            voice = self.default_voice
+            # Get the audio cog for voice preferences
+            audio_cog = None
+            user_preferences = {}
+            for cog_name, cog in self.bot.cogs.items():
+                if "audio" in cog_name.lower():
+                    try:
+                        audio_cog = cog
+                        # Get access to the user voice preferences
+                        if hasattr(cog, 'user_voice_preferences'):
+                            user_preferences = cog.user_voice_preferences
+                        break
+                    except Exception as e:
+                        print(f"Error accessing audio cog: {e}")
+                        break
+            
+            # Determine user from guild context
+            current_user_id = None
+            for guild in self.bot.guilds:
+                if guild.id == guild_id:
+                    # Find the most active voice user
+                    for member in guild.members:
+                        if member.id in self.last_user_speech:
+                            current_user_id = member.id
+                            break
+            
+            # Get gender preference if available, fallback to default
+            gender_preference = "f"  # Default to female
+            if current_user_id and current_user_id in user_preferences:
+                gender_preference = user_preferences[current_user_id]
+            elif audio_cog and hasattr(audio_cog, 'default_gender'):
+                gender_preference = audio_cog.default_gender
+            
+            # Choose voice based on language and gender
             if language == "fil":
-                voice = "fil-PH-BlessicaNeural"  # Filipino female voice
+                # Filipino voices
+                voice = "fil-PH-AngeloNeural" if gender_preference == "m" else "fil-PH-BlessicaNeural"
+            else:
+                # English voices
+                voice = "en-US-GuyNeural" if gender_preference == "m" else "en-US-JennyNeural"
             
             # Generate TTS audio in memory
             tts = edge_tts.Communicate(text=message, voice=voice, rate="+10%", volume="+30%")
