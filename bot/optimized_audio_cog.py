@@ -344,7 +344,8 @@ class AudioCog(commands.Cog):
             print(f"Detected language: {detected_lang}, using {gender_preference} voice: {voice}")
             
             # Use direct text without SSML to ensure compatibility
-            tts = edge_tts.Communicate(text=message_text, voice=voice)
+            # Using faster speech rate with slightly increased volume for normal speed
+            tts = edge_tts.Communicate(text=message_text, voice=voice, rate="+10%", volume="+30%")
             
             # Generate MP3 audio using Edge TTS API
             await tts.save(mp3_filename)
@@ -501,7 +502,8 @@ class AudioCog(commands.Cog):
                 voice = "en-US-GuyNeural" if gender_preference == "m" else "en-US-JennyNeural"
             
             # Configure TTS with the selected voice and enhanced settings
-            tts = edge_tts.Communicate(text=message_text, voice=voice, rate="-30%", volume="+30%")
+            # Using faster speech rate with slightly increased volume
+            tts = edge_tts.Communicate(text=message_text, voice=voice, rate="+10%", volume="+30%")
             
             # STEP 4: Prepare temporary file path (pre-allocate to save milliseconds)
             mp3_filename = f"{self.temp_dir}/tts_direct_{message_id}.mp3"
