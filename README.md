@@ -72,6 +72,18 @@ python main.py
 - `g!joinvc` - Make the bot join your voice channel
 - `g!leavevc` - Make the bot leave the voice channel
 
+### Music Commands (YouTube)
+- `g!ytplay <query>` - Play a song from YouTube (URL or search query)
+- `g!ytplay <spotify URL>` - Play a song from Spotify (converted to YouTube)
+- `g!ytskip` - Skip the current song
+- `g!ytstop` - Stop playing and clear the queue
+- `g!ytqueue` - Show the current queue
+- `g!ytvolume <0-100>` - Set the volume
+- `g!ytloop` - Toggle loop for current song
+- `g!ytloopqueue` - Toggle loop for the entire queue
+- `g!ytremove <index>` - Remove a song from the queue
+- `g!ytleave` - Leave the voice channel
+
 ### AI Chat Commands
 - `g!usap <message>` - Chat with the AI assistant
 - `g!clear_history` - Clear conversation history
@@ -90,23 +102,48 @@ python main.py
 - `g!announcement <message>` - Make an announcement
 - `g!tulong` - Display help information
 
+## Docker Deployment
+
+1. Build and run the Docker container:
+```bash
+# Build the Docker image
+docker build -t ginsilog-bot .
+
+# Run the container
+docker run --env-file .env -d --name ginsilog-bot ginsilog-bot
+```
+
+2. Using Docker Compose:
+```bash
+# Start the bot using docker-compose
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop the bot
+docker-compose down
+```
+
 ## Deployment on Render
 
 1. Fork/Clone this repository to your GitHub account
 
 2. Create a new Web Service on Render:
    - Connect your GitHub repository
-   - Choose Python 3.11 as the runtime
-   - Set the build command: `pip install -r requirements.txt`
-   - Set the start command: `python main.py`
+   - Choose "Docker" as the environment
+   - Set the branch to deploy from
+   - Leave the build command empty (it will use the Dockerfile automatically)
 
 3. Add Environment Variables in Render:
    - Add `DISCORD_TOKEN` (from Discord Developer Portal)
    - Add `GROQ_API_KEY` (from Groq Cloud Console)
+   - Add `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` (from Spotify Developer Dashboard)
    - Add `DATABASE_URL` (from your PostgreSQL database provider)
-   - The `PORT` variable will be automatically set by Render
 
 4. Deploy the service and your bot will be online!
+
+You can also use the `render.yaml` file in this repository to deploy directly from your GitHub repository to Render with all the necessary configuration.
 
 ## Important Notes
 

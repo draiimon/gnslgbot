@@ -1,0 +1,44 @@
+# Git and version control
+.git
+.gitignore
+
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Development and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Temporary files
+temp_audio/*
+temp_music/*
+!temp_audio/.gitkeep
+!temp_music/.gitkeep
+.DS_Store
+
+# Docker files
+.dockerignore
+docker-compose.yml
+Dockerfile
+
+# Documentation and miscellaneous
+*.md
+!README.md
+LICENSE
+
+# Don't ignore essential directories
+!bot/
+!lavalink/
+!templates/

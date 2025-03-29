@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  bot:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./temp_audio:/app/temp_audio
+      - ./temp_music:/app/temp_music
+    environment:
+      - PYTHONUNBUFFERED=1
+    # Keeping the container running
+    tty: true

@@ -1,0 +1,81 @@
+2025-03-29 12:58:52 WARNING  discord.gateway Shard ID None heartbeat blocked for more than 30 seconds.
+Loop thread traceback (most recent call last):
+  File "/home/runner/workspace/main.py", line 224, in <module>
+    main()
+  File "/home/runner/workspace/main.py", line 219, in main
+    bot.run(Config.DISCORD_TOKEN)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/discord/client.py", line 906, in run
+    asyncio.run(runner())
+  File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/asyncio/runners.py", line 190, in run
+    return runner.run(main)
+  File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+  File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/asyncio/base_events.py", line 641, in run_until_complete
+    self.run_forever()
+  File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/asyncio/base_events.py", line 608, in run_forever
+    self._run_once()
+  File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/asyncio/base_events.py", line 1936, in _run_once
+    handle._run()
+  File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/asyncio/events.py", line 84, in _run
+    self._context.run(self._callback, *self._args)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/discord/client.py", line 481, in _run_event
+    await coro(*args, **kwargs)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/discord/ext/commands/bot.py", line 1411, in on_message
+    await self.process_commands(message)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/discord/ext/commands/bot.py", line 1408, in process_commands
+    await self.invoke(ctx)  # type: ignore
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/discord/ext/commands/bot.py", line 1366, in invoke
+    await ctx.command.invoke(ctx)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/discord/ext/commands/core.py", line 1029, in invoke
+    await injected(*ctx.args, **ctx.kwargs)  # type: ignore
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/discord/ext/commands/core.py", line 235, in wrapped
+    ret = await coro(*args, **kwargs)
+  File "/home/runner/workspace/bot/optimized_audio_cog.py", line 441, in ytplay
+    self.play_next(ctx)
+  File "/home/runner/workspace/bot/optimized_audio_cog.py", line 220, in play_next
+    ).result()
+  File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/concurrent/futures/_base.py", line 451, in result
+    self._condition.wait(timeout)
+  File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/threading.py", line 327, in wait
+    waiter.acquire()
+
+2025-03-29 12:58:55 WARNING  discord.gateway Shard ID None voice heartbeat blocked for more than 40 seconds
+Loop thread traceback (most recent call last):
+  File "/home/runner/workspace/main.py", line 224, in <module>
+    main()
+  File "/home/runner/workspace/main.py", line 219, in main
+    bot.run(Config.DISCORD_TOKEN)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/discord/client.py", line 906, in run
+    asyncio.run(runner())
+  File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/asyncio/runners.py", line 190, in run
+    return runner.run(main)
+  File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+  File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/asyncio/base_events.py", line 641, in run_until_complete
+    self.run_forever()
+  File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/asyncio/base_events.py", line 608, in run_forever
+    self._run_once()
+  File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/asyncio/base_events.py", line 1936, in _run_once
+    handle._run()
+  File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/asyncio/events.py", line 84, in _run
+    self._context.run(self._callback, *self._args)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/discord/client.py", line 481, in _run_event
+    await coro(*args, **kwargs)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/discord/ext/commands/bot.py", line 1411, in on_message
+    await self.process_commands(message)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/discord/ext/commands/bot.py", line 1408, in process_commands
+    await self.invoke(ctx)  # type: ignore
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/discord/ext/commands/bot.py", line 1366, in invoke
+    await ctx.command.invoke(ctx)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/discord/ext/commands/core.py", line 1029, in invoke
+    await injected(*ctx.args, **ctx.kwargs)  # type: ignore
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/discord/ext/commands/core.py", line 235, in wrapped
+    ret = await coro(*args, **kwargs)
+  File "/home/runner/workspace/bot/optimized_audio_cog.py", line 441, in ytplay
+    self.play_next(ctx)
+  File "/home/runner/workspace/bot/optimized_audio_cog.py", line 220, in play_next
+    ).result()
+  File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/concurrent/futures/_base.py", line 451, in result
+    self._condition.wait(timeout)
+  File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/threading.py", line 327, in wait
+    waiter.acquire()

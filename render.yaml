@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: ginsilog-bot
+    env: docker
+    plan: standard
+    # Redirect HTTP traffic to HTTPS
+    autoDeploy: true
+    # A health check to verify the app is running
+    healthCheckPath: /
+    # Environment variables
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false 
+      - key: SPOTIFY_CLIENT_ID
+        sync: false
+      - key: SPOTIFY_CLIENT_SECRET
+        sync: false

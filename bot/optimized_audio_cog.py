@@ -212,38 +212,43 @@ class OptimizedMusicCog(commands.Cog):
             # Schedule the next track to play
             self.bot.loop.create_task(self._schedule_next(ctx))
         
-        # Try to play the track
         try:
-            success = asyncio.run_coroutine_threadsafe(
-                self.download_audio(track['url'], filename), 
-                self.bot.loop
-            ).result()
-            
-            if success:
-                audio_source = PCMVolumeTransformer(
-                    FFmpegPCMAudio(filename),
-                    volume=queue.volume
-                )
-                voice_client.play(audio_source, after=after_playing)
-                
-                # Send now playing message
-                asyncio.run_coroutine_threadsafe(
-                    ctx.send(f"🎵 Now playing: **{track['title']}**"),
-                    self.bot.loop
-                )
-            else:
-                # If download failed, try next song
-                asyncio.run_coroutine_threadsafe(
-                    ctx.send(f"❌ Failed to play: **{track['title']}**. Skipping..."),
-                    self.bot.loop
-                )
-                self.play_next(ctx)
+            # Create a task to handle downloading and playing
+            self.bot.loop.create_task(self._download_and_play(ctx, track, filename, voice_client, queue, after_playing))
         except Exception as e:
             print(f"Error playing track: {e}")
             
             # Try to play next track
             self.play_next(ctx)
     
+    async def _download_and_play(self, ctx, track, filename, voice_client, queue, after_playing):
+        """Asynchronously download and play audio to prevent blocking Discord heartbeat"""
+        try:
+            # Download the audio asynchronously
+            success = await self.download_audio(track['url'], filename)
+            
+            if success:
+                # Make sure the voice client is still connected
+                if voice_client and voice_client.is_connected():
+                    audio_source = PCMVolumeTransformer(
+                        FFmpegPCMAudio(filename),
+                        volume=queue.volume
+                    )
+                    
+                    # Check if bot is still playing (another song might have started)
+                    if not voice_client.is_playing():
+                        voice_client.play(audio_source, after=after_playing)
+                        # Send now playing message
+                        await ctx.send(f"🎵 Now playing: **{track['title']}**")
+            else:
+                # If download failed, try next song
+                await ctx.send(f"❌ Failed to play: **{track['title']}**. Skipping...")
+                self.play_next(ctx)
+        except Exception as e:
+            print(f"Error in _download_and_play: {e}")
+            await ctx.send(f"❌ Error playing track: {str(e)}")
+            self.play_next(ctx)
+
     async def _schedule_next(self, ctx):
         """Schedule the next track to play"""
         guild_id = ctx.guild.id

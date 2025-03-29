@@ -57,4 +57,15 @@ replit.nix
 Thumbs.db
 
 # Render Specific
-render.yaml  # If using a custom render config
+# Keep render.yaml for deployment
+# render.yaml
+
+# Temporary audio and music files
+temp_audio/*
+!temp_audio/.gitkeep
+temp_music/*
+!temp_music/.gitkeep
+
+# Docker files
+docker-compose.yaml
+docker-requirements.txt
