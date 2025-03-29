@@ -177,8 +177,8 @@ class AudioCog(commands.Cog):
                     except Exception as e:
                         print(f"Error auto-joining channel: {e}")
     
-    @commands.command(name="joinvc")
-    async def joinvc(self, ctx):
+    @commands.command(name="join")
+    async def join(self, ctx):
         """Join a voice channel using direct Discord voice client"""
         if not ctx.author.voice:
             return await ctx.send("**TANGA!** WALA KA SA VOICE CHANNEL!")
