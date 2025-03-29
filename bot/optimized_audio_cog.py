@@ -424,19 +424,34 @@ class AudioCog(commands.Cog):
                 pass
             
     async def process_auto_tts(self, message):
-        """Process TTS message automatically when user types in chat"""
+        """Process TTS message automatically when user types in chat (ULTRA FAST)"""
         try:
             # Only process if all conditions are met
             if message.author.voice and len(message.content) > 0 and len(message.content) <= 200:
+                # Check if the user has spoken recently (within 1 second) to avoid spam
+                user_id = message.author.id
+                now = datetime.datetime.now()
+                
+                if user_id in self.last_user_speech:
+                    last_time = self.last_user_speech[user_id]
+                    time_diff = (now - last_time).total_seconds()
+                    
+                    # If user has spoken too recently, skip this message
+                    if time_diff < 1:
+                        print(f"Skipping TTS for {message.author.name}: too frequent")
+                        return False
+                
+                # Update last speech time
+                self.last_user_speech[user_id] = now
                 voice_channel = message.author.voice.channel
-                # Create a background task to process the TTS without blocking
+                
+                # For ultra-fast TTS, we'll use direct streaming without file storage
                 asyncio.create_task(
-                    self.process_tts(
+                    self.process_tts_direct(
                         message.content, 
                         voice_channel, 
                         message.author.id,
-                        message.id,
-                        None  # Don't send confirmation messages for auto-TTS
+                        message.id
                     )
                 )
                 print(f"Auto TTS: {message.author.name} -> '{message.content}'")
@@ -444,6 +459,81 @@ class AudioCog(commands.Cog):
         except Exception as e:
             print(f"Auto TTS error: {e}")
         return False
+        
+    async def process_tts_direct(self, message_text, voice_channel, user_id, message_id):
+        """Ultra-fast direct TTS streaming without file storage"""
+        try:
+            # Intelligent language detection (reuse function from process_tts)
+            def detect_language(text):
+                text = text.lower()
+                
+                # Check for Filipino/Tagalog words and patterns
+                tagalog_words = ['ako', 'ikaw', 'siya', 'tayo', 'kami', 'kayo', 'sila', 
+                                'ng', 'sa', 'ang', 'mga', 'naman', 'talaga', 'lang',
+                                'po', 'opo', 'salamat', 'kamusta', 'kumain', 'mahal',
+                                'gago', 'putang', 'tangina', 'bobo', 'tanga']
+                
+                # Count common Tagalog words
+                tagalog_count = sum(word in text for word in tagalog_words)
+                
+                # Simple check - if any Tagalog words found, use Tagalog voice
+                if tagalog_count > 0:
+                    return "fil"
+                return "en"  # Default to English for speed
+            
+            # Fast language detection - only Tagalog vs English for speed
+            detected_lang = detect_language(message_text)
+            
+            # Choose voice based on detected language (simplified for speed)
+            voice = "fil-PH-AngeloNeural" if detected_lang == "fil" else "en-US-GuyNeural"
+            
+            # Connect to voice channel first before generating TTS
+            guild = voice_channel.guild
+            voice_client = guild.voice_client
+            if not voice_client:
+                print(f"Connecting to voice channel: {voice_channel.name}")
+                voice_client = await voice_channel.connect()
+            elif voice_client.channel.id != voice_channel.id:
+                print(f"Moving to different voice channel: {voice_channel.name}")
+                await voice_client.move_to(voice_channel)
+            
+            # Wait if already playing audio - prevent overlap
+            if voice_client.is_playing():
+                while voice_client.is_playing():
+                    await asyncio.sleep(0.2)
+            
+            # Direct TTS with Edge TTS API
+            tts = edge_tts.Communicate(text=message_text, voice=voice)
+            
+            # Direct streaming approach
+            mp3_filename = f"{self.temp_dir}/tts_direct_{message_id}.mp3"
+            
+            # ULTRA-FAST: Generate and play immediately
+            await tts.save(mp3_filename)
+            
+            # Use FFmpeg to play directly from MP3 (faster than conversion)
+            audio_source = discord.FFmpegPCMAudio(mp3_filename, **self.ffmpeg_options)
+            voice_client.play(audio_source, after=lambda e: self.cleanup_direct_tts(mp3_filename, e))
+            
+            print(f"⚡️ ULTRA-FAST TTS: {message_text}")
+            
+        except Exception as e:
+            print(f"⚠️ DIRECT TTS ERROR: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    def cleanup_direct_tts(self, filename, error):
+        """Clean up temporary file after direct TTS playback"""
+        if error:
+            print(f"Error in direct TTS playback: {error}")
+        
+        # Remove the temporary file
+        try:
+            if os.path.exists(filename):
+                os.remove(filename)
+                print(f"Removed direct TTS file: {filename}")
+        except Exception as e:
+            print(f"Error removing direct TTS file: {e}")
     
     @commands.command(name="vc", aliases=["say", "speak"])
     async def vc(self, ctx, *, message: str):
