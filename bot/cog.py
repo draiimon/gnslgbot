@@ -416,6 +416,8 @@ class ChatCog(commands.Cog):
                 description="**MGA KAUSAPIN MO SI GINSILOG:**",
                 color=discord.Color.from_rgb(64, 224, 208)  # Turquoise
             )
+            # Fixed width to ensure consistent size
+            ai_embed.width = 500
             
             ai_commands = {
                 "g!usap <message>": "Kausapin ang Ginsilog AI assistant",
@@ -424,13 +426,11 @@ class ChatCog(commands.Cog):
                 "g!clear": "I-clear ang chat history ng channel"
             }
             
+            # Set consistent field layout
             for cmd, desc in ai_commands.items():
                 ai_embed.add_field(name=f"**{cmd}**", value=desc, inline=False)
-                
-            ai_embed.set_footer(
-                text="AI CHAT | Ginsilog AI 2025 | Gawa ni Mason Calix",
-                icon_url=owner_avatar
-            )
+            
+            # No footer here - will be in the last embed only
             
             # ECONOMY COMMANDS
             economy_embed = discord.Embed(
@@ -438,6 +438,8 @@ class ChatCog(commands.Cog):
                 description="**YUMAMAN KA DITO GAGO:**",
                 color=discord.Color.from_rgb(255, 215, 0)  # Gold
             )
+            # Fixed width to ensure consistent size
+            economy_embed.width = 500
             
             economy_commands = {
                 "g!daily": "Kunin ang daily ₱10,000 mo",
@@ -446,13 +448,11 @@ class ChatCog(commands.Cog):
                 "g!leaderboard": "Top 20 pinakamayayaman sa server"
             }
             
+            # Set consistent field layout
             for cmd, desc in economy_commands.items():
                 economy_embed.add_field(name=f"**{cmd}**", value=desc, inline=False)
-                
-            economy_embed.set_footer(
-                text="ECONOMY SYSTEM | Money Commands | Gawa ni Mason Calix",
-                icon_url=owner_avatar
-            )
+            
+            # No footer here - will be in the last embed only
             
             # GAMES COMMANDS
             games_embed = discord.Embed(
@@ -460,6 +460,8 @@ class ChatCog(commands.Cog):
                 description="**SUGAL SUGAL DIN PAMINSAN-MINSAN:**",
                 color=discord.Color.from_rgb(138, 43, 226)  # Purple
             )
+            # Fixed width to ensure consistent size
+            games_embed.width = 500
             
             games_commands = {
                 "g!toss <h/t> <bet>": "Coin flip game (heads/tails)",
@@ -468,13 +470,11 @@ class ChatCog(commands.Cog):
                 "g!stand": "End turn sa Blackjack game"
             }
             
+            # Set consistent field layout
             for cmd, desc in games_commands.items():
                 games_embed.add_field(name=f"**{cmd}**", value=desc, inline=False)
-                
-            games_embed.set_footer(
-                text="GAMES SYSTEM | Gambling Games | Gawa ni Mason Calix",
-                icon_url=owner_avatar
-            )
+            
+            # No footer here - will be in the last embed only
             
             # UTILITY COMMANDS
             utility_embed = discord.Embed(
@@ -482,6 +482,8 @@ class ChatCog(commands.Cog):
                 description="**IBANG FEATURES NG BOT:**",
                 color=discord.Color.from_rgb(79, 134, 247)  # Blue
             )
+            # Fixed width to ensure consistent size
+            utility_embed.width = 500
             
             utility_commands = {
                 "g!joinvc": "Sumali sa voice channel mo",
@@ -494,15 +496,17 @@ class ChatCog(commands.Cog):
                 "g!rules": "Tignan ang server rules"
             }
             
+            # Set consistent field layout
             for cmd, desc in utility_commands.items():
                 utility_embed.add_field(name=f"**{cmd}**", value=desc, inline=False)
                 
+            # Footer ONLY on the last embed
             utility_embed.set_footer(
-                text="UTILITY COMMANDS | Voice & More | Gawa ni Mason Calix",
+                text="⚡ GINSILOG BOT 2025 EDITION ⚡ | Gawa ni Mason Calix",
                 icon_url=owner_avatar
             )
             
-            # Send all embeds
+            # Send all embeds in consistent fixed-size format
             await ctx.send(embed=ai_embed)
             await ctx.send(embed=economy_embed)
             await ctx.send(embed=games_embed)
@@ -616,6 +620,8 @@ class ChatCog(commands.Cog):
             description=
             "Ang conversation history ay na-clear na. Pwede na tayong mag-usap muli.\n\nGamit ang `g!usap <message>`, `g!asklog <message>`, `g!ask <message>` o i-mention mo ako para magsimula ng bagong conversation.",
             color=Config.EMBED_COLOR_INFO)
+        # Fixed width to ensure consistent size
+        clear_embed.width = 500
         clear_embed.set_footer(text="Ginsilog Bot | Fresh Start | Gawa ni Mason Calix")
 
         await ctx.send(embed=clear_embed)
@@ -1087,6 +1093,8 @@ class ChatCog(commands.Cog):
                             "**⬇️ SCROLL DOWN TO VIEW ALL COMMAND CATEGORIES ⬇️**",
                 color=discord.Color.from_rgb(255, 59, 59)  # Bright red
             )
+            # Fixed width to ensure consistent size
+            header_embed.width = 500
             
             # Set a nice thumbnail - use bot's avatar
             if self.bot.user and self.bot.user.avatar:
@@ -1098,9 +1106,9 @@ class ChatCog(commands.Cog):
                 icon_url=self.bot.user.avatar.url if self.bot.user and self.bot.user.avatar else None
             )
             
-            # Set footer with owner's avatar
+            # Footer here is okay since it's a separate embed from the category embeds
             header_embed.set_footer(
-                text="MASTER LIST | PARA SA MODERATOR LANG | Gawa ni Mason Calix",
+                text="MASTER COMMAND LIST | ADMIN TOOLS | Gawa ni Mason Calix",
                 icon_url=owner_avatar
             )
             
@@ -1143,16 +1151,15 @@ class ChatCog(commands.Cog):
             description="**EXCLUSIVE COMMANDS PARA SA MGA MODERATORS LANG:**",
             color=discord.Color.red()  # Distinctive red color for admin
         )
+        # Fixed width to ensure consistent size
+        admin_embed.width = 500
         
         admin_text = ""
         for cmd, desc in admin_commands.items():
             admin_text += f"• **{cmd}** - {desc}\n"
             
         admin_embed.description += f"\n\n{admin_text}"
-        admin_embed.set_footer(
-            text="ADMIN COMMANDS | Moderator Exclusive | Gawa ni Mason Calix",
-            icon_url=owner_avatar
-        )
+        # No footer here - will be in the last embed only
         
         # Send admin commands embed
         await ctx.send(embed=admin_embed)
@@ -1170,16 +1177,15 @@ class ChatCog(commands.Cog):
             description="**PERA AT ECONOMY SYSTEM:**",
             color=discord.Color.gold()  # Gold color for money
         )
+        # Fixed width to ensure consistent size
+        economy_embed.width = 500
         
         economy_text = ""
         for cmd, desc in economy_commands.items():
             economy_text += f"• **{cmd}** - {desc}\n"
             
         economy_embed.description += f"\n\n{economy_text}"
-        economy_embed.set_footer(
-            text="ECONOMY SYSTEM | Money Commands | Gawa ni Mason Calix",
-            icon_url=owner_avatar
-        )
+        # No footer here - will be in the last embed only
         
         # Send economy commands embed
         await ctx.send(embed=economy_embed)
@@ -1197,16 +1203,15 @@ class ChatCog(commands.Cog):
             description="**LARO AT GAMES NA PWEDE PANG-PATAY ORAS:**",
             color=discord.Color.purple()  # Purple for games
         )
+        # Fixed width to ensure consistent size
+        game_embed.width = 500
         
         game_text = ""
         for cmd, desc in game_commands.items():
             game_text += f"• **{cmd}** - {desc}\n"
             
         game_embed.description += f"\n\n{game_text}"
-        game_embed.set_footer(
-            text="GAMES | Entertainment Commands | Gawa ni Mason Calix",
-            icon_url=owner_avatar
-        )
+        # No footer here - will be in the last embed only
         
         # Send game commands embed
         await ctx.send(embed=game_embed)
@@ -1225,16 +1230,15 @@ class ChatCog(commands.Cog):
             description="**MAG-CHAT AT KAUSAPIN ANG BOT:**",
             color=discord.Color.blue()  # Blue for AI
         )
+        # Fixed width to ensure consistent size
+        chat_embed.width = 500
         
         chat_text = ""
         for cmd, desc in chat_commands.items():
             chat_text += f"• **{cmd}** - {desc}\n"
             
         chat_embed.description += f"\n\n{chat_text}"
-        chat_embed.set_footer(
-            text="AI SYSTEM | Ginsilog AI 2025 | Gawa ni Mason Calix",
-            icon_url=owner_avatar
-        )
+        # No footer here - will be in the last embed only
         
         # Send AI chat commands embed
         await ctx.send(embed=chat_embed)
@@ -1252,14 +1256,18 @@ class ChatCog(commands.Cog):
             description="**MISCELLANEOUS AT IBA PANG HELPFUL COMMANDS:**",
             color=discord.Color.green()  # Green for utility
         )
+        # Fixed width to ensure consistent size
+        utility_embed.width = 500
         
         utility_text = ""
         for cmd, desc in utility_commands.items():
             utility_text += f"• **{cmd}** - {desc}\n"
             
         utility_embed.description += f"\n\n{utility_text}"
+        
+        # Footer ONLY on the last embed
         utility_embed.set_footer(
-            text="UTILITY | Helpful Commands | Gawa ni Mason Calix",
+            text="⚡ GINSILOG BOT 2025 MASTER COMMAND LIST ⚡ | Gawa ni Mason Calix",
             icon_url=owner_avatar
         )
         
@@ -1294,6 +1302,8 @@ class ChatCog(commands.Cog):
             description="**EXCLUSIVE COMMANDS FOR MODERATORS & ADMINS ONLY**\n\n" + 
                        "**👑 WELCOME BOSS! MGA COMMANDS MO DITO 👑**",
             color=discord.Color.red())  # Red color for admin panel
+        # Fixed width to ensure consistent size
+        admin_embed.width = 500
             
         # Set thumbnail image with bot's avatar
         admin_embed.set_thumbnail(url=self.bot.user.avatar.url if self.bot.user and self.bot.user.avatar else None)
@@ -1455,6 +1465,8 @@ class ChatCog(commands.Cog):
             "**TANGINA MO! IKAW KAYA NASAAN DITO? SIGURADONG WALA KA DITO KASI WALA KANG KWENTANG PLAYER!**\n\n"
             + "**TOP MAYAMAN NG SERVER**",
             color=Config.EMBED_COLOR_PRIMARY)
+        # Fixed width to ensure consistent size
+        embed.width = 500
 
         # Create a formatted leaderboard with cleaner styling
         leaderboard_text = ""
